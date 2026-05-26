@@ -1,18 +1,3 @@
-// Selora.jsx — Landing Page
-// ─────────────────────────
-// Setup:
-//   1. npm create vite@latest selora -- --template react
-//   2. cd selora && npm install
-//   3. npm install -D tailwindcss @tailwindcss/vite
-//   4. vite.config.js → add: import tailwindcss from '@tailwindcss/vite'
-//                              plugins: [react(), tailwindcss()]
-//   5. src/index.css → replace with: @import "tailwindcss";
-//   6. index.html <head> → add:
-//      <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-//   7. src/App.jsx → replace with:
-//      import Selora from './Selora'
-//      export default function App() { return <Selora /> }
-
 import { useState, useEffect } from "react";
 
 // ─── Global Styles ────────────────────────────────────────────────────────────
