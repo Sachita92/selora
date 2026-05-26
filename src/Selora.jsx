@@ -475,8 +475,14 @@ function Footer() {
         Se<span style={{ color: "var(--g)" }}>lo</span>ra
       </div>
       <div>
-        {["Privacy Policy","Terms of Service","Support","Docs","Contact"].map(l => (
-          <a key={l} href="#" style={{ fontSize: ".74rem", color: "var(--muted)", textDecoration: "none", marginLeft: "1.8rem" }}>{l}</a>
+        {[
+          { label: "Privacy Policy", href: "/privacy" },
+          { label: "Terms of Service", href: "/terms" },
+          { label: "Support", href: "#" },
+          { label: "Docs", href: "#" },
+          { label: "Contact", href: "#" },
+        ].map(l => (
+          <a key={l.label} href={l.href} style={{ fontSize: ".74rem", color: "var(--muted)", textDecoration: "none", marginLeft: "1.8rem" }}>{l.label}</a>
         ))}
       </div>
       <div style={{ fontSize: ".7rem", color: "#c0c8c1" }}>© 2025 Selora. All rights reserved.</div>
