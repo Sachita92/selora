@@ -1,43 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 
 // ─── Global Styles ────────────────────────────────────────────────────────────
 const GlobalStyles = () => (
   <style>{`
     :root {
-      --g: #5A8A67;
-      --g2: #78A885;
-      --gpale: #EDF3EE;
-      --gborder: #D4E4D7;
-      --bg: #F8FAF8;
-      --bg2: #F1F5F1;
-      --card: #fff;
-      --border: #E4EBE5;
-      --dark: #1A271C;
-      --text: #2E3D30;
-      --muted: #7B907D;
+      --g: #5A8A67; --g2: #78A885; --gpale: #EDF3EE;
+      --bg: #F8FAF8; --bg2: #F1F5F1;
+      --border: #E4EBE5; --dark: #1A271C; --text: #2E3D30; --muted: #7B907D;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      overflow-x: hidden;
-      font-size: 15px;
-    }
-    h1, h2, h3, h4 { font-family: 'Fraunces', serif; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow-x: hidden; font-size: 15px; }
+    h1, h2, h3 { font-family: 'Fraunces', serif; }
 
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(18px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50%       { opacity: .3; transform: scale(1.7); }
-    }
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50%       { transform: translateY(-7px); }
-    }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes pulse  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(1.7)} }
+    @keyframes float  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
 
     .au  { animation: fadeUp .65s ease both; }
     .au1 { animation: fadeUp .65s .08s ease both; }
@@ -47,164 +25,222 @@ const GlobalStyles = () => (
     .pdot  { animation: pulse 2.2s infinite; }
     .float { animation: float 4.5s ease-in-out infinite; }
 
-    .hero-blob {
-      position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
-      width: 800px; height: 500px;
-      background: radial-gradient(ellipse, rgba(90,138,103,.11) 0%, transparent 68%);
-      pointer-events: none;
-    }
-    .hero-dots {
-      position: absolute; inset: 0;
-      background-image: radial-gradient(circle, rgba(90,138,103,.13) 1px, transparent 1px);
-      background-size: 28px 28px;
-      mask-image: radial-gradient(ellipse 75% 65% at 50% 25%, black 15%, transparent 80%);
-      pointer-events: none;
-    }
-    .cta-glow {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 650px; height: 320px;
-      background: radial-gradient(ellipse, rgba(90,138,103,.22), transparent 70%);
-      pointer-events: none;
-    }
+    .slide { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8rem 2rem 4rem; opacity:0; transform:translateY(16px); transition:opacity 1.4s cubic-bezier(0.4,0,0.2,1), transform 1.4s cubic-bezier(0.4,0,0.2,1); pointer-events:none; z-index:2; }
+.slide.active { opacity:1; transform:translateY(0); pointer-events:all; }
+    .slide.active { opacity:1; pointer-events:all; }
+    // .slide-dot { width:20px; height:2px; background:rgba(90,138,103,.25); border:none; cursor:pointer; transition:all .35s; padding:0; }
+    // .slide-dot.active { background:var(--g); width:36px; }
 
-    .feat-card {
-      background: #fff; border: 1px solid var(--border);
-      border-radius: 14px; padding: 1.8rem;
-      transition: all .22s; position: relative; overflow: hidden;
-    }
-    .feat-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, var(--g), var(--g2));
-      opacity: 0; transition: opacity .3s;
-    }
-    .feat-card:hover { border-color: var(--gborder); transform: translateY(-3px); box-shadow: 0 8px 28px rgba(90,138,103,.09); }
-    .feat-card:hover::before { opacity: 1; }
+    .feat-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:1.8rem; transition:all .22s; position:relative; overflow:hidden; }
+    .feat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--g),var(--g2)); opacity:0; transition:opacity .3s; }
+    .feat-card:hover { border-color:var(--g); transform:translateY(-3px); box-shadow:0 8px 28px rgba(90,138,103,.09); }
+    .feat-card:hover::before { opacity:1; }
 
-    .price-featured {
-      border-color: var(--g) !important;
-      background: linear-gradient(140deg, #fff, #F3F8F4) !important;
-    }
-    .price-featured::before {
-      content: 'Most popular';
-      position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
-      background: var(--g); color: #fff; font-size: .6rem; font-weight: 700;
-      letter-spacing: .08em; padding: .28rem .9rem; border-radius: 999px;
-      text-transform: uppercase; font-family: 'Inter', sans-serif;
+    .step-line { display:flex; gap:1.1rem; padding:1.5rem 0; border-bottom:1px solid var(--border); }
+    .step-line:last-child { border-bottom:none; }
+
+    .price-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:2rem; position:relative; transition:all .2s; }
+    .price-card:hover { transform:translateY(-3px); box-shadow:0 10px 36px rgba(90,138,103,.1); }
+    .price-card.feat { border-color:var(--g); background:linear-gradient(140deg,#fff,#F3F8F4); }
+    .price-card.feat::before { content:'Most popular'; position:absolute; top:-11px; left:50%; transform:translateX(-50%); background:var(--g); color:#fff; font-size:.6rem; font-weight:700; letter-spacing:.08em; padding:.28rem .9rem; border-radius:999px; text-transform:uppercase; font-family:'Inter',sans-serif; }
+
+    .testi-card { background:#fff; border:1px solid var(--border); border-radius:13px; padding:1.6rem; transition:all .2s; }
+    .testi-card:hover { border-color:var(--g); box-shadow:0 5px 20px rgba(90,138,103,.07); }
+
+    @media (max-width: 900px) {
+      .nav-links { display:none !important; }
+      .two-col, .how-grid, .feat-inner, .price-inner, .testi-inner { grid-template-columns:1fr !important; }
     }
   `}</style>
 );
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
-const NAV_LINKS = ["Features", "How It Works", "Pricing", "Docs"];
+// ─── Snowflake Canvas ─────────────────────────────────────────────────────────
+function SnowCanvas() {
+  const canvasRef = useRef(null);
+  const rafRef = useRef(null);
+  const lastRef = useRef(null);
+  const particlesRef = useRef([]);
+  const PHI = 1.6180339887;
+  const COUNT = 28;
+  const COLOR = '#5A8A67';
 
-const TRUST = [
-  { icon: "🔒", text: "Bank-level security" },
-  { icon: "⚡", text: "Ready in under 5 minutes" },
-  { icon: "🤝", text: "Any e-commerce store" },
-  { icon: "💬", text: "Real human support" },
-  { icon: "🔄", text: "Cancel anytime" },
+  function goldenX(i, w) {
+    return (((i * PHI) % 1) * 0.88 + 0.06) * w;
+  }
+
+  function drawArm(ctx, len) {
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -len); ctx.stroke();
+    const b1 = len * 0.38, b2 = len * 0.62, bl = len * 0.22;
+    [-b1, -b2].forEach(by => {
+      ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(bl * 0.7, by - bl * 0.7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(-bl * 0.7, by - bl * 0.7); ctx.stroke();
+    });
+  }
+
+  function drawSnowflake(ctx, x, y, size, angle, opacity) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.globalAlpha = opacity;
+    ctx.strokeStyle = COLOR;
+    ctx.lineWidth = 1;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      ctx.save();
+      ctx.rotate((Math.PI / 3) * i);
+      drawArm(ctx, size);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const w = canvas.width || 1200;
+    const h = canvas.height || 800;
+    particlesRef.current = Array.from({ length: COUNT }, (_, i) => ({
+      baseX: goldenX(i, w),
+      x: goldenX(i, w),
+      y: Math.random() * h,
+      size: 5+ Math.random() * 9,
+      speed: 3 + Math.random() * 3,
+      swayAmp: 4 + Math.random() * 6,
+      swayFreq: 0.25 + Math.random() * 0.35,
+      spinSpeed: (Math.random() - 0.5) * 0.4,
+      angle: Math.random() * Math.PI * 2,
+      opacity: 0.22 + Math.random() * 0.22,
+      phase: Math.random() * Math.PI * 2,
+    }));
+
+    function animate(ts) {
+      if (!lastRef.current) lastRef.current = ts;
+      const dt = Math.min((ts - lastRef.current) / 1000, 0.05);
+      lastRef.current = ts;
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+      particlesRef.current.forEach(p => {
+        p.y += p.speed * dt;
+        p.angle += p.spinSpeed * dt;
+        p.x = p.baseX + Math.sin(ts / 1000 * p.swayFreq * Math.PI * 2 + p.phase) * p.swayAmp;
+        if (p.y - p.size > H) {
+          p.y = -p.size * 2;
+          p.baseX = goldenX(Math.random() * COUNT | 0, W);
+        }
+        drawSnowflake(ctx, p.x, p.y, p.size, p.angle, p.opacity);
+      });
+      rafRef.current = requestAnimationFrame(animate);
+    }
+    rafRef.current = requestAnimationFrame(animate);
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none", zIndex:1 }}
+    />
+  );
+}
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
+const SLIDES = [
+  {
+    eyebrow: "AI Growth Agent for Fashion",
+    h1: ["Your Fashion Store Grows", "While You Sleep"],
+    italic: 1,
+    p: "Selora is built exclusively for fashion sellers. It handles pricing, listings, ads, and inventory — automatically, every night.",
+    cta: "Start Growing for Free →", cta2: "See How It Works",
+  },
+  {
+    eyebrow: "Listing Intelligence",
+    h1: ["Listings That", "Actually Convert"],
+    italic: 1,
+    p: "Selora rewrites your fashion listings with styling tips, fit guidance, and occasion copy — the kind of descriptions that turn browsers into buyers.",
+    cta: "See It in Action", cta2: "Learn More",
+  },
+  {
+    eyebrow: "Inventory Intelligence",
+    h1: ["Never Lose A Sale", "To An Empty Rack"],
+    italic: 1,
+    p: "Selora tracks how fast each piece sells and warns you before you run out — so your bestsellers are always available when customers want them.",
+    cta: "Start for Free", cta2: "Book a Demo",
+  },
 ];
 
 const STATS = [
-  { num: "32K+", label: "Stores Growing" },
-  { num: "$4B+", label: "Revenue Grown" },
+  { num: "12K+", label: "Stores Growing" },
+  { num: "$2B+", label: "Revenue Grown" },
   { num: "3.8x", label: "Avg Growth Rate" },
   { num: "99%",  label: "Uptime" },
 ];
 
 const FEATURES = [
-  { icon: "💰", title: "Smarter Pricing",           desc: "Selora watches the market around the clock and nudges your prices to stay competitive — without ever hurting your margins." },
-  { icon: "✍️", title: "Stronger Listings",          desc: "It rewrites your product titles and descriptions to be clearer and more convincing — the kind of copy that turns browsers into buyers." },
-  { icon: "📣", title: "Leaner Ad Spend",            desc: "Selora shifts your ad budget away from what isn't working and toward what is — so every dollar you spend works harder for you." },
-  { icon: "📊", title: "Clear Growth Reports",       desc: "A plain-English daily summary of how your store grew, what changed, and what Selora is doing next. No dashboards to decode." },
-  { icon: "📦", title: "Stock That Never Runs Out",  desc: "Selora tracks how fast your products sell and warns you before you run out — so you never lose a sale to an empty shelf." },
-  { icon: "🛡️", title: "You're Always in Charge",   desc: "Every action Selora takes is logged and explained. Approve, adjust, or pause anything at any time — it's your store, always." },
+  { icon:"💰", title:"Fashion-Smart Pricing",      desc:"Selora understands seasonality and trends. It adjusts prices at exactly the right moment — peak season, end of season, or when a style is trending." },
+  { icon:"✍️", title:"Listings That Convert",       desc:"Weak listings kill fashion sales. Selora rewrites titles and descriptions with styling tips, fit guidance, and occasion copy that makes buyers act." },
+  { icon:"📣", title:"Smarter Ad Spend",            desc:"Stop burning budget on ads that don't convert. Selora shifts your spend toward the pieces that are actually selling — automatically." },
+  { icon:"📊", title:"Collection Analytics",        desc:"See which pieces are your stars and which are slow movers. Plain English insights — no confusing dashboards to decode." },
+  { icon:"📦", title:"Never Sell Out",              desc:"Selora tracks sell velocity per piece and warns you before you run out — so you never lose a sale to an empty size grid." },
+  { icon:"🛡️", title:"You're Always in Control",   desc:"Every action Selora takes is logged and explained. Approve, adjust, or pause anything — it's your collection, always." },
 ];
 
 const STEPS = [
-  { title: "Connect Your Store",    desc: "Link Selora to your e-commerce store in one click. It reads your products, orders, and ads — and gets to work immediately." },
-  { title: "Set Your Growth Goal",  desc: "Tell Selora what growth means to you — more revenue, better margins, or lower ad costs. It builds a plan around your goal." },
-  { title: "Wake Up to Growth",     desc: "Selora works through the night, every night. Each morning you get a simple report showing exactly what grew and why." },
+  { title:"Connect Your Store",     desc:"Link Selora in one click. It reads your collection, orders, and ads — and starts working immediately." },
+  { title:"Set Your Goals",         desc:"More revenue? Better margins? Less wasted ad spend? Selora builds a growth plan around your collection." },
+  { title:"Wake Up to Growth",      desc:"Every morning you get a simple report — what grew, what was fixed, and what's next for your collection." },
 ];
 
 const ACTIVITY = [
-  { text: "Adjusted prices on 23 products",          time: "2am" },
-  { text: "Paused 2 low-performing ads · saved $14", time: "3am" },
-  { text: "Rewrote listing for Blue Tote Bag",        time: "4am" },
-  { text: "Restock reminder: Canvas Sneakers low",    time: "6am" },
+  { text:"Repriced Floral Wrap Dress — peak season", time:"2am" },
+  { text:"Rewrote Linen Blazer listing — CTR up",    time:"3am" },
+  { text:"Paused 2 low-performing ads · saved $18",  time:"4am" },
+  { text:"Restock alert: Cargo Pants — 3 units left", time:"6am" },
 ];
 
 const PLANS = [
-  {
-    name: "Seed", price: "49",
-    desc: "For new sellers planting the first seeds of growth.",
-    features: ["1 Store", "Up to 200 Products", "Auto Pricing", "Growth Reports", "Email Support"],
-    featured: false, cta: "Get Started",
-  },
-  {
-    name: "Bloom", price: "149",
-    desc: "For growing stores ready to put growth on full autopilot.",
-    features: ["3 Stores", "Unlimited Products", "Full Growth Agent", "Ad Optimization", "Listing Rewriter", "Priority Support"],
-    featured: true, cta: "Start Free Trial",
-  },
-  {
-    name: "Forest", price: null,
-    desc: "For large brands and agencies managing many stores at once.",
-    features: ["Unlimited Stores", "Custom Agent Setup", "Dedicated Manager", "Onboarding Help", "SLA Guarantee"],
-    featured: false, cta: "Talk to Us",
-  },
+  { name:"Seed",   price:"49",  desc:"For new fashion sellers planting the first seeds of growth.",            features:["1 Store","Up to 200 Pieces","Auto Pricing","Growth Reports","Email Support"],                                 feat:false, cta:"Get Started" },
+  { name:"Bloom",  price:"149", desc:"For growing fashion brands ready to put growth on full autopilot.",       features:["3 Stores","Unlimited Pieces","Full Growth Agent","Ad Optimization","Listing Rewriter","Priority Support"], feat:true,  cta:"Start Free Trial" },
+  { name:"Forest", price:null,  desc:"For fashion agencies and large brands managing many stores.",             features:["Unlimited Stores","Custom Agent Setup","Dedicated Manager","Onboarding Help","SLA Guarantee"],             feat:false, cta:"Talk to Us" },
 ];
 
 const TESTIMONIALS = [
-  { quote: "I used to spend hours updating prices every day. Now Selora does it while I sleep and I'm honestly making more money than before.", name: "James K.",  role: "Handmade goods seller", initials: "JK" },
-  { quote: "I'm not technical at all. Selora was so easy to set up and within a month my sales were up 40%. I wish I'd found it sooner.",       name: "Sarah R.", role: "Fashion store owner",    initials: "SR" },
-  { quote: "Selora rewrote my product descriptions and my click-through rate jumped almost immediately. The growth reports are actually useful.", name: "Marcus P.", role: "Electronics reseller",   initials: "MP" },
+  { q:"I run a small fashion boutique and was manually updating prices every week. Selora handles it automatically and my revenue went up 40% in the first month.", name:"Priya M.",  role:"Boutique owner" },
+  { q:"The listing rewriter is incredible. It turned my boring product descriptions into actual fashion copy that sells. My conversion rate doubled.",               name:"Sarah R.", role:"Fashion brand founder" },
+  { q:"Selora warned me I was about to sell out of my bestselling dress before I even noticed. Restocked in time and didn't lose a single sale.",                   name:"Aisha K.", role:"Womenswear seller" },
 ];
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
-const s = {
-  section:  { padding: "5.5rem 4rem", maxWidth: 1160, margin: "0 auto" },
-  tag:      { fontSize: ".68rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".14em", color: "var(--g)", marginBottom: ".7rem", fontFamily: "Inter, sans-serif" },
-  title:    { fontSize: "clamp(1.6rem,3vw,2.4rem)", fontWeight: 500, lineHeight: 1.15, letterSpacing: "-.3px", marginBottom: ".7rem", color: "var(--dark)", fontFamily: "Fraunces, serif" },
-  sub:      { fontSize: ".9rem", color: "var(--muted)", lineHeight: 1.8, fontWeight: 300 },
-};
-
-const Tag   = ({ children, center, style }) => <p style={{ ...s.tag,   textAlign: center ? "center" : undefined, ...style }}>{children}</p>;
-const Title = ({ children, center, style }) => <h2 style={{ ...s.title, textAlign: center ? "center" : undefined, ...style }}>{children}</h2>;
-const Sub   = ({ children, center, style }) => <p style={{ ...s.sub,   textAlign: center ? "center" : undefined, maxWidth: 440, margin: center ? "0 auto" : undefined, ...style }}>{children}</p>;
-
-const BtnPrimary   = ({ children, style, onClick }) => (
-  <button onClick={onClick} style={{ background: "var(--g)", color: "#fff", padding: ".8rem 2rem", borderRadius: 8, fontSize: ".92rem", fontWeight: 600, border: "none", cursor: "pointer", boxShadow: "0 4px 18px rgba(90,138,103,.28)", fontFamily: "Inter, sans-serif", transition: "all .2s", ...style }}>
-    {children}
-  </button>
-);
-const BtnSecondary = ({ children, style, onClick }) => (
-  <button onClick={onClick} style={{ background: "#fff", color: "var(--dark)", padding: ".8rem 2rem", borderRadius: 8, fontSize: ".92rem", fontWeight: 500, border: "1px solid var(--border)", cursor: "pointer", fontFamily: "Inter, sans-serif", transition: "all .2s", ...style }}>
-    {children}
-  </button>
-);
+const Tag   = ({children,center,style}) => <p style={{fontSize:".68rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".14em",color:"var(--g)",marginBottom:".7rem",fontFamily:"Inter,sans-serif",textAlign:center?"center":undefined,...style}}>{children}</p>;
+const Title = ({children,center,style}) => <h2 style={{fontFamily:"Fraunces,serif",fontSize:"clamp(1.6rem,3vw,2.4rem)",fontWeight:500,lineHeight:1.15,letterSpacing:"-.3px",marginBottom:".7rem",color:"var(--dark)",textAlign:center?"center":undefined,...style}}>{children}</h2>;
+const Sub   = ({children,center,style}) => <p style={{fontSize:".9rem",color:"var(--muted)",lineHeight:1.8,fontWeight:300,textAlign:center?"center":undefined,...style}}>{children}</p>;
+const BtnP  = ({children,style,onClick}) => <button onClick={onClick} style={{background:"var(--g)",color:"#fff",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 18px rgba(90,138,103,.28)",transition:"all .2s",...style}}>{children}</button>;
+const BtnS  = ({children,style,onClick}) => <button onClick={onClick} style={{background:"#fff",color:"var(--dark)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,border:"1px solid var(--border)",cursor:"pointer",fontFamily:"Inter,sans-serif",transition:"all .2s",...style}}>{children}</button>;
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
-function Navbar({ scrolled }) {
+function Navbar({scrolled}) {
   return (
-    <nav style={{
-      position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "1rem 3.5rem",
-      background: scrolled ? "rgba(248,250,248,.97)" : "rgba(248,250,248,.88)",
-      backdropFilter: "blur(14px)",
-      borderBottom: "1px solid var(--border)",
-      transition: "background .3s",
-    }}>
-      <div style={{ fontSize: "1.2rem", fontWeight: 700, letterSpacing: "-.3px", color: "var(--dark)", fontFamily: "Inter, sans-serif" }}>
-        Se<span style={{ color: "var(--g)" }}>lo</span>ra
+    <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"1rem 3.5rem",background:scrolled?"rgba(248,250,248,.97)":"rgba(248,250,248,.88)",backdropFilter:"blur(14px)",borderBottom:"1px solid var(--border)",transition:"background .3s"}}>
+      <div style={{fontFamily:"Inter,sans-serif",fontSize:"1.2rem",fontWeight:700,letterSpacing:"-.3px",color:"var(--dark)"}}>
+        Se<span style={{color:"var(--g)"}}>lo</span>ra
       </div>
-      <div style={{ display: "flex" }}>
-        {NAV_LINKS.map(l => (
-          <a key={l} href="#" style={{ fontSize: ".82rem", fontWeight: 500, color: "var(--muted)", textDecoration: "none", marginLeft: "2rem" }}>{l}</a>
+      <div className="nav-links" style={{display:"flex"}}>
+        {["Features","How It Works","Pricing","Docs"].map(l=>(
+          <a key={l} href="#" style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none",marginLeft:"2rem"}}>{l}</a>
         ))}
       </div>
-      <button style={{ background: "var(--g)", color: "#fff", padding: ".5rem 1.3rem", borderRadius: 7, fontSize: ".82rem", fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
+      <button style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
         Get Started Free
       </button>
     </nav>
@@ -213,39 +249,75 @@ function Navbar({ scrolled }) {
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 function Hero() {
+  const [current, setCurrent] = useState(0);
+  const timerRef = useRef(null);
+  const total = SLIDES.length;
+
+  const goTo = (n) => setCurrent(((n % total) + total) % total);
+
+  const startAuto = () => {
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => setCurrent(c => (c + 1) % total), 6500);
+  };
+
+  useEffect(() => { startAuto(); return () => clearInterval(timerRef.current); }, []);
+
   return (
-    <section style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "8rem 2rem 4rem", position: "relative", overflow: "hidden", background: "linear-gradient(170deg,#EEF4EF 0%,var(--bg) 55%)" }}>
-      <div className="hero-blob" />
-      <div className="hero-dots" />
+    <div style={{position:"relative",height:"100vh",minHeight:700,overflow:"hidden",background:"linear-gradient(170deg,#EEF4EF 0%,var(--bg) 55%)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      {/* Snowflake canvas */}
+      <SnowCanvas />
 
-      <div className="au" style={{ display: "inline-flex", alignItems: "center", gap: ".45rem", background: "#fff", border: "1px solid var(--border)", color: "var(--g)", padding: ".35rem 1rem", borderRadius: 999, fontSize: ".72rem", fontWeight: 600, letterSpacing: ".05em", textTransform: "uppercase", marginBottom: "1.8rem", boxShadow: "0 2px 10px rgba(90,138,103,.08)", fontFamily: "Inter, sans-serif" }}>
-        <span className="pdot" style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "var(--g)" }} />
-        Works with any e-commerce store
+      {/* Slides */}
+      {SLIDES.map((slide, i) => (
+        <div key={i} className={`slide${current===i?" active":""}`}>
+          {/* Badge */}
+          <div className="au" style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"#fff",border:"1px solid var(--border)",color:"var(--g)",padding:".35rem 1rem",borderRadius:999,fontSize:".72rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",marginBottom:"1.8rem",boxShadow:"0 2px 10px rgba(90,138,103,.08)",fontFamily:"Inter,sans-serif"}}>
+            <span className="pdot" style={{display:"inline-block",width:6,height:6,borderRadius:"50%",background:"var(--g)"}}/>
+            {slide.eyebrow}
+          </div>
+
+          {/* Headline */}
+          <h1 className="au1" style={{fontFamily:"Cormorant Garamond,serif",fontSize:"clamp(2.2rem,4.5vw,3.8rem)",fontWeight:600,lineHeight:1.08,letterSpacing:"-.5px",maxWidth:750,marginBottom:"1.3rem",color:"var(--dark)"}}>
+            {slide.h1.map((line, li) => (
+              <span key={li}>
+                {li === slide.italic
+                  ? <em style={{fontStyle:"italic",color:"var(--g)"}}>{line}</em>
+                  : line}
+                {li < slide.h1.length - 1 && <br/>}
+              </span>
+            ))}
+          </h1>
+
+          {/* Sub */}
+          <p className="au2" style={{fontSize:"1.55rem",color:"var(--muted)",maxWidth:480,lineHeight:1.8,marginBottom:"2.2rem",fontWeight:300}}>
+            {slide.p}
+          </p>
+
+          {/* Buttons */}
+          <div className="au3" style={{display:"flex",gap:".9rem",flexWrap:"wrap",justifyContent:"center"}}>
+            <BtnP>{slide.cta}</BtnP>
+            <BtnS>{slide.cta2}</BtnS>
+          </div>
+        </div>
+      ))}
+
+      {/* Slide dots only — no arrows, no progress bar */}
+      <div style={{position:"absolute",bottom:"2.5rem",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:"1rem",zIndex:10}}>
+        {SLIDES.map((_,i) => (
+          <button key={i} className={`slide-dot${current===i?" active":""}`} onClick={()=>{goTo(i);startAuto();}}/>
+        ))}
       </div>
-
-      <h1 className="au1" style={{ fontSize: "clamp(2.4rem,5.5vw,4.4rem)", fontWeight: 600, lineHeight: 1.1, letterSpacing: "-.5px", maxWidth: 750, marginBottom: "1.3rem", color: "var(--dark)", fontStyle: "italic" }}>
-        Your store grows<br /><em style={{ fontStyle: "normal", color: "var(--g)" }}>while you sleep</em>
-      </h1>
-
-      <p className="au2" style={{ fontSize: ".97rem", color: "var(--muted)", maxWidth: 480, lineHeight: 1.8, marginBottom: "2.2rem", fontWeight: 300 }}>
-        Selora is your always-on growth agent. It quietly handles pricing, listings, ads, and inventory — so every day you wake up to a store that's a little better than yesterday.
-      </p>
-
-      <div className="au3" style={{ display: "flex", gap: ".9rem", flexWrap: "wrap", justifyContent: "center" }}>
-        <BtnPrimary>Start Growing for Free →</BtnPrimary>
-        <BtnSecondary>See How It Works</BtnSecondary>
-      </div>
-    </section>
+    </div>
   );
 }
 
-// ─── Trust Bar ────────────────────────────────────────────────────────────────
+// ─── Trust ────────────────────────────────────────────────────────────────────
 function TrustBar() {
   return (
-    <div className="au4" style={{ background: "#fff", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "1rem 4rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "2.5rem", flexWrap: "wrap" }}>
-      {TRUST.map(t => (
-        <div key={t.text} style={{ display: "flex", alignItems: "center", gap: ".4rem", fontSize: ".78rem", color: "var(--muted)", fontWeight: 400 }}>
-          <span>{t.icon}</span>{t.text}
+    <div className="au4" style={{background:"#fff",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",padding:"1rem 4rem",display:"flex",alignItems:"center",justifyContent:"center",gap:"2.5rem",flexWrap:"wrap"}}>
+      {[["👗","Built for fashion"],["⚡","Ready in 5 minutes"],["🔒","Bank-level security"],["💬","Human support"],["🔄","Cancel anytime"]].map(([icon,text])=>(
+        <div key={text} style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".78rem",color:"var(--muted)",fontWeight:400}}>
+          <span>{icon}</span>{text}
         </div>
       ))}
     </div>
@@ -255,11 +327,11 @@ function TrustBar() {
 // ─── Stats ────────────────────────────────────────────────────────────────────
 function StatsBar() {
   return (
-    <div style={{ display: "flex", justifyContent: "center", background: "var(--bg2)", borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
-      {STATS.map((s, i) => (
-        <div key={i} style={{ flex: 1, minWidth: 140, textAlign: "center", padding: "2rem 1.5rem", borderRight: i < STATS.length - 1 ? "1px solid var(--border)" : "none" }}>
-          <div style={{ fontSize: "2rem", fontWeight: 600, color: "var(--dark)", fontFamily: "Fraunces, serif", letterSpacing: "-.5px" }}>{s.num}</div>
-          <div style={{ fontSize: ".7rem", color: "var(--muted)", marginTop: ".25rem", textTransform: "uppercase", letterSpacing: ".08em" }}>{s.label}</div>
+    <div style={{display:"flex",justifyContent:"center",background:"var(--bg2)",borderBottom:"1px solid var(--border)",flexWrap:"wrap"}}>
+      {STATS.map((s,i)=>(
+        <div key={i} style={{flex:1,minWidth:140,textAlign:"center",padding:"2rem 1.5rem",borderRight:i<STATS.length-1?"1px solid var(--border)":"none"}}>
+          <div style={{fontSize:"2rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",letterSpacing:"-.5px"}}>{s.num}</div>
+          <div style={{fontSize:".7rem",color:"var(--muted)",marginTop:".25rem",textTransform:"uppercase",letterSpacing:".08em"}}>{s.label}</div>
         </div>
       ))}
     </div>
@@ -269,18 +341,18 @@ function StatsBar() {
 // ─── Features ─────────────────────────────────────────────────────────────────
 function Features() {
   return (
-    <section style={s.section}>
-      <div style={{ textAlign: "center", maxWidth: 540, margin: "0 auto 3rem" }}>
+    <section style={{padding:"5.5rem 4rem",maxWidth:1160,margin:"0 auto"}}>
+      <div style={{textAlign:"center",maxWidth:540,margin:"0 auto 3rem"}}>
         <Tag center>What Selora Does</Tag>
-        <Title center>Six ways Selora grows<br />your store every day</Title>
-        <Sub center>Each one runs automatically in the background — no input needed from you.</Sub>
+        <Title center>Six ways your collection<br/>grows every day</Title>
+        <Sub center>Each runs automatically — built specifically for the fashion industry.</Sub>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1.2rem" }}>
-        {FEATURES.map(f => (
+      <div className="feat-inner" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.2rem"}}>
+        {FEATURES.map(f=>(
           <div key={f.title} className="feat-card">
-            <div style={{ width: 40, height: 40, background: "var(--gpale)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", marginBottom: "1.1rem" }}>{f.icon}</div>
-            <h3 style={{ fontSize: ".92rem", fontWeight: 600, marginBottom: ".45rem", color: "var(--dark)", fontFamily: "Inter, sans-serif" }}>{f.title}</h3>
-            <p style={{ fontSize: ".8rem", color: "var(--muted)", lineHeight: 1.7, fontWeight: 300 }}>{f.desc}</p>
+            <div style={{width:40,height:40,background:"var(--gpale)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",marginBottom:"1.1rem"}}>{f.icon}</div>
+            <h3 style={{fontSize:".92rem",fontWeight:600,marginBottom:".45rem",color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{f.title}</h3>
+            <p style={{fontSize:".8rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{f.desc}</p>
           </div>
         ))}
       </div>
@@ -288,31 +360,31 @@ function Features() {
   );
 }
 
-// ─── Dashboard Mockup ─────────────────────────────────────────────────────────
+// ─── Dashboard ────────────────────────────────────────────────────────────────
 function Dashboard() {
   return (
-    <div className="float" style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden", boxShadow: "0 18px 55px rgba(90,138,103,.11)" }}>
-      <div style={{ background: "var(--bg2)", borderBottom: "1px solid var(--border)", padding: ".8rem 1.1rem", display: "flex", alignItems: "center", gap: ".45rem" }}>
-        {["#f87171","#fbbf24","#4ade80"].map(c => <div key={c} style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />)}
-        <span style={{ marginLeft: ".7rem", fontSize: ".72rem", color: "var(--muted)", fontWeight: 600 }}>Selora · Growth Dashboard</span>
+    <div className="float" style={{background:"#fff",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)"}}>
+      <div style={{background:"var(--bg2)",borderBottom:"1px solid var(--border)",padding:".8rem 1.1rem",display:"flex",alignItems:"center",gap:".45rem"}}>
+        {["#f87171","#fbbf24","#4ade80"].map(c=><div key={c} style={{width:9,height:9,borderRadius:"50%",background:c}}/>)}
+        <span style={{marginLeft:".7rem",fontSize:".72rem",color:"var(--muted)",fontWeight:600}}>Selora · Fashion Dashboard</span>
       </div>
-      <div style={{ padding: "1.3rem" }}>
-        <p style={{ fontSize: ".68rem", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: ".8rem" }}>This Morning's Growth</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: ".7rem", marginBottom: "1.1rem" }}>
-          {[["$4,821","Revenue","↑ 18% today"],["247","Orders","↑ 12% today"],["3.1%","Conversion","↑ 0.4% today"]].map(([val, lbl, chg]) => (
-            <div key={lbl} style={{ background: "var(--bg2)", borderRadius: 9, padding: ".85rem", border: "1px solid var(--border)" }}>
-              <div style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--dark)", fontFamily: "Fraunces, serif", letterSpacing: "-.3px" }}>{val}</div>
-              <div style={{ fontSize: ".62rem", color: "var(--muted)", marginTop: ".15rem", textTransform: "uppercase", letterSpacing: ".05em" }}>{lbl}</div>
-              <div style={{ fontSize: ".65rem", color: "var(--g)", fontWeight: 600, marginTop: ".25rem" }}>{chg}</div>
+      <div style={{padding:"1.3rem"}}>
+        <p style={{fontSize:".68rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:".8rem"}}>This Morning's Growth</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".7rem",marginBottom:"1.1rem"}}>
+          {[["$4,821","Revenue","↑ 18% today"],["247","Orders","↑ 12% today"],["3.1%","Conv.","↑ 0.4% today"]].map(([v,l,c])=>(
+            <div key={l} style={{background:"var(--bg2)",borderRadius:9,padding:".85rem",border:"1px solid var(--border)"}}>
+              <div style={{fontSize:"1.25rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",letterSpacing:"-.3px"}}>{v}</div>
+              <div style={{fontSize:".62rem",color:"var(--muted)",marginTop:".15rem",textTransform:"uppercase",letterSpacing:".05em"}}>{l}</div>
+              <div style={{fontSize:".65rem",color:"var(--g)",fontWeight:600,marginTop:".25rem"}}>{c}</div>
             </div>
           ))}
         </div>
-        <p style={{ fontSize: ".68rem", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: ".8rem" }}>What Selora Did Overnight</p>
-        {ACTIVITY.map((a, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: ".6rem", padding: ".55rem .7rem", background: "var(--bg2)", borderRadius: 7, fontSize: ".72rem", border: "1px solid var(--border)", marginBottom: i < ACTIVITY.length - 1 ? ".45rem" : 0 }}>
-            <div style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--g)", flexShrink: 0 }} />
-            <span style={{ flex: 1, color: "var(--text)" }}>{a.text}</span>
-            <span style={{ color: "var(--muted)", fontSize: ".65rem" }}>{a.time}</span>
+        <p style={{fontSize:".68rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:".8rem"}}>What Selora Did Overnight</p>
+        {ACTIVITY.map((a,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:".6rem",padding:".55rem .7rem",background:"var(--bg2)",borderRadius:7,fontSize:".72rem",border:"1px solid var(--border)",marginBottom:i<ACTIVITY.length-1?".45rem":0}}>
+            <div style={{width:5,height:5,borderRadius:"50%",background:"var(--g)",flexShrink:0}}/>
+            <span style={{flex:1,color:"var(--text)"}}>{a.text}</span>
+            <span style={{color:"var(--muted)",fontSize:".65rem"}}>{a.time}</span>
           </div>
         ))}
       </div>
@@ -323,27 +395,25 @@ function Dashboard() {
 // ─── How It Works ─────────────────────────────────────────────────────────────
 function HowItWorks() {
   return (
-    <div style={{ background: "var(--bg2)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "5.5rem 0" }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 4rem", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5rem", alignItems: "center" }}>
+    <div style={{background:"var(--bg2)",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",padding:"5.5rem 0"}}>
+      <div className="how-grid" style={{maxWidth:1160,margin:"0 auto",padding:"0 4rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5rem",alignItems:"center"}}>
         <div>
           <Tag>How It Works</Tag>
-          <Title>Three steps to a<br />self-growing store</Title>
-          <Sub style={{ marginBottom: "2.2rem" }}>No technical setup. No learning curve. If you can fill out a form, you can run Selora.</Sub>
+          <Title>Three steps to a<br/>self-growing collection</Title>
+          <Sub style={{marginBottom:"2.5rem"}}>No technical setup. Built for fashion sellers, not developers.</Sub>
           <div>
-            {STEPS.map((step, i) => (
-              <div key={i} style={{ display: "flex", gap: "1.1rem", padding: "1.5rem 0", borderBottom: i < STEPS.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <div style={{ width: 30, height: 30, minWidth: 30, background: "var(--g)", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".72rem", fontWeight: 700 }}>
-                  {i + 1}
-                </div>
+            {STEPS.map((step,i)=>(
+              <div key={i} className="step-line">
+                <div style={{width:30,height:30,minWidth:30,background:"var(--g)",color:"#fff",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".72rem",fontWeight:700}}>{i+1}</div>
                 <div>
-                  <h4 style={{ fontSize: ".88rem", fontWeight: 600, marginBottom: ".3rem", color: "var(--dark)", fontFamily: "Inter, sans-serif" }}>{step.title}</h4>
-                  <p style={{ fontSize: ".79rem", color: "var(--muted)", lineHeight: 1.7, fontWeight: 300 }}>{step.desc}</p>
+                  <h4 style={{fontSize:".88rem",fontWeight:600,marginBottom:".3rem",color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{step.title}</h4>
+                  <p style={{fontSize:".79rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{step.desc}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
-        <Dashboard />
+        <Dashboard/>
       </div>
     </div>
   );
@@ -352,41 +422,33 @@ function HowItWorks() {
 // ─── Pricing ──────────────────────────────────────────────────────────────────
 function Pricing() {
   return (
-    <section style={{ ...s.section, borderTop: "1px solid var(--border)" }}>
-      <div style={{ textAlign: "center", maxWidth: 500, margin: "0 auto" }}>
+    <section style={{padding:"5.5rem 4rem",maxWidth:1160,margin:"0 auto",borderTop:"1px solid var(--border)"}}>
+      <div style={{textAlign:"center",maxWidth:500,margin:"0 auto"}}>
         <Tag center>Pricing</Tag>
-        <Title center>Grow first, pay as you scale</Title>
+        <Title center>Grow your collection,<br/>pay as you scale</Title>
         <Sub center>Start free. No contracts, no hidden fees, no surprises.</Sub>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1.3rem", marginTop: "3rem" }}>
-        {PLANS.map(plan => (
-          <div key={plan.name} className={plan.featured ? "price-featured" : ""} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 14, padding: "2rem", position: "relative", transition: "all .2s" }}>
-            <div style={{ fontSize: ".68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--muted)", marginBottom: ".7rem" }}>{plan.name}</div>
-            {plan.price ? (
-              <div style={{ fontSize: "2.5rem", fontWeight: 600, color: "var(--dark)", fontFamily: "Fraunces, serif", lineHeight: 1, letterSpacing: "-.5px" }}>
-                <sup style={{ fontSize: "1rem", verticalAlign: "super", color: "var(--g)" }}>$</sup>
-                {plan.price}
-                <span style={{ fontSize: ".8rem", color: "var(--muted)", fontWeight: 400, fontFamily: "Inter, sans-serif" }}>/mo</span>
+      <div className="price-inner" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.3rem",marginTop:"3rem"}}>
+        {PLANS.map(plan=>(
+          <div key={plan.name} className={`price-card${plan.feat?" feat":""}`}>
+            <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:plan.feat?"rgba(26,39,28,.5)":"var(--muted)",marginBottom:".8rem",fontFamily:"Inter,sans-serif"}}>{plan.name}</div>
+            {plan.price?(
+              <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
+                <sup style={{fontSize:"1rem",verticalAlign:"super",color:"var(--g)"}}>$</sup>{plan.price}
+                <span style={{fontSize:".8rem",color:"var(--muted)",fontWeight:400,fontFamily:"Inter,sans-serif"}}>/mo</span>
               </div>
-            ) : (
-              <div style={{ fontSize: "2rem", fontWeight: 600, color: "var(--dark)", fontFamily: "Fraunces, serif" }}>Custom</div>
+            ):(
+              <div style={{fontSize:"2rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif"}}>Custom</div>
             )}
-            <p style={{ fontSize: ".78rem", color: "var(--muted)", margin: ".65rem 0 1.2rem", fontWeight: 300, lineHeight: 1.6 }}>{plan.desc}</p>
-            <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: ".55rem", marginBottom: "1.6rem" }}>
-              {plan.features.map(f => (
-                <li key={f} style={{ fontSize: ".78rem", color: "var(--text)", display: "flex", alignItems: "center", gap: ".5rem" }}>
-                  <span style={{ color: "var(--g)", fontWeight: 700, fontSize: ".82rem" }}>✓</span>{f}
+            <p style={{fontSize:".78rem",color:"var(--muted)",margin:".65rem 0 1.2rem",fontWeight:300,lineHeight:1.6}}>{plan.desc}</p>
+            <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".55rem",marginBottom:"1.6rem"}}>
+              {plan.features.map(f=>(
+                <li key={f} style={{fontSize:".78rem",color:"var(--text)",display:"flex",alignItems:"center",gap:".5rem",fontWeight:300}}>
+                  <span style={{color:"var(--g)",fontWeight:700}}>✓</span>{f}
                 </li>
               ))}
             </ul>
-            <button style={{
-              width: "100%", padding: ".72rem", borderRadius: 8,
-              fontWeight: 600, fontSize: ".82rem", cursor: "pointer",
-              fontFamily: "Inter, sans-serif", transition: "all .2s",
-              ...(plan.featured
-                ? { background: "var(--g)", color: "#fff", border: "1px solid var(--g)", boxShadow: "0 4px 18px rgba(90,138,103,.28)" }
-                : { background: "transparent", color: "var(--dark)", border: "1px solid var(--border)" })
-            }}>
+            <button style={{width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff",border:"1px solid var(--g)",boxShadow:"0 4px 18px rgba(90,138,103,.28)"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"})}}>
               {plan.cta}
             </button>
           </div>
@@ -399,24 +461,19 @@ function Pricing() {
 // ─── Testimonials ─────────────────────────────────────────────────────────────
 function Testimonials() {
   return (
-    <div style={{ background: "var(--bg2)", borderTop: "1px solid var(--border)", padding: "5.5rem 0" }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 4rem" }}>
-        <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+    <div style={{background:"var(--bg2)",borderTop:"1px solid var(--border)",padding:"5.5rem 0"}}>
+      <div style={{maxWidth:1160,margin:"0 auto",padding:"0 4rem"}}>
+        <div style={{textAlign:"center",marginBottom:"3rem"}}>
           <Tag center>From Real Sellers</Tag>
-          <Title center>Stores that bloom with Selora</Title>
+          <Title center>Collections that bloom with Selora</Title>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1.2rem" }}>
-          {TESTIMONIALS.map(t => (
-            <div key={t.name} style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 13, padding: "1.6rem", transition: "all .2s" }}>
-              <div style={{ color: "var(--g)", fontSize: ".82rem", marginBottom: ".7rem", letterSpacing: 2 }}>★★★★★</div>
-              <p style={{ fontSize: ".81rem", color: "var(--muted)", lineHeight: 1.8, fontWeight: 300, marginBottom: "1.2rem", fontStyle: "italic" }}>"{t.quote}"</p>
-              <div style={{ display: "flex", alignItems: "center", gap: ".7rem" }}>
-                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,var(--g),#3b6647)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".75rem", fontWeight: 700, color: "#fff" }}>{t.initials}</div>
-                <div>
-                  <div style={{ fontSize: ".78rem", fontWeight: 600, color: "var(--dark)" }}>{t.name}</div>
-                  <div style={{ fontSize: ".68rem", color: "var(--muted)" }}>{t.role}</div>
-                </div>
-              </div>
+        <div className="testi-inner" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.2rem"}}>
+          {TESTIMONIALS.map(t=>(
+            <div key={t.name} className="testi-card">
+              <div style={{color:"var(--g)",fontSize:".82rem",marginBottom:".7rem",letterSpacing:2}}>★★★★★</div>
+              <p style={{fontSize:".81rem",color:"var(--muted)",lineHeight:1.8,fontWeight:300,marginBottom:"1.2rem",fontStyle:"italic",fontFamily:"Fraunces,serif"}}>"{t.q}"</p>
+              <div style={{fontSize:".78rem",fontWeight:600,color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{t.name}</div>
+              <div style={{fontSize:".68rem",color:"var(--muted)"}}>{t.role}</div>
             </div>
           ))}
         </div>
@@ -428,24 +485,20 @@ function Testimonials() {
 // ─── CTA ──────────────────────────────────────────────────────────────────────
 function CTA() {
   return (
-    <div style={{ textAlign: "center", padding: "6rem 4rem", position: "relative", overflow: "hidden", background: "linear-gradient(140deg,var(--dark) 0%,#233329 100%)" }}>
-      <div className="cta-glow" />
-      <div style={{ position: "relative" }}>
-        <Tag center style={{ color: "#86EFAC" }}>Start Growing Today</Tag>
-        <h2 style={{ fontFamily: "Fraunces, serif", fontSize: "clamp(1.9rem,4vw,3rem)", fontWeight: 500, color: "#fff", margin: ".5rem 0 1rem", lineHeight: 1.15, letterSpacing: "-.3px", fontStyle: "italic" }}>
-          Every night, Selora works.<br />
-          <span style={{ color: "#86EFAC", fontStyle: "normal" }}>Every morning, you grow.</span>
+    <div style={{textAlign:"center",padding:"6rem 4rem",position:"relative",overflow:"hidden",background:"linear-gradient(140deg,var(--dark) 0%,#233329 100%)"}}>
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 70% 60% at 50% 50%,rgba(90,138,103,.12),transparent)",pointerEvents:"none"}}/>
+      <div style={{position:"relative"}}>
+        <Tag center style={{color:"#86EFAC"}}>Start Growing Today</Tag>
+        <h2 style={{fontFamily:"Fraunces,serif",fontSize:"clamp(2rem,4vw,3rem)",fontWeight:500,color:"#fff",margin:".5rem 0 1rem",lineHeight:1.15,letterSpacing:"-.3px"}}>
+          Every night, Selora works.<br/>
+          <em style={{color:"#86EFAC",fontStyle:"italic"}}>Every morning, your collection grows.</em>
         </h2>
-        <p style={{ color: "#8FA891", fontSize: ".9rem", marginBottom: "2.2rem", fontWeight: 300 }}>
-          Join 32,000+ sellers already growing with Selora. 14-day free trial — no credit card needed.
+        <p style={{color:"rgba(255,255,255,.35)",fontSize:".9rem",marginBottom:"2.2rem",fontWeight:300,lineHeight:1.8}}>
+          Join 12,000+ fashion sellers already growing with Selora.<br/>14-day free trial — no credit card needed.
         </p>
-        <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
-          <BtnPrimary style={{ background: "#86EFAC", color: "var(--dark)", boxShadow: "0 4px 20px rgba(134,239,172,.25)" }}>
-            Start Growing for Free →
-          </BtnPrimary>
-          <BtnSecondary style={{ background: "transparent", color: "#fff", border: "1px solid rgba(255,255,255,.18)" }}>
-            Book a Demo
-          </BtnSecondary>
+        <div style={{display:"flex",gap:"1rem",justifyContent:"center",flexWrap:"wrap"}}>
+          <BtnP style={{background:"#86EFAC",color:"var(--dark)",boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>Start Growing for Free →</BtnP>
+          <BtnS style={{background:"transparent",color:"rgba(255,255,255,.6)",border:"1px solid rgba(255,255,255,.18)"}}>Book a Demo</BtnS>
         </div>
       </div>
     </div>
@@ -455,22 +508,16 @@ function CTA() {
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <footer style={{ borderTop: "1px solid var(--border)", padding: "2rem 4rem", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff", flexWrap: "wrap", gap: "1rem" }}>
-      <div style={{ fontSize: ".95rem", fontWeight: 700, color: "var(--dark)", fontFamily: "Inter, sans-serif" }}>
-        Se<span style={{ color: "var(--g)" }}>lo</span>ra
+    <footer style={{borderTop:"1px solid var(--border)",padding:"2rem 4rem",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#fff",flexWrap:"wrap",gap:"1rem"}}>
+      <div style={{fontFamily:"Inter,sans-serif",fontSize:".95rem",fontWeight:700,color:"var(--dark)"}}>
+        Se<span style={{color:"var(--g)"}}>lo</span>ra
       </div>
       <div>
-        {[
-          { label: "Privacy Policy", href: "/privacy" },
-          { label: "Terms of Service", href: "/terms" },
-          { label: "Support", href: "#" },
-          { label: "Docs", href: "#" },
-          { label: "Contact", href: "#" },
-        ].map(l => (
-          <a key={l.label} href={l.href} style={{ fontSize: ".74rem", color: "var(--muted)", textDecoration: "none", marginLeft: "1.8rem" }}>{l.label}</a>
+        {[{l:"Privacy Policy",h:"/privacy"},{l:"Terms of Service",h:"/terms"},{l:"Support",h:"#"},{l:"Docs",h:"#"},{l:"Contact",h:"#"}].map(item=>(
+          <Link key={item.l} to={item.h} style={{fontSize:".74rem",color:"var(--muted)",textDecoration:"none",marginLeft:"1.8rem"}}>{item.l}</Link>
         ))}
       </div>
-      <div style={{ fontSize: ".7rem", color: "#c0c8c1" }}>© 2025 Selora. All rights reserved.</div>
+      <div style={{fontSize:".7rem",color:"#c0c8c1"}}>© 2025 Selora. All rights reserved.</div>
     </footer>
   );
 }
@@ -486,17 +533,17 @@ export default function Selora() {
 
   return (
     <>
-      <GlobalStyles />
-      <Navbar scrolled={scrolled} />
-      <Hero />
-      <TrustBar />
-      <StatsBar />
-      <Features />
-      <HowItWorks />
-      <Pricing />
-      <Testimonials />
-      <CTA />
-      <Footer />
+      <GlobalStyles/>
+      <Navbar scrolled={scrolled}/>
+      <Hero/>
+      <TrustBar/>
+      <StatsBar/>
+      <Features/>
+      <HowItWorks/>
+      <Pricing/>
+      <Testimonials/>
+      <CTA/>
+      <Footer/>
     </>
   );
 }
