@@ -1,8 +1,3 @@
-# agent/loop.py
-# The agent loop — runs Selora on a schedule
-# In production this runs every hour via a scheduler
-# For now you can run it manually to test
-
 import time
 from datetime import datetime
 from adapters.base import BaseAdapter

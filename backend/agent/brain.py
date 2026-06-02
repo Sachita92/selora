@@ -1,7 +1,3 @@
-# agent/brain.py
-# The AI brain — powered by Groq
-# Fashion-focused e-commerce growth agent
-
 import os
 import json
 from groq import Groq

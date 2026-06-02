@@ -1,8 +1,3 @@
-# adapters/shopify.py
-# Shopify → Universal format → Shopify
-# Fetches data from Shopify and converts to UniversalProduct/Order/StoreSnapshot
-# Also sends actions back to Shopify via API
-
 import os
 import requests
 from datetime import datetime, timedelta
@@ -23,9 +18,9 @@ class ShopifyAdapter(BaseAdapter):
     Uses Shopify Admin REST API with access token auth.
     """
 
-    def __init__(self):
-        self.shop_url = os.getenv("SHOPIFY_SHOP_URL")        # e.g. your-store.myshopify.com
-        self.access_token = os.getenv("SHOPIFY_ACCESS_TOKEN") # Admin API access token
+    def __init__(self, shop_url: str = None, access_token: str = None):
+        self.shop_url = shop_url or os.getenv("SHOPIFY_SHOP_URL")
+        self.access_token = access_token or os.getenv("SHOPIFY_ACCESS_TOKEN")
         self.api_version = "2024-01"
 
         if not self.shop_url or not self.access_token:

@@ -9,7 +9,7 @@ export default function Terms() {
                 <Link to="/" style={{ fontSize: "1.2rem", fontWeight: 700, color: "#1A271C", textDecoration: "none", fontFamily: "Inter, sans-serif" }}>
                     Se<span style={{ color: "#5A8A67" }}>lo</span>ra
                 </Link>
-                <Link to="/" style={{ fontSize: ".82rem", color: "#7B907D", textDecoration: "none" }}>← Back to Home</Link>
+                {/* <Link to="/" style={{ fontSize: ".82rem", color: "#7B907D", textDecoration: "none" }}>← Back to Home</Link> */}
             </nav>
 
             {/* CONTENT */}

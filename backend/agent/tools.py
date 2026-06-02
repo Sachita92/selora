@@ -1,6 +1,5 @@
 from adapters.base import BaseAdapter, AgentAction
 
-
 def get_tools_definition() -> list:
     """
     Returns the list of tools in Groq/OpenAI format.

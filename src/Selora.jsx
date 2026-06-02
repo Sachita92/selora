@@ -26,7 +26,7 @@ const GlobalStyles = () => (
     .float { animation: float 4.5s ease-in-out infinite; }
 
     .slide { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8rem 2rem 4rem; opacity:0; transform:translateY(16px); transition:opacity 1.4s cubic-bezier(0.4,0,0.2,1), transform 1.4s cubic-bezier(0.4,0,0.2,1); pointer-events:none; z-index:2; }
-.slide.active { opacity:1; transform:translateY(0); pointer-events:all; }
+    .slide.active { opacity:1; transform:translateY(0); pointer-events:all; }
     .slide.active { opacity:1; pointer-events:all; }
     // .slide-dot { width:20px; height:2px; background:rgba(90,138,103,.25); border:none; cursor:pointer; transition:all .35s; padding:0; }
     // .slide-dot.active { background:var(--g); width:36px; }
@@ -165,17 +165,17 @@ const SLIDES = [
     cta: "Start Growing for Free →", cta2: "See How It Works",
   },
   {
-    eyebrow: "Listing Intelligence",
-    h1: ["Listings That", "Actually Convert"],
+  eyebrow: "Listing Intelligence",
+    h1: ["Fashion listings that turn", "browsers into buyers"],
     italic: 1,
-    p: "Selora rewrites your fashion listings with styling tips, fit guidance, and occasion copy — the kind of descriptions that turn browsers into buyers.",
+    p: "Selora rewrites your titles and descriptions with styling tips, fit guidance, and occasion copy — the kind of copy that actually converts.",
     cta: "See It in Action", cta2: "Learn More",
   },
   {
     eyebrow: "Inventory Intelligence",
-    h1: ["Never Lose A Sale", "To An Empty Rack"],
-    italic: 1,
-    p: "Selora tracks how fast each piece sells and warns you before you run out — so your bestsellers are always available when customers want them.",
+    h1: ["Never lose a sale to an empty", " rack again"],
+    italic: 2,
+    p: "Selora tracks how fast each piece sells and warns you before you run out — so your bestsellers are always there when customers want them.",
     cta: "Start for Free", cta2: "Book a Demo",
   },
 ];
@@ -240,9 +240,9 @@ function Navbar({scrolled}) {
           <a key={l} href="#" style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none",marginLeft:"2rem"}}>{l}</a>
         ))}
       </div>
-      <button style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
-        Get Started Free
-      </button>
+      <Link to="/signup" style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
+      Get Started Free
+      </Link>
     </nav>
   );
 }
@@ -277,7 +277,7 @@ function Hero() {
           </div>
 
           {/* Headline */}
-          <h1 className="au1" style={{fontFamily:"Cormorant Garamond,serif",fontSize:"clamp(2.2rem,4.5vw,3.8rem)",fontWeight:600,lineHeight:1.08,letterSpacing:"-.5px",maxWidth:750,marginBottom:"1.3rem",color:"var(--dark)"}}>
+          <h1 className="au1" style={{fontFamily:"Cormorant Garamond,serif",fontSize:"clamp(2.2rem,4.5vw,4rem)",fontWeight:500,lineHeight:1.08,letterSpacing:"-.5px",maxWidth:750,marginBottom:"1.3rem",color:"var(--dark)"}}>
             {slide.h1.map((line, li) => (
               <span key={li}>
                 {li === slide.italic
@@ -289,13 +289,15 @@ function Hero() {
           </h1>
 
           {/* Sub */}
-          <p className="au2" style={{fontSize:"1.55rem",color:"var(--muted)",maxWidth:480,lineHeight:1.8,marginBottom:"2.2rem",fontWeight:300}}>
+          <p className="au2" style={{fontSize:"1.55rem",color:"var(--muted)",maxWidth:480,lineHeight:1.8,marginBottom:"2.2rem",fontWeight:100}}>
             {slide.p}
           </p>
 
           {/* Buttons */}
           <div className="au3" style={{display:"flex",gap:".9rem",flexWrap:"wrap",justifyContent:"center"}}>
-            <BtnP>{slide.cta}</BtnP>
+            <Link to="/signup" style={{ textDecoration: "none" }}>
+             <BtnP>{slide.cta}</BtnP>
+            </Link>
             <BtnS>{slide.cta2}</BtnS>
           </div>
         </div>
@@ -497,7 +499,9 @@ function CTA() {
           Join 12,000+ fashion sellers already growing with Selora.<br/>14-day free trial — no credit card needed.
         </p>
         <div style={{display:"flex",gap:"1rem",justifyContent:"center",flexWrap:"wrap"}}>
-          <BtnP style={{background:"#86EFAC",color:"var(--dark)",boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>Start Growing for Free →</BtnP>
+          <Link to="/signup" style={{background:"#86EFAC",color:"var(--dark)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>
+          Start Growing for Free →
+          </Link>
           <BtnS style={{background:"transparent",color:"rgba(255,255,255,.6)",border:"1px solid rgba(255,255,255,.18)"}}>Book a Demo</BtnS>
         </div>
       </div>

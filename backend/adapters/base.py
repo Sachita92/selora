@@ -1,7 +1,3 @@
-# adapters/base.py
-# Universal data format — every platform adapter converts to/from these classes
-# The AI brain only ever sees these objects, never raw Shopify/Amazon data
-
 from dataclasses import dataclass, field
 from typing import Optional
 
