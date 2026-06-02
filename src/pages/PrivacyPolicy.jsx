@@ -151,8 +151,8 @@ export default function PrivacyPolicy() {
                     {[
                         { label: "Privacy Policy", href: "/privacy" },
                         { label: "Terms of Service", href: "/terms" },
-                        { label: "Support", href: "#" },
-                        { label: "Contact", href: "#" },
+                        { label: "Support", href: "/support" },
+                        { label: "Contact", href: "/support" },
                     ].map(l => (
                         <Link key={l.label} to={l.href} style={{ fontSize: ".74rem", color: "#7B907D", textDecoration: "none", marginLeft: "1.8rem" }}>{l.label}</Link>
                     ))}

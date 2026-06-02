@@ -1,6 +1,6 @@
 import os
 import argparse
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
 from dotenv import load_dotenv
@@ -15,6 +15,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "https://selora-livid.vercel.app",
+        os.getenv("FRONTEND_URL", ""),
         os.getenv("SHOPIFY_APP_URL", ""),
     ],
     allow_credentials=True,
@@ -36,10 +37,13 @@ def root():
 _oauth_states: dict = {}
 
 @app.get("/install")
-def install(shop: str = Query(..., description="The myshopify.com domain")):
+def install(
+    shop: str = Query(..., description="The myshopify.com domain"),
+    email: str = Query(None, description="The logged-in user email"),
+):
     """
     Step 1 of OAuth — redirect seller to Shopify's permission screen.
-    Usage: GET /install?shop=my-store.myshopify.com
+    Usage: GET /install?shop=my-store.myshopify.com&email=user@example.com
     """
     from auth import build_install_url
 
@@ -47,13 +51,14 @@ def install(shop: str = Query(..., description="The myshopify.com domain")):
         raise HTTPException(status_code=400, detail="shop parameter is required")
 
     install_url, state = build_install_url(shop)
-    _oauth_states[state] = shop  # store state for CSRF verification
+    _oauth_states[state] = {"shop": shop, "email": email}  # store state data for verification
     print(f"→ Redirecting {shop} to Shopify OAuth")
     return RedirectResponse(url=install_url)
 
 
 @app.get("/auth/callback")
 def oauth_callback(
+    request: Request,
     shop: str = Query(...),
     code: str = Query(...),
     state: str = Query(...),
@@ -70,11 +75,18 @@ def oauth_callback(
     # Verify state to prevent CSRF attacks
     if state not in _oauth_states:
         raise HTTPException(status_code=403, detail="Invalid state parameter")
+    state_data = _oauth_states[state]
     del _oauth_states[state]
 
+    # Extract details from state (handles dict or legacy str formats)
+    if isinstance(state_data, dict):
+        user_email = state_data.get("email")
+    else:
+        user_email = None
+
     # Verify HMAC signature from Shopify
-    all_params = {"shop": shop, "code": code, "state": state, "hmac": hmac}
-    if not verify_hmac(all_params, hmac):
+    query_params = dict(request.query_params)
+    if not verify_hmac(query_params, hmac):
         raise HTTPException(status_code=403, detail="HMAC verification failed")
 
     # Exchange code for permanent access token
@@ -92,8 +104,11 @@ def oauth_callback(
         shop_name = shop
         shop_email = f"owner@{shop}"
 
+    # Associate store with the logged-in user email if available, otherwise Shopify owner email
+    target_email = user_email if user_email else shop_email
+
     # Get or create user
-    user = get_or_create_user(shop_email)
+    user = get_or_create_user(target_email)
 
     # Save store to database
     store = save_store(
@@ -107,7 +122,7 @@ def oauth_callback(
     print(f"✅ {shop_name} connected successfully!")
 
     # Redirect to dashboard (frontend)
-    dashboard_url = f"{os.getenv('SHOPIFY_APP_URL', 'http://localhost:5173')}/dashboard?store_id={store['id']}"
+    dashboard_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/dashboard?store_id={store['id']}"
     return RedirectResponse(url=dashboard_url)
 
 
@@ -149,6 +164,53 @@ def get_store_reports(store_id: str, limit: int = 7):
     from database import get_recent_reports
     reports = get_recent_reports(store_id, limit=limit)
     return {"reports": reports}
+
+
+@app.get("/api/stores/{store_id}/products")
+def get_store_products(store_id: str):
+    """Fetch live products from the connected store via the Shopify adapter."""
+    from database import get_store_by_id
+    from adapters.shopify import ShopifyAdapter
+
+    store = get_store_by_id(store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    try:
+        adapter = ShopifyAdapter(
+            shop_url=store["shop_url"],
+            access_token=store["access_token"],
+        )
+        snapshot = adapter.get_store_snapshot()
+        return {
+            "products": [p.to_dict() for p in snapshot.products],
+            "total_revenue_30d": snapshot.total_revenue_30d,
+            "total_orders_30d": snapshot.total_orders_30d,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch products: {e}")
+
+
+@app.get("/api/stores/{store_id}/settings")
+def get_store_settings(store_id: str):
+    """Get the agent configuration settings for a store."""
+    from database import get_store_by_id, get_store_settings
+    store = get_store_by_id(store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    settings = get_store_settings(store_id)
+    return {"settings": settings}
+
+
+@app.put("/api/stores/{store_id}/settings")
+def update_store_settings(store_id: str, body: dict):
+    """Save agent configuration settings for a store."""
+    from database import get_store_by_id, save_store_settings
+    store = get_store_by_id(store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    settings = save_store_settings(store_id, body)
+    return {"settings": settings}
 
 
 @app.post("/api/agent/run/{store_id}")

@@ -108,6 +108,33 @@ def update_store_last_synced(store_id: str):
     }).eq("id", store_id).execute()
 
 
+# ─── Store Settings ───────────────────────────────────────────────────────────
+
+DEFAULT_SETTINGS = {
+    "max_price_increase_pct": 15,
+    "max_price_decrease_pct": 20,
+    "restock_alert_threshold": 10,
+    "run_frequency_hours": 24,
+    "auto_reprice": True,
+    "auto_optimize_listings": True,
+    "dry_run": False,
+    "goal": "maximize_revenue",
+}
+
+def get_store_settings(store_id: str) -> dict:
+    """Get agent configuration settings for a store, falling back to defaults."""
+    result = db().table("stores").select("settings").eq("id", store_id).execute()
+    if result.data and result.data[0].get("settings"):
+        return {**DEFAULT_SETTINGS, **result.data[0]["settings"]}
+    return DEFAULT_SETTINGS
+
+
+def save_store_settings(store_id: str, settings: dict) -> dict:
+    """Persist agent configuration settings for a store."""
+    db().table("stores").update({"settings": settings}).eq("id", store_id).execute()
+    return {**DEFAULT_SETTINGS, **settings}
+
+
 # ─── Agent Logs ───────────────────────────────────────────────────────────────
 
 def save_agent_log(store_id: str, action_type: str, product_id: str = None, reason: str = None, data: dict = None, success: bool = True):

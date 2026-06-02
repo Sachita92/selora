@@ -9,6 +9,10 @@ import Connect       from './pages/Connect'
 import Dashboard     from './pages/Dashboard'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms         from './pages/Terms'
+import Support       from './pages/Support'
+import BookDemo      from './pages/BookDemo'
+import Products      from './pages/Products'
+import Settings      from './pages/Settings'
 
 // ─── Protected route wrapper ──────────────────────────────────────────────────
 function ProtectedRoute({ children }) {
@@ -34,6 +38,8 @@ export default function App() {
         <Route path="/signup"  element={<Signup />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms"   element={<Terms />} />
+        <Route path="/support" element={<Support />} />
+        <Route path="/demo"    element={<BookDemo />} />
 
         {/* Protected — must be logged in */}
         <Route path="/connect" element={
@@ -41,6 +47,12 @@ export default function App() {
         }/>
         <Route path="/dashboard" element={
           <ProtectedRoute><Dashboard /></ProtectedRoute>
+        }/>
+        <Route path="/products" element={
+          <ProtectedRoute><Products /></ProtectedRoute>
+        }/>
+        <Route path="/settings" element={
+          <ProtectedRoute><Settings /></ProtectedRoute>
         }/>
 
         {/* Fallback */}

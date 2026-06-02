@@ -235,14 +235,18 @@ function Navbar({scrolled}) {
       <div style={{fontFamily:"Inter,sans-serif",fontSize:"1.2rem",fontWeight:700,letterSpacing:"-.3px",color:"var(--dark)"}}>
         Se<span style={{color:"var(--g)"}}>lo</span>ra
       </div>
-      <div className="nav-links" style={{display:"flex"}}>
-        {["Features","How It Works","Pricing","Docs"].map(l=>(
+      <div className="nav-links" style={{display:"flex",alignItems:"center"}}>
+        {["Features","How It Works","Pricing"].map(l=>(
           <a key={l} href="#" style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none",marginLeft:"2rem"}}>{l}</a>
         ))}
+        <Link to="/demo" style={{fontSize:".82rem",fontWeight:500,color:"var(--g)",textDecoration:"none",marginLeft:"2rem"}}>Book a Demo</Link>
       </div>
-      <Link to="/signup" style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
-      Get Started Free
-      </Link>
+      <div style={{display:"flex",gap:".7rem",alignItems:"center"}}>
+        <Link to="/login" style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none"}}>Sign In</Link>
+        <Link to="/signup" style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
+          Get Started Free
+        </Link>
+      </div>
     </nav>
   );
 }
@@ -298,7 +302,9 @@ function Hero() {
             <Link to="/signup" style={{ textDecoration: "none" }}>
              <BtnP>{slide.cta}</BtnP>
             </Link>
-            <BtnS>{slide.cta2}</BtnS>
+            <Link to="/demo" style={{ textDecoration: "none" }}>
+              <BtnS>{slide.cta2}</BtnS>
+            </Link>
           </div>
         </div>
       ))}
@@ -450,9 +456,15 @@ function Pricing() {
                 </li>
               ))}
             </ul>
-            <button style={{width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff",border:"1px solid var(--g)",boxShadow:"0 4px 18px rgba(90,138,103,.28)"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"})}}>
-              {plan.cta}
-            </button>
+            {plan.price ? (
+              <Link to={plan.feat ? "/signup" : "/signup"} style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",textDecoration:"none",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff",border:"1px solid var(--g)",boxShadow:"0 4px 18px rgba(90,138,103,.28)"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"})}}>
+                {plan.cta}
+              </Link>
+            ) : (
+              <Link to="/demo" style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",textDecoration:"none",transition:"all .2s",background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"}}>
+                {plan.cta}
+              </Link>
+            )}
           </div>
         ))}
       </div>
@@ -502,7 +514,9 @@ function CTA() {
           <Link to="/signup" style={{background:"#86EFAC",color:"var(--dark)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>
           Start Growing for Free →
           </Link>
-          <BtnS style={{background:"transparent",color:"rgba(255,255,255,.6)",border:"1px solid rgba(255,255,255,.18)"}}>Book a Demo</BtnS>
+          <Link to="/demo" style={{background:"transparent",color:"rgba(255,255,255,.6)",border:"1px solid rgba(255,255,255,.18)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
+            Book a Demo
+          </Link>
         </div>
       </div>
     </div>
@@ -517,7 +531,7 @@ function Footer() {
         Se<span style={{color:"var(--g)"}}>lo</span>ra
       </div>
       <div>
-        {[{l:"Privacy Policy",h:"/privacy"},{l:"Terms of Service",h:"/terms"},{l:"Support",h:"#"},{l:"Docs",h:"#"},{l:"Contact",h:"#"}].map(item=>(
+        {[{l:"Privacy Policy",h:"/privacy"},{l:"Terms of Service",h:"/terms"},{l:"Support",h:"/support"},{l:"Docs",h:"#"},{l:"Contact",h:"/support"}].map(item=>(
           <Link key={item.l} to={item.h} style={{fontSize:".74rem",color:"var(--muted)",textDecoration:"none",marginLeft:"1.8rem"}}>{item.l}</Link>
         ))}
       </div>

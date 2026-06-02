@@ -151,6 +151,11 @@ export default function Dashboard() {
       {/* NAV */}
       <nav style={s.nav}>
         <Link to="/" style={s.logo}>Se<span style={{color:c.green}}>lo</span>ra</Link>
+        <div style={{display:'flex', gap:'1.5rem', alignItems:'center', fontSize:'.82rem'}}>
+          <Link to="/dashboard" style={{color:c.dark, textDecoration:'none', fontWeight:600, borderBottom:`2px solid ${c.green}`, paddingBottom:'.15rem'}}>Dashboard</Link>
+          <Link to="/products"  style={{color:c.muted, textDecoration:'none'}}>Products</Link>
+          <Link to="/settings"  style={{color:c.muted, textDecoration:'none'}}>Settings</Link>
+        </div>
         <div style={s.navRight}>
           <span style={s.email}>{user?.email}</span>
           <button style={s.signout} onClick={signOut}>Sign out</button>

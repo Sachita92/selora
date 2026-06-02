@@ -64,14 +64,21 @@ class ShopifyAdapter(BaseAdapter):
         return data.get("products", [])
 
     def _get_orders(self, days: int = 30) -> list:
-        """Fetch orders from the last N days."""
+        """Fetch orders from the last N days. Returns [] if access is forbidden."""
         since = (datetime.now() - timedelta(days=days)).isoformat()
-        data = self._get("orders.json", params={
-            "limit": 250,
-            "status": "any",
-            "created_at_min": since,
-        })
-        return data.get("orders", [])
+        try:
+            data = self._get("orders.json", params={
+                "limit": 250,
+                "status": "any",
+                "created_at_min": since,
+                "fields": "id,total_price,line_items,fulfillment_status,created_at,financial_status"
+            })
+            return data.get("orders", [])
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code == 403:
+                print("   ⚠️  Orders API: 403 Forbidden (Protected Customer Data scope not granted). Skipping order stats.")
+                return []
+            raise
 
     def _calculate_product_stats(self, product_id: str, orders: list) -> dict:
         """Calculate sales stats for a product from order history."""
@@ -98,7 +105,7 @@ class ShopifyAdapter(BaseAdapter):
 
         shop_info = self._get_shop_info()
         raw_products = self._get_products()
-        raw_orders = self._get_orders(days=30)
+        raw_orders   = self._get_orders(days=30)   # returns [] on 403 — never crashes
 
         print(f"   ✓ Found {len(raw_products)} products")
         print(f"   ✓ Found {len(raw_orders)} orders in last 30 days")

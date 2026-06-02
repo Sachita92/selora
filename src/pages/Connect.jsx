@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -30,6 +31,15 @@ export default function Connect() {
   const [shop, setShop]       = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
+  const [email, setEmail]     = useState('')
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setEmail(session.user.email)
+      }
+    })
+  }, [])
 
   const handleConnect = (e) => {
     e.preventDefault()
@@ -49,8 +59,8 @@ export default function Connect() {
 
     setLoading(true)
 
-    // Redirect to backend OAuth install endpoint
-    window.location.href = `${API_URL}/install?shop=${shopUrl}.myshopify.com`
+    // Redirect to backend OAuth install endpoint with user email
+    window.location.href = `${API_URL}/install?shop=${shopUrl}.myshopify.com&email=${encodeURIComponent(email)}`
   }
 
   return (

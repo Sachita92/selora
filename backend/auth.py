@@ -47,7 +47,6 @@ def build_install_url(shop: str) -> str:
         "scope": SCOPES,
         "redirect_uri": REDIRECT_URI,
         "state": state,
-        "grant_options[]": "per-user",
     }
 
     url = f"https://{shop}/admin/oauth/authorize?{urlencode(params)}"
@@ -59,8 +58,8 @@ def verify_hmac(params: dict, hmac_value: str) -> bool:
     Verify that the callback came from Shopify (not a fake request).
     Shopify signs the callback with our API secret.
     """
-    # Remove hmac from params before calculating
-    params_without_hmac = {k: v for k, v in params.items() if k != "hmac"}
+    # Remove hmac and signature from params before calculating
+    params_without_hmac = {k: v for k, v in params.items() if k not in ("hmac", "signature")}
     sorted_params = "&".join(f"{k}={v}" for k, v in sorted(params_without_hmac.items()))
 
     digest = hmac.new(
