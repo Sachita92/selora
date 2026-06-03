@@ -210,9 +210,9 @@ const ACTIVITY = [
 ];
 
 const PLANS = [
-  { name:"Seed",   price:"49",  desc:"For new fashion sellers planting the first seeds of growth.",            features:["1 Store","Up to 200 Pieces","Auto Pricing","Growth Reports","Email Support"],                                 feat:false, cta:"Get Started" },
-  { name:"Bloom",  price:"149", desc:"For growing fashion brands ready to put growth on full autopilot.",       features:["3 Stores","Unlimited Pieces","Full Growth Agent","Ad Optimization","Listing Rewriter","Priority Support"], feat:true,  cta:"Start Free Trial" },
-  { name:"Forest", price:null,  desc:"For fashion agencies and large brands managing many stores.",             features:["Unlimited Stores","Custom Agent Setup","Dedicated Manager","Onboarding Help","SLA Guarantee"],             feat:false, cta:"Talk to Us" },
+  { name:"Free",       price:"0",    slug:"free",   desc:"Get started at no cost. Perfect for exploring what Selora can do.",              features:["1 Store","Up to 50 Products","3 Optimizations / mo","Basic Reports","Community Support"],                                    feat:false, cta:"Get Started Free" },
+  { name:"Growth",     price:"29",   slug:"growth", desc:"For fashion sellers ready to accelerate with AI-powered growth.",                features:["1 Store","Unlimited Products","30 Optimizations / mo","Full Growth Agent","Auto Pricing","Listing Rewriter","Email Support"], feat:true,  cta:"Start Free Trial" },
+  { name:"Scale",      price:"79",   slug:"scale",  desc:"For established brands scaling across multiple stores.",                         features:["3 Stores","Unlimited Products","Unlimited Optimizations","Priority Support","Ad Optimization","Early pay.sh Access"],          feat:false, cta:"Upgrade to Scale" },
 ];
 
 const TESTIMONIALS = [
@@ -440,13 +440,15 @@ function Pricing() {
         {PLANS.map(plan=>(
           <div key={plan.name} className={`price-card${plan.feat?" feat":""}`}>
             <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:plan.feat?"rgba(26,39,28,.5)":"var(--muted)",marginBottom:".8rem",fontFamily:"Inter,sans-serif"}}>{plan.name}</div>
-            {plan.price?(
+            {plan.price === "0" ? (
+              <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
+                Free
+              </div>
+            ) : (
               <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
                 <sup style={{fontSize:"1rem",verticalAlign:"super",color:"var(--g)"}}>$</sup>{plan.price}
                 <span style={{fontSize:".8rem",color:"var(--muted)",fontWeight:400,fontFamily:"Inter,sans-serif"}}>/mo</span>
               </div>
-            ):(
-              <div style={{fontSize:"2rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif"}}>Custom</div>
             )}
             <p style={{fontSize:".78rem",color:"var(--muted)",margin:".65rem 0 1.2rem",fontWeight:300,lineHeight:1.6}}>{plan.desc}</p>
             <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".55rem",marginBottom:"1.6rem"}}>
@@ -456,15 +458,9 @@ function Pricing() {
                 </li>
               ))}
             </ul>
-            {plan.price ? (
-              <Link to={plan.feat ? "/signup" : "/signup"} style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",textDecoration:"none",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff",border:"1px solid var(--g)",boxShadow:"0 4px 18px rgba(90,138,103,.28)"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"})}}>
-                {plan.cta}
-              </Link>
-            ) : (
-              <Link to="/demo" style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",textDecoration:"none",transition:"all .2s",background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"}}>
-                {plan.cta}
-              </Link>
-            )}
+            <Link to="/signup" style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",textDecoration:"none",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff",border:"1px solid var(--g)",boxShadow:"0 4px 18px rgba(90,138,103,.28)"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"})}}>
+              {plan.cta}
+            </Link>
           </div>
         ))}
       </div>

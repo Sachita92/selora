@@ -47,6 +47,96 @@ def get_user_by_id(user_id: str) -> dict:
     return result.data[0] if result.data else None
 
 
+def update_user_subscription(user_id: str, plan: str, status: str, customer_id: str = None, subscription_id: str = None, period_end: str = None) -> dict:
+    """Update user's Stripe subscription information in the DB."""
+    client = db()
+    update_data = {
+        "subscription_plan": plan,
+        "subscription_status": status
+    }
+    if customer_id:
+        update_data["stripe_customer_id"] = customer_id
+    if subscription_id:
+        update_data["stripe_subscription_id"] = subscription_id
+    if period_end:
+        update_data["subscription_current_period_end"] = period_end
+
+    result = client.table("users").update(update_data).eq("id", user_id).execute()
+    return result.data[0] if result.data else {}
+
+
+def update_user_subscription_by_stripe_id(stripe_sub_id: str, plan: str, status: str, period_end: str = None) -> dict:
+    """Update user's subscription in DB using the stripe subscription ID."""
+    client = db()
+    update_data = {
+        "subscription_plan": plan,
+        "subscription_status": status
+    }
+    if period_end:
+        update_data["subscription_current_period_end"] = period_end
+
+    result = client.table("users").update(update_data).eq("stripe_subscription_id", stripe_sub_id).execute()
+    return result.data[0] if result.data else {}
+
+
+def increment_store_run_count(store_id: str) -> int:
+    """Increment the run count of a store this month."""
+    client = db()
+    store = client.table("stores").select("run_count_this_month").eq("id", store_id).execute()
+    current_count = store.data[0].get("run_count_this_month", 0) if store.data else 0
+    new_count = current_count + 1
+    client.table("stores").update({"run_count_this_month": new_count}).eq("id", store_id).execute()
+    return new_count
+
+
+def check_store_run_limit(store_id: str) -> bool:
+    """
+    Check if a store has exceeded its monthly optimization limit.
+    Free Plan: Limit of 3 optimizations/month.
+    Growth Plan: Limit of 30 optimizations/month.
+    Scale Plan: Unlimited (represented as 99999).
+    """
+    client = db()
+    # Join store and user to find the subscription_plan
+    store_res = client.table("stores").select("user_id, run_count_this_month").eq("id", store_id).execute()
+    if not store_res.data:
+        return False  # store doesn't exist
+
+    store = store_res.data[0]
+    user_id = store["user_id"]
+    run_count = store.get("run_count_this_month", 0)
+
+    user = get_user_by_id(user_id)
+    if not user:
+        return False
+
+    plan = user.get("subscription_plan", "free")
+    status = user.get("subscription_status", "active")
+
+    # If subscription is unpaid/canceled, treat as free plan
+    if status not in ["active", "trailing_grace_period"]:
+        plan = "free"
+
+    limits = {
+        "free": 3,
+        "growth": 30,
+        "scale": 99999
+    }
+    max_runs = limits.get(plan, 3)
+    return run_count < max_runs
+
+
+def save_billing_event(user_id: str, event_type: str, stripe_event_id: str = None, details: dict = None):
+    """Log billing lifecycle changes to the database."""
+    db().table("billing_events").insert({
+        "user_id": user_id,
+        "event_type": event_type,
+        "stripe_event_id": stripe_event_id,
+        "details": details or {}
+    }).execute()
+
+
+
 # ─── Stores ───────────────────────────────────────────────────────────────────
 
 def save_store(user_id: str, platform: str, shop_url: str, access_token: str, shop_name: str = None) -> dict:

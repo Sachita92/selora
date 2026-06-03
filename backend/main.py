@@ -145,9 +145,20 @@ def get_stores(email: str = Query(..., description="User email")):
         "is_active": s["is_active"],
         "last_synced_at": s["last_synced_at"],
         "created_at": s["created_at"],
+        "run_count_this_month": s.get("run_count_this_month", 0),
     } for s in stores]
 
-    return {"stores": safe_stores}
+    return {
+        "stores": safe_stores,
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "subscription_plan": user.get("subscription_plan", "free"),
+            "subscription_status": user.get("subscription_status", "active"),
+            "subscription_current_period_end": user.get("subscription_current_period_end"),
+        }
+    }
+
 
 
 @app.get("/api/stores/{store_id}/logs")
@@ -218,14 +229,30 @@ def run_agent_on_store(store_id: str, dry_run: bool = True, background_tasks: Ba
     """
     Manually trigger the Selora agent on a specific store.
     dry_run=True means agent analyzes but makes no real changes.
+    Enforces subscription limits check for non-dry runs.
     """
-    from database import get_store_by_id
+    from database import get_store_by_id, check_store_run_limit, increment_store_run_count
     store = get_store_by_id(store_id)
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
 
+    # Enforce billing limit check on real optimization runs
+    if not dry_run:
+        is_allowed = check_store_run_limit(store_id)
+        if not is_allowed:
+            raise HTTPException(
+                status_code=403,
+                detail="Monthly optimization limit exceeded for your current plan. Please upgrade your subscription."
+            )
+        # Increment usage count
+        try:
+            increment_store_run_count(store_id)
+        except Exception as e:
+            print(f"⚠️ Failed to increment store run count: {e}")
+
     background_tasks.add_task(_run_agent_task, store, dry_run)
     return {"message": f"Agent started for {store['shop_name']}", "dry_run": dry_run}
+
 
 
 # ─── Chat Endpoint ───────────────────────────────────────────────────────────
@@ -558,6 +585,171 @@ def create_demo_booking(body: DemoBookingRequest):
         return {"success": True, "booking": booking}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to book demo: {e}")
+
+
+# ─── Stripe Billing Endpoints ────────────────────────────────────────────────
+
+import stripe
+from fastapi import Header, Request
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_mock")
+
+# Setup plan lookup mapping
+PLAN_PRICE_MAP = {
+    "growth": os.getenv("STRIPE_PRICE_GROWTH", "price_growth_mock"),
+    "scale": os.getenv("STRIPE_PRICE_SCALE", "price_scale_mock"),
+}
+
+class CheckoutRequest(BaseModel):
+    user_id: str
+    email: str
+    plan: str  # 'growth' or 'scale'
+
+@app.post("/api/billing/create-checkout")
+def create_checkout_session(body: CheckoutRequest):
+    """Create a Stripe checkout session for a customer."""
+    if body.plan not in PLAN_PRICE_MAP:
+        raise HTTPException(status_code=400, detail="Invalid plan selection")
+
+    price_id = PLAN_PRICE_MAP[body.plan]
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+    try:
+        # Check if user already has stripe_customer_id in Supabase
+        from database import get_user_by_id
+        user = get_user_by_id(body.user_id)
+        customer_id = user.get("stripe_customer_id") if user else None
+
+        checkout_session = stripe.checkout.Session.create(
+            customer=customer_id,
+            customer_email=body.email if not customer_id else None,
+            payment_method_types=["card"],
+            line_items=[{"price": price_id, "quantity": 1}],
+            mode="subscription",
+            success_url=f"{frontend_url}/dashboard?session_id={{CHECKOUT_SESSION_ID}}&billing_status=success",
+            cancel_url=f"{frontend_url}/dashboard?billing_status=cancel",
+            metadata={
+                "user_id": body.user_id,
+                "plan": body.plan,
+            }
+        )
+        return {"url": checkout_session.url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Stripe session error: {str(e)}")
+
+
+@app.post("/api/billing/portal")
+def create_portal_session(body: dict):
+    """Generate a portal session link for subscription management."""
+    user_id = body.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Missing user_id")
+
+    from database import get_user_by_id
+    user = get_user_by_id(user_id)
+    customer_id = user.get("stripe_customer_id") if user else None
+
+    if not customer_id:
+        raise HTTPException(status_code=400, detail="Stripe customer not found. Subscribed plan required.")
+
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    try:
+        session = stripe.billing_portal.Session.create(
+            customer=customer_id,
+            return_url=f"{frontend_url}/dashboard",
+        )
+        return {"url": session.url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Portal error: {str(e)}")
+
+
+@app.post("/api/billing/webhook")
+async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
+    """Stripe webhook to handle subscription updates in real-time."""
+    import json
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    payload = await request.body()
+
+    try:
+        if webhook_secret:
+            event = stripe.Webhook.construct_event(payload, stripe_signature, webhook_secret)
+        else:
+            # Fallback for development without local listener CLI signature verification
+            data = json.loads(payload)
+            event = stripe.Event.construct_from(data, stripe.api_key)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Webhook verification failed: {e}")
+
+    event_type = event["type"]
+    event_data = event["data"]["object"]
+
+    from database import update_user_subscription, update_user_subscription_by_stripe_id, save_billing_event
+
+    if event_type == "checkout.session.completed":
+        metadata = event_data.get("metadata", {})
+        user_id = metadata.get("user_id")
+        plan = metadata.get("plan")
+        customer_id = event_data.get("customer")
+        subscription_id = event_data.get("subscription")
+
+        if user_id and plan:
+            # Fetch subscription expiration dates
+            sub = stripe.Subscription.retrieve(subscription_id)
+            from datetime import datetime, timezone
+            period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc).isoformat()
+            
+            update_user_subscription(
+                user_id=user_id,
+                plan=plan,
+                status="active",
+                customer_id=customer_id,
+                subscription_id=subscription_id,
+                period_end=period_end
+            )
+            save_billing_event(user_id, "checkout_session_completed", event["id"], event_data)
+
+    elif event_type in ["customer.subscription.updated", "customer.subscription.deleted"]:
+        stripe_sub_id = event_data.get("id")
+        customer_id = event_data.get("customer")
+        stripe_status = event_data.get("status")
+        
+        status_map = {
+            "active": "active",
+            "trialing": "active",
+            "past_due": "trailing_grace_period",
+            "canceled": "canceled",
+            "unpaid": "unpaid"
+        }
+        db_status = status_map.get(stripe_status, "canceled")
+        
+        # Look up price item product plans if subscription updated
+        plan = "free"
+        if stripe_status in ["active", "trialing", "past_due"]:
+            items = event_data.get("items", {}).get("data", [])
+            if items:
+                price_id = items[0].get("price", {}).get("id")
+                # Reverse lookup the plan type from price ids
+                for plan_name, pid in PLAN_PRICE_MAP.items():
+                    if pid == price_id:
+                        plan = plan_name
+                        break
+
+        from datetime import datetime, timezone
+        period_end = datetime.fromtimestamp(event_data.get("current_period_end"), tz=timezone.utc).isoformat()
+
+        # Update in database using Stripe ID
+        updated = update_user_subscription_by_stripe_id(
+            stripe_sub_id=stripe_sub_id,
+            plan=plan,
+            status=db_status,
+            period_end=period_end
+        )
+        
+        if updated and "id" in updated:
+            save_billing_event(updated["id"], f"subscription_{stripe_status}", event["id"], event_data)
+
+    return {"status": "success"}
+
 
 
 

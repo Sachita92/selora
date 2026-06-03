@@ -79,6 +79,9 @@ export default function Dashboard() {
       const res  = await fetch(`${API_URL}/api/stores?email=${encodeURIComponent(email)}`)
       const data = await res.json()
       setStores(data.stores || [])
+      if (data.user) {
+        setUser(prev => ({ ...prev, ...data.user }))
+      }
       if (data.stores?.length > 0) {
         setActiveStore(data.stores[0])
         fetchLogs(data.stores[0].id)
@@ -375,10 +378,94 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
+
+            {/* BILLING / PRICING SECTION */}
+            <div style={{...s.card, marginTop:'1.5rem'}}>
+              <div style={s.cardTit}>💳 Your Subscription & Usage</div>
+              <div style={{display:'grid', gridTemplateColumns:'1.5fr 2fr', gap:'2rem', alignItems:'center'}}>
+                <div>
+                  <p style={{fontSize:'.88rem', color:c.dark, fontWeight:600}}>
+                    Current Plan: <span style={{textTransform:'capitalize', color:c.green}}>{user?.subscription_plan || 'Free'}</span>
+                  </p>
+                  <p style={{fontSize:'.78rem', color:c.muted, marginTop:'.2rem'}}>
+                    {user?.subscription_plan === 'free' && "Limit: 3 automated optimizations / mo"}
+                    {user?.subscription_plan === 'growth' && "Limit: 30 automated optimizations / mo"}
+                    {user?.subscription_plan === 'scale' && "Limit: Unlimited automated optimizations / mo"}
+                  </p>
+                  <div style={{marginTop:'1rem', display:'flex', alignItems:'center', gap:'.5rem'}}>
+                    <span style={{
+                      fontSize:'.65rem', padding:'.2rem .5rem', borderRadius:4, fontWeight:600,
+                      background: user?.subscription_status === 'active' ? '#DCFCE7' : '#FEE2E2',
+                      color: user?.subscription_status === 'active' ? '#15803d' : '#b91c1c'
+                    }}>
+                      Status: {user?.subscription_status || 'active'}
+                    </span>
+                    {user?.stripe_customer_id && (
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`${API_URL}/api/billing/portal`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ user_id: user.id })
+                            })
+                            const data = await res.json()
+                            if (data.url) window.location.href = data.url
+                          } catch (e) { alert("Failed to open billing portal") }
+                        }}
+                        style={{background:'none', border:'none', color:c.green, fontSize:'.74rem', cursor:'pointer', textDecoration:'underline'}}
+                      >
+                        Manage Billing
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* PLANS OPTIONS */}
+                {(!user?.subscription_plan || user?.subscription_plan === 'free') ? (
+                  <div style={{display:'flex', gap:'1rem'}}>
+                    {[
+                      { name: 'growth', title: 'Growth Plan', price: '$29/mo', desc: 'Up to 30 optimizations / mo' },
+                      { name: 'scale', title: 'Scale Plan', price: '$79/mo', desc: 'Unlimited runs + early pay.sh proxy' },
+                    ].map(p => (
+                      <div key={p.name} style={{flex:1, border:`1px solid ${c.border}`, borderRadius:10, padding:'1rem', background:c.bg2, textAlign:'center'}}>
+                        <div style={{fontSize:'.82rem', fontWeight:600, color:c.dark}}>{p.title}</div>
+                        <div style={{fontSize:'1.2rem', fontWeight:700, color:c.green, margin:'.3rem 0'}}>{p.price}</div>
+                        <div style={{fontSize:'.68rem', color:c.muted, marginBottom:'.8rem'}}>{p.desc}</div>
+                        <button 
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`${API_URL}/api/billing/create-checkout`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ user_id: user.id, email: user.email, plan: p.name })
+                              })
+                              const data = await res.json()
+                              if (data.url) window.location.href = data.url
+                              else alert("Stripe session creation failed")
+                            } catch (e) { alert("Error launching checkout session") }
+                          }}
+                          style={{
+                            width:'100%', border:'none', background:c.green, color:'#fff', 
+                            fontSize:'.72rem', fontWeight:600, padding:'.45rem', borderRadius:6, cursor:'pointer'
+                          }}
+                        >
+                          Upgrade Now
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{fontSize:'.82rem', color:c.muted, fontStyle:'italic', textAlign:'right'}}>
+                    Thanks for supporting Selora! You are on the premium tier.
+                  </div>
+                )}
+              </div>
+            </div>
           </>
         )}
       </div>
       <ChatWidget storeId={activeStore?.id} />
     </div>
   )
-}
+}
