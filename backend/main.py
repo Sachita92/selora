@@ -15,7 +15,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "https://selora-livid.vercel.app",
-        os.getenv("FRONTEND_URL", ""),
+        "https://selora.fashion",
+        "https://www.selora.fashion",
         os.getenv("SHOPIFY_APP_URL", ""),
     ],
     allow_credentials=True,
