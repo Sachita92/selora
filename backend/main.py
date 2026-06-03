@@ -14,7 +14,6 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://selora-livid.vercel.app",
         "https://selora.fashion",
         "https://www.selora.fashion",
         os.getenv("SHOPIFY_APP_URL", ""),
@@ -227,6 +226,189 @@ def run_agent_on_store(store_id: str, dry_run: bool = True, background_tasks: Ba
 
     background_tasks.add_task(_run_agent_task, store, dry_run)
     return {"message": f"Agent started for {store['shop_name']}", "dry_run": dry_run}
+
+
+# ─── Chat Endpoint ───────────────────────────────────────────────────────────
+
+from pydantic import BaseModel
+from typing import List, Optional
+
+class ChatMessage(BaseModel):
+    role: str       # "user" or "assistant"
+    content: str
+
+class ChatRequest(BaseModel):
+    message: str
+    history: List[ChatMessage] = []
+
+
+@app.post("/api/chat/{store_id}")
+def chat_with_agent(store_id: str, body: ChatRequest):
+    """
+    Chat with the Selora AI agent about a specific store.
+    The agent has access to the store's live data and can take actions.
+    """
+    import json
+    from database import get_store_by_id, get_store_settings, save_agent_actions
+    from adapters.shopify import ShopifyAdapter
+    from agent.tools import get_tools_definition, execute_tool
+    from groq import Groq
+
+    store = get_store_by_id(store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    groq_key = os.getenv("GROQ_API_KEY")
+    if not groq_key:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured")
+
+    # Fetch live store data for context
+    try:
+        adapter = ShopifyAdapter(
+            shop_url=store["shop_url"],
+            access_token=store["access_token"],
+        )
+        snapshot = adapter.get_store_snapshot()
+        products_summary = "\n".join([
+            f"  • {p.title} — ${p.price}, {p.inventory} in stock, "
+            f"{p.sales_last_30_days} sold (30d), ${p.revenue_last_30_days:.2f} revenue"
+            for p in snapshot.products[:20]
+        ])
+        store_context = (
+            f"STORE: {snapshot.shop_name} ({snapshot.platform})\n"
+            f"TOTAL REVENUE (30d): ${snapshot.total_revenue_30d:.2f}\n"
+            f"TOTAL ORDERS (30d): {snapshot.total_orders_30d}\n"
+            f"PRODUCTS ({len(snapshot.products)}):\n{products_summary}"
+        )
+    except Exception as e:
+        print(f"⚠️ Could not fetch live store data for chat: {e}")
+        store_context = f"STORE: {store['shop_name']} (shopify)\n(Could not fetch live data — {e})"
+        adapter = None
+        snapshot = None
+
+    # Build system prompt for chat mode
+    system_prompt = f"""You are Selora, a friendly and expert AI growth assistant for fashion e-commerce stores.
+
+You're having a conversation with the store owner. You have access to their live store data and can take actions on their behalf using your tools.
+
+YOUR ROLE IN CHAT:
+- Answer questions about their store, products, sales, and performance
+- Give actionable advice on pricing, listings, inventory, and marketing
+- Execute commands when asked — reprice products, optimize listings, flag restocks
+- Be warm, conversational, and encouraging — like a knowledgeable fashion business mentor
+- When you take an action, confirm what you did and why
+- Use specific product names and numbers from the store data
+- Keep responses concise but helpful — this is a chat, not a report
+
+CURRENT STORE DATA:
+{store_context}
+
+When the user asks you to do something (e.g. "lower the price of X", "rewrite the description for Y"), use your tools to execute it. If you're unsure about something, ask for clarification. Always explain what you're doing before you do it."""
+
+    # Build messages array
+    messages = [{"role": "system", "content": system_prompt}]
+
+    # Add conversation history
+    for msg in body.history[-20:]:  # limit to last 20 messages
+        messages.append({"role": msg.role, "content": msg.content})
+
+    # Add the new user message
+    messages.append({"role": "user", "content": body.message})
+
+    # Call Groq with tools
+    client = Groq(api_key=groq_key)
+    tools = get_tools_definition()
+    actions_taken = []
+    max_iterations = 5
+    final_response = ""
+
+    try:
+        for iteration in range(max_iterations):
+            print(f"\n💬 Chat agent thinking... (iteration {iteration + 1})")
+
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=messages,
+                tools=tools,
+                tool_choice="auto",
+                max_tokens=2048,
+            )
+
+            message = response.choices[0].message
+
+            # No tool calls — agent is done, return text
+            if not message.tool_calls:
+                final_response = message.content or ""
+                break
+
+            # Process tool calls
+            messages.append({
+                "role": "assistant",
+                "content": message.content or "",
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        }
+                    }
+                    for tc in message.tool_calls
+                ]
+            })
+
+            for tool_call in message.tool_calls:
+                tool_name = tool_call.function.name
+                tool_args = json.loads(tool_call.function.arguments)
+
+                # Force numeric types
+                for key in ["new_price", "confidence", "current_inventory", "days_until_stockout"]:
+                    if key in tool_args and isinstance(tool_args[key], str):
+                        try:
+                            tool_args[key] = float(tool_args[key])
+                        except ValueError:
+                            pass
+
+                if adapter:
+                    result = execute_tool(
+                        tool_name=tool_name,
+                        tool_args=tool_args,
+                        adapter=adapter,
+                        dry_run=False,
+                    )
+                else:
+                    result = {"success": False, "error": "No store adapter available"}
+
+                actions_taken.append({
+                    "tool": tool_name,
+                    "args": tool_args,
+                    "result": result,
+                })
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": json.dumps(result),
+                })
+
+            # After processing tools, continue to get the agent's text response
+
+        # Save actions if any were taken
+        if actions_taken and adapter:
+            try:
+                save_agent_actions(store_id=store["id"], actions=actions_taken)
+            except Exception as e:
+                print(f"⚠️ Failed to save chat actions: {e}")
+
+    except Exception as e:
+        print(f"❌ Chat agent error: {e}")
+        final_response = f"I'm sorry, I encountered an error while processing your request. Please try again. ({e})"
+
+    return {
+        "response": final_response,
+        "actions": actions_taken,
+    }
 
 
 def _run_agent_task(store: dict, dry_run: bool):

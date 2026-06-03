@@ -10,7 +10,7 @@ load_dotenv()
 
 SHOPIFY_API_KEY    = os.getenv("SHOPIFY_API_KEY")
 SHOPIFY_API_SECRET = os.getenv("SHOPIFY_API_SECRET")
-APP_URL            = os.getenv("SHOPIFY_APP_URL", "https://selora-livid.vercel.app")
+APP_URL            = os.getenv("SHOPIFY_APP_URL", "https://selora.fashion")
 REDIRECT_URI       = f"{APP_URL}/auth/callback"
 
 # Scopes we need — must match what you configured in Shopify Dev Dashboard
