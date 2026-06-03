@@ -124,4 +124,4 @@ This project is currently in private development. Contribution guidelines will b
 
 ---
 
-*Built with ☘️ in Nepal*
+*Built with love in Nepal*
