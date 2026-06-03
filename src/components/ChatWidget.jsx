@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react'
 import { useChat } from '../lib/ChatContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
