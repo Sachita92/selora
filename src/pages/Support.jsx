@@ -46,14 +46,28 @@ export default function Support() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    // Simulate sending email/ticket to backend support system
-    setTimeout(() => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    try {
+      const res = await fetch(`${API_URL}/api/support`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+      if (res.ok) {
+        setIsSubmitted(true)
+      } else {
+        const err = await res.json()
+        alert(`Failed to send message: ${err.detail || 'Server error'}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Failed to connect to the backend server. Please try again.")
+    } finally {
       setLoading(false)
-      setIsSubmitted(true)
-    }, 1200)
+    }
   }
 
   const toggleFaq = (index) => {

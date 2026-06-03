@@ -71,14 +71,38 @@ export default function BookDemo() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!selectedDate || !selectedTime) return
     setLoading(true)
-    setTimeout(() => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    
+    // Format date as YYYY-MM-DD local date string
+    const offset = selectedDate.getTimezoneOffset()
+    const formattedDate = new Date(selectedDate.getTime() - (offset*60*1000)).toISOString().split('T')[0]
+
+    try {
+      const res = await fetch(`${API_URL}/api/demo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          booking_date: formattedDate,
+          booking_time: selectedTime,
+        }),
+      })
+      if (res.ok) {
+        setStep(3)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      } else {
+        const err = await res.json()
+        alert(`Failed to book demo: ${err.detail || 'Server error'}`)
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Failed to connect to the backend server. Please try again.")
+    } finally {
       setLoading(false)
-      setStep(3)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }, 1400)
+    }
   }
 
   return (

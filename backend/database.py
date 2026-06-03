@@ -191,3 +191,92 @@ def get_recent_reports(store_id: str, limit: int = 7) -> list:
     """Get the most recent reports for a store (last 7 days)."""
     result = db().table("reports").select("*").eq("store_id", store_id).order("created_at", desc=True).limit(limit).execute()
     return result.data or []
+
+
+# ─── Chat Messages ───────────────────────────────────────────────────────────
+
+def save_chat_message(store_id: str, session_id: str, role: str, content: str, actions: list = None) -> dict:
+    """Save a chat message to the database."""
+    client = db()
+    result = client.table("chat_messages").insert({
+        "store_id": store_id,
+        "session_id": session_id,
+        "role": role,
+        "content": content,
+        "actions": actions or [],
+    }).execute()
+    return result.data[0] if result.data else {}
+
+
+def get_chat_history(store_id: str, session_id: str, limit: int = 50) -> list:
+    """Get chat history for a specific store and session."""
+    client = db()
+    result = client.table("chat_messages")\
+        .select("*")\
+        .eq("store_id", store_id)\
+        .eq("session_id", session_id)\
+        .order("created_at", desc=False)\
+        .limit(limit)\
+        .execute()
+    return result.data or []
+
+
+def get_chat_sessions(store_id: str, limit: int = 20) -> list:
+    """Get unique chat sessions (grouped, latest message timestamp) for a store."""
+    client = db()
+    # PostgREST doesn't support complex GROUP BY well out-of-the-box in basic select,
+    # but we can get the most recent messages and group them or fetch from a view/query.
+    # A simple approach is selecting the messages ordered by created_at DESC and deduplicating in Python.
+    result = client.table("chat_messages")\
+        .select("session_id,role,content,created_at")\
+        .eq("store_id", store_id)\
+        .order("created_at", desc=True)\
+        .limit(200)\
+        .execute()
+    
+    sessions = []
+    seen = set()
+    for msg in (result.data or []):
+        sid = msg["session_id"]
+        if sid not in seen:
+            seen.add(sid)
+            sessions.append({
+                "session_id": sid,
+                "last_message": msg["content"],
+                "last_active": msg["created_at"]
+            })
+            if len(sessions) >= limit:
+                break
+    return sessions
+
+
+# ─── Support and Demos ────────────────────────────────────────────────────────
+
+def save_support_ticket(ticket_data: dict) -> dict:
+    """Save a support ticket submission."""
+    result = db().table("support_tickets").insert({
+        "name": ticket_data["name"],
+        "email": ticket_data["email"],
+        "store_url": ticket_data.get("storeUrl") or ticket_data.get("store_url"),
+        "subject": ticket_data["subject"],
+        "message": ticket_data["message"],
+    }).execute()
+    return result.data[0] if result.data else {}
+
+
+def save_demo_booking(booking_data: dict) -> dict:
+    """Save a demo booking schedule."""
+    result = db().table("demo_bookings").insert({
+        "first_name": booking_data["first_name"],
+        "last_name": booking_data["last_name"],
+        "email": booking_data["email"],
+        "store_url": booking_data.get("store_url") or booking_data.get("storeUrl"),
+        "platform": booking_data["platform"],
+        "monthly_revenue": booking_data.get("monthly_revenue") or booking_data.get("teamSize"),
+        "timezone": booking_data["timezone"],
+        "message": booking_data.get("message"),
+        "booking_date": booking_data["booking_date"],
+        "booking_time": booking_data["booking_time"],
+    }).execute()
+    return result.data[0] if result.data else {}
+

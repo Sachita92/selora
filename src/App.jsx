@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
+import { ChatProvider } from './lib/ChatContext'
 
 import Selora        from './Selora'
 import Login         from './pages/Login'
@@ -30,7 +31,9 @@ function ProtectedRoute({ children }) {
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   return (
-    <BrowserRouter>
+    <ChatProvider>
+      <BrowserRouter>
+
       <Routes>
         {/* Public */}
         <Route path="/"        element={<Selora />} />
@@ -59,5 +62,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </ChatProvider>
   )
 }

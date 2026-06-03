@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useChat } from '../lib/ChatContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -16,22 +16,33 @@ const SUGGESTIONS = [
 ]
 
 export default function ChatWidget({ storeId }) {
-  const [open, setOpen] = useState(false)
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: "👋 Hey! I'm Selora, your AI growth assistant. I can see your store's live data right now.\n\nAsk me anything — about your products, pricing, sales trends — or tell me to take action like repricing or optimizing listings!",
-    },
-  ])
+  const {
+    messages,
+    loading,
+    open,
+    setOpen,
+    hasNewMessage,
+    setHasNewMessage,
+    loadHistory,
+    loadSessions,
+    sendMessage: sendGlobalMessage,
+  } = useChat()
+
   const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [hasNewMessage, setHasNewMessage] = useState(false)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
+
+  // Load chat history when the widget mounts or when storeId changes
+  useEffect(() => {
+    if (storeId) {
+      loadHistory(storeId)
+      loadSessions(storeId)
+    }
+  }, [storeId])
 
   useEffect(() => {
     scrollToBottom()
@@ -43,69 +54,30 @@ export default function ChatWidget({ storeId }) {
     }
   }, [open])
 
-  const sendMessage = async () => {
+  const handleSend = async () => {
     const text = input.trim()
     if (!text || loading || !storeId) return
-
-    const userMsg = { role: 'user', content: text }
-    setMessages(prev => [...prev, userMsg])
     setInput('')
-    setLoading(true)
-
-    try {
-      // Build history (exclude the initial greeting)
-      const history = messages.slice(1).map(m => ({ role: m.role, content: m.content }))
-
-      const res = await fetch(`${API_URL}/api/chat/${storeId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history }),
-      })
-
-      const data = await res.json()
-
-      let assistantContent = data.response || "I couldn't process that. Please try again."
-
-      // If actions were taken, add a small summary
-      if (data.actions?.length > 0) {
-        const actionSummary = data.actions
-          .map(a => {
-            if (a.tool === 'reprice_product') return `💰 Repriced product to $${a.args.new_price}`
-            if (a.tool === 'optimize_listing') return `✏️ Optimized listing`
-            if (a.tool === 'restock_alert') return `⚠️ Restock alert sent`
-            if (a.tool === 'generate_report') return `📊 Report generated`
-            return `🔧 ${a.tool}`
-          })
-          .join('\n')
-        assistantContent += `\n\n---\n**Actions taken:**\n${actionSummary}`
-      }
-
-      setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }])
-
-      if (!open) setHasNewMessage(true)
-    } catch (e) {
-      setMessages(prev => [
-        ...prev,
-        { role: 'assistant', content: "Sorry, I couldn't connect to the server. Please check that the backend is running." },
-      ])
-    } finally {
-      setLoading(false)
-    }
+    await sendGlobalMessage(text, storeId)
   }
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      sendMessage()
+      handleSend()
     }
   }
 
   const handleSuggestion = (text) => {
     setInput(text)
     setTimeout(() => {
-      sendMessage()
+      // Direct call to send message logic
+      if (!text.trim() || loading || !storeId) return
+      setInput('')
+      sendGlobalMessage(text, storeId)
     }, 50)
   }
+
 
   if (!storeId) return null
 
@@ -317,7 +289,7 @@ export default function ChatWidget({ storeId }) {
               onBlur={e => e.currentTarget.style.borderColor = c.border}
             />
             <button
-              onClick={sendMessage}
+              onClick={handleSend}
               disabled={!input.trim() || loading}
               style={{
                 width: 38, height: 38, borderRadius: 10,

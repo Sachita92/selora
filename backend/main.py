@@ -239,7 +239,30 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
+    session_id: str
     history: List[ChatMessage] = []
+
+
+@app.get("/api/chat/{store_id}/history")
+def get_chat_history_endpoint(store_id: str, session_id: str):
+    """Retrieve chat message history for a specific store and session."""
+    from database import get_store_by_id, get_chat_history
+    store = get_store_by_id(store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    history = get_chat_history(store_id, session_id)
+    return {"history": history}
+
+
+@app.get("/api/chat/{store_id}/sessions")
+def get_chat_sessions_endpoint(store_id: str):
+    """Retrieve unique chat sessions for a store."""
+    from database import get_store_by_id, get_chat_sessions
+    store = get_store_by_id(store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    sessions = get_chat_sessions(store_id)
+    return {"sessions": sessions}
 
 
 @app.post("/api/chat/{store_id}")
@@ -249,7 +272,7 @@ def chat_with_agent(store_id: str, body: ChatRequest):
     The agent has access to the store's live data and can take actions.
     """
     import json
-    from database import get_store_by_id, get_store_settings, save_agent_actions
+    from database import get_store_by_id, get_store_settings, save_agent_actions, save_chat_message
     from adapters.shopify import ShopifyAdapter
     from agent.tools import get_tools_definition, execute_tool
     from groq import Groq
@@ -257,6 +280,17 @@ def chat_with_agent(store_id: str, body: ChatRequest):
     store = get_store_by_id(store_id)
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
+
+    # Save the user's incoming message
+    try:
+        save_chat_message(
+            store_id=store_id,
+            session_id=body.session_id,
+            role="user",
+            content=body.message
+        )
+    except Exception as e:
+        print(f"⚠️ Failed to save user chat message: {e}")
 
     groq_key = os.getenv("GROQ_API_KEY")
     if not groq_key:
@@ -405,10 +439,23 @@ When the user asks you to do something (e.g. "lower the price of X", "rewrite th
         print(f"❌ Chat agent error: {e}")
         final_response = f"I'm sorry, I encountered an error while processing your request. Please try again. ({e})"
 
+    # Save the assistant's response to db
+    try:
+        save_chat_message(
+            store_id=store_id,
+            session_id=body.session_id,
+            role="assistant",
+            content=final_response,
+            actions=actions_taken
+        )
+    except Exception as e:
+        print(f"⚠️ Failed to save assistant chat message: {e}")
+
     return {
         "response": final_response,
         "actions": actions_taken,
     }
+
 
 
 def _run_agent_task(store: dict, dry_run: bool):
@@ -449,12 +496,69 @@ def _run_agent_task(store: dict, dry_run: bool):
                 )
                 break
 
-        # Update last synced timestamp
         update_store_last_synced(store["id"])
         print(f"✅ Agent cycle complete for {store['shop_name']}")
 
     except Exception as e:
         print(f"❌ Agent failed for {store['shop_name']}: {e}")
+
+
+# ─── Support and Demo Endpoints ──────────────────────────────────────────────
+
+class SupportTicketRequest(BaseModel):
+    name: str
+    email: str
+    storeUrl: Optional[str] = None
+    subject: str
+    message: str
+
+class DemoBookingRequest(BaseModel):
+    firstName: str
+    lastName: str
+    email: str
+    storeUrl: Optional[str] = None
+    platform: str
+    teamSize: Optional[str] = None
+    timezone: str
+    message: Optional[str] = None
+    booking_date: str  # Format: "YYYY-MM-DD"
+    booking_time: str
+
+
+@app.post("/api/support")
+def create_support_ticket(body: SupportTicketRequest):
+    """Submit a support ticket and store in Supabase."""
+    from database import save_support_ticket
+    try:
+        ticket = save_support_ticket(body.dict())
+        return {"success": True, "ticket": ticket}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to submit ticket: {e}")
+
+
+@app.post("/api/demo")
+def create_demo_booking(body: DemoBookingRequest):
+    """Book a demo slot and store in Supabase."""
+    from database import save_demo_booking
+    try:
+        # Map frontend field names to database structure (which handles both camelCase and snake_case)
+        booking_data = {
+            "first_name": body.firstName,
+            "last_name": body.lastName,
+            "email": body.email,
+            "store_url": body.storeUrl,
+            "platform": body.platform,
+            "monthly_revenue": body.teamSize,
+            "timezone": body.timezone,
+            "message": body.message,
+            "booking_date": body.booking_date,
+            "booking_time": body.booking_time,
+        }
+        booking = save_demo_booking(booking_data)
+        return {"success": True, "booking": booking}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to book demo: {e}")
+
 
 
 # ─── Agent Scheduler ─────────────────────────────────────────────────────────

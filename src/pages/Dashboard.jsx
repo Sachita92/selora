@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import ChatWidget from '../components/ChatWidget'
+import { useChat } from '../lib/ChatContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -33,7 +34,7 @@ const s = {
   logItem: { display:'flex', alignItems:'center', gap:'.6rem', padding:'.55rem .7rem', background:c.bg2, borderRadius:7, fontSize:'.78rem', border:`1px solid ${c.border}`, marginBottom:'.4rem' },
   dot:     { width:5, height:5, borderRadius:'50%', background:c.green, flexShrink:0 },
   time:    { color:c.muted, fontSize:'.68rem', marginLeft:'auto' },
-  store:   { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1rem 1.2rem', background:c.bg2, borderRadius:10, border:`1px solid ${c.border}`, marginBottom:'.6rem' },
+  store:   { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1rem 1.2rem', background:c.bg2, borderRadius:10, border:`1px solid ${c.border}`, marginBottom:'.6rem', cursor:'pointer' },
   badge:   { fontSize:'.65rem', fontWeight:600, background:'#DCFCE7', color:'#166534', padding:'.2rem .6rem', borderRadius:999, textTransform:'uppercase', letterSpacing:'.06em' },
   empty:   { textAlign:'center', padding:'3rem 1rem', color:c.muted, fontSize:'.88rem', fontWeight:300, lineHeight:1.7 },
 }
@@ -48,6 +49,15 @@ export default function Dashboard() {
   const [running, setRunning]   = useState(false)
   const [activeStore, setActiveStore] = useState(null)
   const [loading, setLoading]   = useState(true)
+
+  const {
+    sessionId,
+    sessions,
+    loadSessions,
+    selectSession,
+    startNewSession,
+    setOpen,
+  } = useChat()
 
   // ── Auth check ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -73,6 +83,7 @@ export default function Dashboard() {
         setActiveStore(data.stores[0])
         fetchLogs(data.stores[0].id)
         fetchReports(data.stores[0].id)
+        loadSessions(data.stores[0].id)
       }
     } catch (e) {
       console.error('Failed to fetch stores:', e)
@@ -290,26 +301,79 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* CONNECTED STORES */}
-            <div style={{...s.card, marginTop:'1.5rem'}}>
-              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
-                <div style={s.cardTit}>🛍️ Connected Stores</div>
-                <Link to="/connect" style={{fontSize:'.78rem', color:c.green, textDecoration:'none', fontWeight:500}}>+ Add store</Link>
-              </div>
-              {stores.map(store => (
-                <div key={store.id} style={{...s.store, borderColor: activeStore?.id===store.id ? c.green : c.border}} onClick={() => { setActiveStore(store); fetchLogs(store.id); fetchReports(store.id) }}>
-                  <div>
-                    <div style={{fontSize:'.88rem', fontWeight:600, color:c.dark}}>{store.shop_name}</div>
-                    <div style={{fontSize:'.72rem', color:c.muted, marginTop:'.15rem'}}>{store.shop_url}</div>
-                  </div>
-                  <div style={{display:'flex', alignItems:'center', gap:'.6rem'}}>
-                    <span style={s.badge}>Active</span>
-                    <span style={{fontSize:'.68rem', color:c.muted}}>
-                      {store.last_synced_at ? `Last synced ${formatTime(store.last_synced_at)}` : 'Never synced'}
-                    </span>
-                  </div>
+            {/* CHAT SESSIONS & CONVERSATION HISTORY */}
+            <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:'1.5rem', marginTop:'1.5rem'}}>
+              
+              {/* CONNECTED STORES */}
+              <div style={s.card}>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
+                  <div style={s.cardTit}>🛍️ Connected Stores</div>
+                  <Link to="/connect" style={{fontSize:'.78rem', color:c.green, textDecoration:'none', fontWeight:500}}>+ Add store</Link>
                 </div>
-              ))}
+                {stores.map(store => (
+                  <div key={store.id} style={{...s.store, borderColor: activeStore?.id===store.id ? c.green : c.border}} onClick={() => { setActiveStore(store); fetchLogs(store.id); fetchReports(store.id); loadSessions(store.id) }}>
+                    <div>
+                      <div style={{fontSize:'.88rem', fontWeight:600, color:c.dark}}>{store.shop_name}</div>
+                      <div style={{fontSize:'.72rem', color:c.muted, marginTop:'.15rem'}}>{store.shop_url}</div>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', gap:'.6rem'}}>
+                      <span style={s.badge}>Active</span>
+                      <span style={{fontSize:'.68rem', color:c.muted}}>
+                        {store.last_synced_at ? `Last synced ${formatTime(store.last_synced_at)}` : 'Never synced'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* CHAT HISTORY PANEL */}
+              <div style={s.card}>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
+                  <div style={s.cardTit}>💬 Chat History</div>
+                  <button 
+                    onClick={() => { startNewSession(activeStore?.id); setOpen(true) }}
+                    style={{
+                      background:'none', border:'none', color:c.green, 
+                      fontSize:'.75rem', fontWeight:600, cursor:'pointer',
+                      display:'flex', alignItems:'center', gap:'.2rem'
+                    }}
+                  >
+                    📝 New Chat
+                  </button>
+                </div>
+                {sessions.length === 0 ? (
+                  <p style={{fontSize:'.82rem', color:c.muted, fontWeight:300, lineHeight:1.7}}>
+                    No saved chats yet. Start a conversation with Selora using the widget on the bottom right!
+                  </p>
+                ) : (
+                  <div style={{display:'flex', flexDirection:'column', gap:'.6rem', maxHeight:260, overflowY:'auto'}}>
+                    {sessions.map((sess) => (
+                      <div 
+                        key={sess.session_id} 
+                        onClick={() => { selectSession(sess.session_id, activeStore?.id); setOpen(true) }}
+                        style={{
+                          padding:'.65rem .8rem',
+                          background: sessionId === sess.session_id ? c.bg2 : '#fff',
+                          border: `1px solid ${sessionId === sess.session_id ? c.green : c.border}`,
+                          borderRadius: 8,
+                          cursor: 'pointer',
+                          transition: 'all .15s'
+                        }}
+                        onMouseEnter={e => { if (sessionId !== sess.session_id) e.currentTarget.style.borderColor = c.green }}
+                        onMouseLeave={e => { if (sessionId !== sess.session_id) e.currentTarget.style.borderColor = c.border }}
+                      >
+                        <div style={{fontSize:'.75rem', color:c.dark, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                          {sess.last_message}
+                        </div>
+                        <div style={{fontSize:'.62rem', color:c.muted, marginTop:'.2rem', display:'flex', justifyContent:'space-between'}}>
+                          <span>{new Date(sess.last_active).toLocaleDateString()}</span>
+                          <span>{formatTime(sess.last_active)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}
