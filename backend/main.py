@@ -128,6 +128,13 @@ def oauth_callback(
 
 # ─── API Endpoints ────────────────────────────────────────────────────────────
 
+@app.get("/api/public/stats")
+def get_public_stats_endpoint():
+    """Get aggregated statistics for the public landing page."""
+    from database import get_public_stats
+    return get_public_stats()
+
+
 @app.get("/api/stores")
 def get_stores(email: str = Query(..., description="User email")):
     """Get all connected stores for a user."""

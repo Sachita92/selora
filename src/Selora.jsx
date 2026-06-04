@@ -333,11 +333,18 @@ function TrustBar() {
 }
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
-function StatsBar() {
+function StatsBar({ data }) {
+  const displayStats = data ? [
+    { num: data.total_stores > 0 ? `${data.total_stores}` : "12K+", label: "Stores Growing" },
+    { num: data.total_actions > 0 ? `${data.total_actions}` : "150K+", label: "Optimizations Done" },
+    { num: "3.8x", label: "Avg Growth Rate" },
+    { num: "99%",  label: "Uptime" },
+  ] : STATS;
+
   return (
     <div style={{display:"flex",justifyContent:"center",background:"var(--bg2)",borderBottom:"1px solid var(--border)",flexWrap:"wrap"}}>
-      {STATS.map((s,i)=>(
-        <div key={i} style={{flex:1,minWidth:140,textAlign:"center",padding:"2rem 1.5rem",borderRight:i<STATS.length-1?"1px solid var(--border)":"none"}}>
+      {displayStats.map((s,i)=>(
+        <div key={i} style={{flex:1,minWidth:140,textAlign:"center",padding:"2rem 1.5rem",borderRight:i<displayStats.length-1?"1px solid var(--border)":"none"}}>
           <div style={{fontSize:"2rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",letterSpacing:"-.5px"}}>{s.num}</div>
           <div style={{fontSize:".7rem",color:"var(--muted)",marginTop:".25rem",textTransform:"uppercase",letterSpacing:".08em"}}>{s.label}</div>
         </div>
@@ -369,7 +376,26 @@ function Features() {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-function Dashboard() {
+function Dashboard({ data }) {
+  const formatAction = (type) => {
+    const map = {
+      reprice_product:  'Repriced product',
+      optimize_listing: 'Optimized listing',
+      restock_alert:    'Restock alert sent',
+      generate_report:  'Generated growth report',
+    }
+    return map[type] || type;
+  };
+
+  const formatTime = (ts) => {
+    if (!ts) return '';
+    return new Date(ts).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  };
+
+  const activityList = data && data.recent_activity && data.recent_activity.length > 0 
+    ? data.recent_activity.map(a => ({ text: formatAction(a.action_type), time: formatTime(a.created_at) }))
+    : ACTIVITY;
+
   return (
     <div className="float" style={{background:"#fff",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)"}}>
       <div style={{background:"var(--bg2)",borderBottom:"1px solid var(--border)",padding:".8rem 1.1rem",display:"flex",alignItems:"center",gap:".45rem"}}>
@@ -388,8 +414,8 @@ function Dashboard() {
           ))}
         </div>
         <p style={{fontSize:".68rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:".8rem"}}>What Selora Did Overnight</p>
-        {ACTIVITY.map((a,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:".6rem",padding:".55rem .7rem",background:"var(--bg2)",borderRadius:7,fontSize:".72rem",border:"1px solid var(--border)",marginBottom:i<ACTIVITY.length-1?".45rem":0}}>
+        {activityList.slice(0, 4).map((a,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:".6rem",padding:".55rem .7rem",background:"var(--bg2)",borderRadius:7,fontSize:".72rem",border:"1px solid var(--border)",marginBottom:i<3?".45rem":0}}>
             <div style={{width:5,height:5,borderRadius:"50%",background:"var(--g)",flexShrink:0}}/>
             <span style={{flex:1,color:"var(--text)"}}>{a.text}</span>
             <span style={{color:"var(--muted)",fontSize:".65rem"}}>{a.time}</span>
@@ -401,7 +427,7 @@ function Dashboard() {
 }
 
 // ─── How It Works ─────────────────────────────────────────────────────────────
-function HowItWorks() {
+function HowItWorks({ data }) {
   return (
     <div style={{background:"var(--bg2)",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",padding:"5.5rem 0"}}>
       <div className="how-grid" style={{maxWidth:1160,margin:"0 auto",padding:"0 4rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5rem",alignItems:"center"}}>
@@ -421,7 +447,7 @@ function HowItWorks() {
             ))}
           </div>
         </div>
-        <Dashboard/>
+        <Dashboard data={data}/>
       </div>
     </div>
   );
@@ -539,9 +565,18 @@ function Footer() {
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function Selora() {
   const [scrolled, setScrolled] = useState(false);
+  const [publicStats, setPublicStats] = useState(null);
+
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", fn);
+    
+    // Fetch stats
+    fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/public/stats')
+      .then(r => r.json())
+      .then(d => setPublicStats(d))
+      .catch(e => console.error("Error loading public stats:", e));
+
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
@@ -551,9 +586,9 @@ export default function Selora() {
       <Navbar scrolled={scrolled}/>
       <Hero/>
       <TrustBar/>
-      <StatsBar/>
+      <StatsBar data={publicStats}/>
       <Features/>
-      <HowItWorks/>
+      <HowItWorks data={publicStats}/>
       <Pricing/>
       <Testimonials/>
       <CTA/>

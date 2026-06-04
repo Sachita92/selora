@@ -26,12 +26,14 @@ export default function ChatWidget({ storeId }) {
     setHasNewMessage,
     loadHistory,
     loadSessions,
+    startNewSession,
     sendMessage: sendGlobalMessage,
   } = useChat()
 
   const [input, setInput] = useState('')
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
+  const widgetRef = useRef(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -44,6 +46,18 @@ export default function ChatWidget({ storeId }) {
       loadSessions(storeId)
     }
   }, [storeId])
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (open && widgetRef.current && !widgetRef.current.contains(e.target)) {
+        if (!e.target.closest('#chat-fab')) {
+          setOpen(false)
+        }
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
 
   useEffect(() => {
     scrollToBottom()
@@ -114,7 +128,7 @@ export default function ChatWidget({ storeId }) {
 
       {/* Chat panel */}
       {open && (
-        <div style={{
+        <div ref={widgetRef} style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 1001,
           width: 400, height: 560,
           background: c.card, borderRadius: 20,
@@ -150,18 +164,32 @@ export default function ChatWidget({ storeId }) {
                 </div>
               </div>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              style={{
-                background: 'rgba(255,255,255,.15)',
-                border: 'none', color: '#fff', cursor: 'pointer',
-                width: 30, height: 30, borderRadius: 8,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1rem', fontFamily: 'Inter, sans-serif',
-              }}
-            >
-              ✕
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+              <button
+                onClick={() => startNewSession(storeId)}
+                style={{
+                  background: 'rgba(255,255,255,.15)',
+                  border: '1px solid rgba(255,255,255,.2)',
+                  color: '#fff', cursor: 'pointer',
+                  padding: '.35rem .6rem', borderRadius: 8,
+                  fontSize: '.72rem', fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                }}
+              >
+                + New
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                style={{
+                  background: 'rgba(255,255,255,.15)',
+                  border: 'none', color: '#fff', cursor: 'pointer',
+                  width: 30, height: 30, borderRadius: 8,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '1rem', fontFamily: 'Inter, sans-serif',
+                }}
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Messages */}

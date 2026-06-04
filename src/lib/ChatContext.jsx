@@ -25,10 +25,10 @@ export function ChatProvider({ children }) {
   const [sessions, setSessions] = useState([])
 
   // Load chat history for the store when sessionId or storeId changes
-  const loadHistory = async (storeId) => {
-    if (!storeId || !sessionId) return
+  const loadHistory = async (storeId, sid = sessionId) => {
+    if (!storeId || !sid) return
     try {
-      const res = await fetch(`${API_URL}/api/chat/${storeId}/history?session_id=${sessionId}`)
+      const res = await fetch(`${API_URL}/api/chat/${storeId}/history?session_id=${sid}`)
       const data = await res.json()
       if (data.history && data.history.length > 0) {
         const mapped = data.history.map(msg => {
@@ -89,7 +89,7 @@ export function ChatProvider({ children }) {
     setSessionId(newSessionId)
     localStorage.setItem('selora_chat_session_id', newSessionId)
     if (storeId) {
-      loadHistory(storeId)
+      loadHistory(storeId, newSessionId)
     }
   }
 

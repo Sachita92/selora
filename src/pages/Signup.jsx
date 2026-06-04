@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 const s = {
-  page:  { minHeight:'100vh', background:'#F8FAF8', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Inter, sans-serif', padding:'2rem' },
-  card:  { background:'#fff', border:'1px solid #E4EBE5', borderRadius:16, padding:'2.5rem', width:'100%', maxWidth:420 },
+  page:  { minHeight:'100vh', background:'linear-gradient(170deg,#EEF4EF 0%,#F8FAF8 55%)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Inter, sans-serif', padding:'2rem', position:'relative' },
+  card:  { background:'#fff', border:'1px solid #E4EBE5', borderRadius:16, padding:'2.5rem', width:'100%', maxWidth:420, boxShadow:'0 18px 55px rgba(90,138,103,.08)' },
   logo:  { fontFamily:'Fraunces, serif', fontSize:'1.3rem', fontWeight:600, color:'#1A271C', textDecoration:'none', display:'block', marginBottom:'2rem', textAlign:'center', letterSpacing:'-.3px' },
   title: { fontFamily:'Fraunces, serif', fontSize:'1.6rem', fontWeight:500, color:'#1A271C', marginBottom:'.4rem', letterSpacing:'-.3px' },
   sub:   { fontSize:'.85rem', color:'#7B907D', marginBottom:'1.8rem', fontWeight:300, lineHeight:1.6 },
@@ -14,11 +14,14 @@ const s = {
   err:   { background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:8, padding:'.75rem 1rem', fontSize:'.82rem', color:'#DC2626', marginBottom:'1rem' },
   ok:    { background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:8, padding:'.75rem 1rem', fontSize:'.82rem', color:'#166534', marginBottom:'1rem' },
   link:  { fontSize:'.82rem', color:'#5A8A67', textDecoration:'none', fontWeight:500 },
+  backBtn: { position:'absolute', top:'2rem', left:'2.5rem', fontSize:'.85rem', color:'#7B907D', textDecoration:'none', fontWeight:500, display:'flex', alignItems:'center', gap:'.4rem', transition:'color .2s' }
 }
 
 export default function Signup() {
   const navigate = useNavigate()
   const [email, setEmail]       = useState('')
+  const [name, setName]         = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm]   = useState('')
   const [loading, setLoading]   = useState(false)
@@ -44,6 +47,10 @@ export default function Signup() {
       email,
       password,
       options: {
+        data: {
+          name: name,
+          username: username,
+        },
         emailRedirectTo: `${window.location.origin}/dashboard`,
       }
     })
@@ -60,6 +67,9 @@ export default function Signup() {
   if (success) {
     return (
       <div style={s.page}>
+        <Link to="/" style={s.backBtn} onMouseOver={e=>e.currentTarget.style.color='#1A271C'} onMouseOut={e=>e.currentTarget.style.color='#7B907D'}>
+          ← Back to Selora
+        </Link>
         <div style={s.card}>
           <Link to="/" style={s.logo}>Se<span style={{color:'#5A8A67'}}>lo</span>ra</Link>
           <div style={{textAlign:'center'}}>
@@ -78,6 +88,9 @@ export default function Signup() {
 
   return (
     <div style={s.page}>
+      <Link to="/" style={s.backBtn} onMouseOver={e=>e.currentTarget.style.color='#1A271C'} onMouseOut={e=>e.currentTarget.style.color='#7B907D'}>
+        ← Back to Selora
+      </Link>
       <div style={s.card}>
         <Link to="/" style={s.logo}>
           Se<span style={{color:'#5A8A67'}}>lo</span>ra
@@ -89,6 +102,30 @@ export default function Signup() {
         {error && <div style={s.err}>{error}</div>}
 
         <form onSubmit={handleSignup}>
+          <div style={{marginBottom:'1rem'}}>
+            <label style={s.label}>Full Name</label>
+            <input
+              style={s.input}
+              type="text"
+              placeholder="Jane Doe"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              required
+            />
+          </div>
+
+          <div style={{marginBottom:'1rem'}}>
+            <label style={s.label}>Username</label>
+            <input
+              style={s.input}
+              type="text"
+              placeholder="janedoe"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              required
+            />
+          </div>
+
           <div style={{marginBottom:'1rem'}}>
             <label style={s.label}>Email</label>
             <input

@@ -333,16 +333,6 @@ export default function Dashboard() {
               <div style={s.card}>
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
                   <div style={s.cardTit}>💬 Chat History</div>
-                  <button 
-                    onClick={() => { startNewSession(activeStore?.id); setOpen(true) }}
-                    style={{
-                      background:'none', border:'none', color:c.green, 
-                      fontSize:'.75rem', fontWeight:600, cursor:'pointer',
-                      display:'flex', alignItems:'center', gap:'.2rem'
-                    }}
-                  >
-                    📝 New Chat
-                  </button>
                 </div>
                 {sessions.length === 0 ? (
                   <p style={{fontSize:'.82rem', color:c.muted, fontWeight:300, lineHeight:1.7}}>
@@ -365,8 +355,8 @@ export default function Dashboard() {
                         onMouseEnter={e => { if (sessionId !== sess.session_id) e.currentTarget.style.borderColor = c.green }}
                         onMouseLeave={e => { if (sessionId !== sess.session_id) e.currentTarget.style.borderColor = c.border }}
                       >
-                        <div style={{fontSize:'.75rem', color:c.dark, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
-                          {sess.last_message}
+                        <div style={{fontSize:'.75rem', color:c.dark, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', display:'block', width:'100%'}}>
+                          {sess.last_message?.length > 70 ? sess.last_message.substring(0, 70) + '...' : sess.last_message}
                         </div>
                         <div style={{fontSize:'.62rem', color:c.muted, marginTop:'.2rem', display:'flex', justifyContent:'space-between'}}>
                           <span>{new Date(sess.last_active).toLocaleDateString()}</span>

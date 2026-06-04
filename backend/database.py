@@ -369,4 +369,35 @@ def save_demo_booking(booking_data: dict) -> dict:
         "booking_time": booking_data["booking_time"],
     }).execute()
     return result.data[0] if result.data else {}
+
+
+# ─── Public Data ─────────────────────────────────────────────────────────────
+
+def get_public_stats() -> dict:
+    """Get aggregated statistics for the public landing page."""
+    client = db()
+    try:
+        # Get total stores
+        stores_res = client.table("stores").select("id", count="exact").execute()
+        total_stores = stores_res.count if stores_res.count is not None else 0
+
+        # Get total actions taken by the agent
+        logs_res = client.table("agent_logs").select("id", count="exact").execute()
+        total_actions = logs_res.count if logs_res.count is not None else 0
+        
+        # Get recent activity
+        recent_res = client.table("agent_logs").select("action_type,created_at,data").order("created_at", desc=True).limit(5).execute()
+        
+        return {
+            "total_stores": total_stores,
+            "total_actions": total_actions,
+            "recent_activity": recent_res.data or []
+        }
+    except Exception as e:
+        print(f"Error fetching public stats: {e}")
+        return {
+            "total_stores": 0,
+            "total_actions": 0,
+            "recent_activity": []
+        }
 
