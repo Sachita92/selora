@@ -21,7 +21,6 @@ export default function Signup() {
   const navigate = useNavigate()
   const [email, setEmail]       = useState('')
   const [name, setName]         = useState('')
-  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm]   = useState('')
   const [loading, setLoading]   = useState(false)
@@ -49,7 +48,6 @@ export default function Signup() {
       options: {
         data: {
           name: name,
-          username: username,
         },
         emailRedirectTo: `${window.location.origin}/dashboard`,
       }
@@ -110,18 +108,6 @@ export default function Signup() {
               placeholder="Jane Doe"
               value={name}
               onChange={e => setName(e.target.value)}
-              required
-            />
-          </div>
-
-          <div style={{marginBottom:'1rem'}}>
-            <label style={s.label}>Username</label>
-            <input
-              style={s.input}
-              type="text"
-              placeholder="janedoe"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
               required
             />
           </div>

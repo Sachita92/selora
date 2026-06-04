@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { ChatProvider } from './lib/ChatContext'
+import { AppProvider, useAppContext } from './lib/AppContext'
+import SidebarLayout from './components/SidebarLayout'
 
 import Selora        from './Selora'
 import Login         from './pages/Login'
@@ -17,51 +19,42 @@ import Settings      from './pages/Settings'
 
 // ─── Protected route wrapper ──────────────────────────────────────────────────
 function ProtectedRoute({ children }) {
-  const [session, setSession] = useState(undefined)
+  const { user, loading } = useAppContext()
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
-  }, [])
-
-  if (session === undefined) return null // still loading
-  if (!session) return <Navigate to="/login" replace />
+  if (loading) return null // still loading
+  if (!user) return <Navigate to="/login" replace />
   return children
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   return (
-    <ChatProvider>
-      <BrowserRouter>
+    <AppProvider>
+      <ChatProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public */}
+            <Route path="/"        element={<Selora />} />
+            <Route path="/login"   element={<Login />} />
+            <Route path="/signup"  element={<Signup />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms"   element={<Terms />} />
+            <Route path="/support" element={<Support />} />
+            <Route path="/demo"    element={<BookDemo />} />
 
-      <Routes>
-        {/* Public */}
-        <Route path="/"        element={<Selora />} />
-        <Route path="/login"   element={<Login />} />
-        <Route path="/signup"  element={<Signup />} />
-        <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/terms"   element={<Terms />} />
-        <Route path="/support" element={<Support />} />
-        <Route path="/demo"    element={<BookDemo />} />
+            {/* Protected — wrapped in SidebarLayout */}
+            <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
+              <Route path="/connect"   element={<Connect />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/products"  element={<Products />} />
+              <Route path="/settings"  element={<Settings />} />
+            </Route>
 
-        {/* Protected — must be logged in */}
-        <Route path="/connect" element={
-          <ProtectedRoute><Connect /></ProtectedRoute>
-        }/>
-        <Route path="/dashboard" element={
-          <ProtectedRoute><Dashboard /></ProtectedRoute>
-        }/>
-        <Route path="/products" element={
-          <ProtectedRoute><Products /></ProtectedRoute>
-        }/>
-        <Route path="/settings" element={
-          <ProtectedRoute><Settings /></ProtectedRoute>
-        }/>
-
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-    </ChatProvider>
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ChatProvider>
+    </AppProvider>
   )
 }

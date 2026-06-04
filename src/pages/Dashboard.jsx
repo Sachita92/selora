@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-import ChatWidget from '../components/ChatWidget'
-import { useChat } from '../lib/ChatContext'
+import { Link } from 'react-router-dom'
+import { useAppContext } from '../lib/AppContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -41,59 +39,21 @@ const s = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const navigate  = useNavigate()
-  const [user, setUser]         = useState(null)
-  const [stores, setStores]     = useState([])
+  const { user, stores, activeStore, loading } = useAppContext()
   const [logs, setLogs]         = useState([])
   const [reports, setReports]   = useState([])
   const [running, setRunning]   = useState(false)
-  const [activeStore, setActiveStore] = useState(null)
-  const [loading, setLoading]   = useState(true)
 
-  const {
-    sessionId,
-    sessions,
-    loadSessions,
-    selectSession,
-    startNewSession,
-    setOpen,
-  } = useChat()
-
-  // ── Auth check ──────────────────────────────────────────────────────────────
+  // ── Fetch logs & reports when active store changes ──────────────────────────
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) { navigate('/login'); return }
-      setUser(session.user)
-      fetchStores(session.user.email)
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) navigate('/login')
-    })
-    return () => subscription.unsubscribe()
-  }, [])
-
-  // ── Fetch stores ────────────────────────────────────────────────────────────
-  const fetchStores = async (email) => {
-    try {
-      const res  = await fetch(`${API_URL}/api/stores?email=${encodeURIComponent(email)}`)
-      const data = await res.json()
-      setStores(data.stores || [])
-      if (data.user) {
-        setUser(prev => ({ ...prev, ...data.user }))
-      }
-      if (data.stores?.length > 0) {
-        setActiveStore(data.stores[0])
-        fetchLogs(data.stores[0].id)
-        fetchReports(data.stores[0].id)
-        loadSessions(data.stores[0].id)
-      }
-    } catch (e) {
-      console.error('Failed to fetch stores:', e)
-    } finally {
-      setLoading(false)
+    if (activeStore) {
+      fetchLogs(activeStore.id)
+      fetchReports(activeStore.id)
+    } else {
+      setLogs([])
+      setReports([])
     }
-  }
+  }, [activeStore])
 
   const fetchLogs = async (storeId) => {
     try {
@@ -128,12 +88,6 @@ export default function Dashboard() {
     }
   }
 
-  // ── Sign out ─────────────────────────────────────────────────────────────────
-  const signOut = async () => {
-    await supabase.auth.signOut()
-    navigate('/')
-  }
-
   // ── Format action type ────────────────────────────────────────────────────
   const formatAction = (type) => {
     const map = {
@@ -162,21 +116,6 @@ export default function Dashboard() {
 
   return (
     <div style={s.page}>
-
-      {/* NAV */}
-      <nav style={s.nav}>
-        <Link to="/" style={s.logo}>Se<span style={{color:c.green}}>lo</span>ra</Link>
-        <div style={{display:'flex', gap:'1.5rem', alignItems:'center', fontSize:'.82rem'}}>
-          <Link to="/dashboard" style={{color:c.dark, textDecoration:'none', fontWeight:600, borderBottom:`2px solid ${c.green}`, paddingBottom:'.15rem'}}>Dashboard</Link>
-          <Link to="/products"  style={{color:c.muted, textDecoration:'none'}}>Products</Link>
-          <Link to="/settings"  style={{color:c.muted, textDecoration:'none'}}>Settings</Link>
-        </div>
-        <div style={s.navRight}>
-          <span style={s.email}>{user?.email}</span>
-          <button style={s.signout} onClick={signOut}>Sign out</button>
-        </div>
-      </nav>
-
       <div style={s.body}>
 
         {/* HEADER */}
@@ -314,7 +253,7 @@ export default function Dashboard() {
                   <Link to="/connect" style={{fontSize:'.78rem', color:c.green, textDecoration:'none', fontWeight:500}}>+ Add store</Link>
                 </div>
                 {stores.map(store => (
-                  <div key={store.id} style={{...s.store, borderColor: activeStore?.id===store.id ? c.green : c.border}} onClick={() => { setActiveStore(store); fetchLogs(store.id); fetchReports(store.id); loadSessions(store.id) }}>
+                  <div key={store.id} style={{...s.store, borderColor: activeStore?.id===store.id ? c.green : c.border}}>
                     <div>
                       <div style={{fontSize:'.88rem', fontWeight:600, color:c.dark}}>{store.shop_name}</div>
                       <div style={{fontSize:'.72rem', color:c.muted, marginTop:'.15rem'}}>{store.shop_url}</div>
@@ -329,133 +268,10 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              {/* CHAT HISTORY PANEL */}
-              <div style={s.card}>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
-                  <div style={s.cardTit}>💬 Chat History</div>
-                </div>
-                {sessions.length === 0 ? (
-                  <p style={{fontSize:'.82rem', color:c.muted, fontWeight:300, lineHeight:1.7}}>
-                    No saved chats yet. Start a conversation with Selora using the widget on the bottom right!
-                  </p>
-                ) : (
-                  <div style={{display:'flex', flexDirection:'column', gap:'.6rem', maxHeight:260, overflowY:'auto'}}>
-                    {sessions.map((sess) => (
-                      <div 
-                        key={sess.session_id} 
-                        onClick={() => { selectSession(sess.session_id, activeStore?.id); setOpen(true) }}
-                        style={{
-                          padding:'.65rem .8rem',
-                          background: sessionId === sess.session_id ? c.bg2 : '#fff',
-                          border: `1px solid ${sessionId === sess.session_id ? c.green : c.border}`,
-                          borderRadius: 8,
-                          cursor: 'pointer',
-                          transition: 'all .15s'
-                        }}
-                        onMouseEnter={e => { if (sessionId !== sess.session_id) e.currentTarget.style.borderColor = c.green }}
-                        onMouseLeave={e => { if (sessionId !== sess.session_id) e.currentTarget.style.borderColor = c.border }}
-                      >
-                        <div style={{fontSize:'.75rem', color:c.dark, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', display:'block', width:'100%'}}>
-                          {sess.last_message?.length > 70 ? sess.last_message.substring(0, 70) + '...' : sess.last_message}
-                        </div>
-                        <div style={{fontSize:'.62rem', color:c.muted, marginTop:'.2rem', display:'flex', justifyContent:'space-between'}}>
-                          <span>{new Date(sess.last_active).toLocaleDateString()}</span>
-                          <span>{formatTime(sess.last_active)}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* BILLING / PRICING SECTION */}
-            <div style={{...s.card, marginTop:'1.5rem'}}>
-              <div style={s.cardTit}>💳 Your Subscription & Usage</div>
-              <div style={{display:'grid', gridTemplateColumns:'1.5fr 2fr', gap:'2rem', alignItems:'center'}}>
-                <div>
-                  <p style={{fontSize:'.88rem', color:c.dark, fontWeight:600}}>
-                    Current Plan: <span style={{textTransform:'capitalize', color:c.green}}>{user?.subscription_plan || 'Free'}</span>
-                  </p>
-                  <p style={{fontSize:'.78rem', color:c.muted, marginTop:'.2rem'}}>
-                    {user?.subscription_plan === 'free' && "Limit: 3 automated optimizations / mo"}
-                    {user?.subscription_plan === 'growth' && "Limit: 30 automated optimizations / mo"}
-                    {user?.subscription_plan === 'scale' && "Limit: Unlimited automated optimizations / mo"}
-                  </p>
-                  <div style={{marginTop:'1rem', display:'flex', alignItems:'center', gap:'.5rem'}}>
-                    <span style={{
-                      fontSize:'.65rem', padding:'.2rem .5rem', borderRadius:4, fontWeight:600,
-                      background: user?.subscription_status === 'active' ? '#DCFCE7' : '#FEE2E2',
-                      color: user?.subscription_status === 'active' ? '#15803d' : '#b91c1c'
-                    }}>
-                      Status: {user?.subscription_status || 'active'}
-                    </span>
-                    {user?.stripe_customer_id && (
-                      <button 
-                        onClick={async () => {
-                          try {
-                            const res = await fetch(`${API_URL}/api/billing/portal`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ user_id: user.id })
-                            })
-                            const data = await res.json()
-                            if (data.url) window.location.href = data.url
-                          } catch (e) { alert("Failed to open billing portal") }
-                        }}
-                        style={{background:'none', border:'none', color:c.green, fontSize:'.74rem', cursor:'pointer', textDecoration:'underline'}}
-                      >
-                        Manage Billing
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* PLANS OPTIONS */}
-                {(!user?.subscription_plan || user?.subscription_plan === 'free') ? (
-                  <div style={{display:'flex', gap:'1rem'}}>
-                    {[
-                      { name: 'growth', title: 'Growth Plan', price: '$29/mo', desc: 'Up to 30 optimizations / mo' },
-                      { name: 'scale', title: 'Scale Plan', price: '$79/mo', desc: 'Unlimited runs + early pay.sh proxy' },
-                    ].map(p => (
-                      <div key={p.name} style={{flex:1, border:`1px solid ${c.border}`, borderRadius:10, padding:'1rem', background:c.bg2, textAlign:'center'}}>
-                        <div style={{fontSize:'.82rem', fontWeight:600, color:c.dark}}>{p.title}</div>
-                        <div style={{fontSize:'1.2rem', fontWeight:700, color:c.green, margin:'.3rem 0'}}>{p.price}</div>
-                        <div style={{fontSize:'.68rem', color:c.muted, marginBottom:'.8rem'}}>{p.desc}</div>
-                        <button 
-                          onClick={async () => {
-                            try {
-                              const res = await fetch(`${API_URL}/api/billing/create-checkout`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ user_id: user.id, email: user.email, plan: p.name })
-                              })
-                              const data = await res.json()
-                              if (data.url) window.location.href = data.url
-                              else alert("Stripe session creation failed")
-                            } catch (e) { alert("Error launching checkout session") }
-                          }}
-                          style={{
-                            width:'100%', border:'none', background:c.green, color:'#fff', 
-                            fontSize:'.72rem', fontWeight:600, padding:'.45rem', borderRadius:6, cursor:'pointer'
-                          }}
-                        >
-                          Upgrade Now
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{fontSize:'.82rem', color:c.muted, fontStyle:'italic', textAlign:'right'}}>
-                    Thanks for supporting Selora! You are on the premium tier.
-                  </div>
-                )}
-              </div>
             </div>
           </>
         )}
       </div>
-      <ChatWidget storeId={activeStore?.id} />
     </div>
   )
 }
