@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { useChat } from '../lib/ChatContext'
@@ -19,7 +19,18 @@ export default function SidebarLayout() {
   const location = useLocation()
   
   const [showProfile, setShowProfile] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (!mobile) setSidebarOpen(true)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
   
   const [editName, setEditName] = useState(user?.user_metadata?.name || '')
   const [editUsername, setEditUsername] = useState(user?.user_metadata?.username || '')
@@ -54,6 +65,14 @@ export default function SidebarLayout() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif' }}>
       
+      {/* MOBILE OVERLAY */}
+      {isMobile && sidebarOpen && (
+        <div 
+          onClick={() => setSidebarOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }}
+        />
+      )}
+
       {/* ─── SIDEBAR ───────────────────────────────────────────────────────── */}
       <div style={{
         width: 280,
@@ -61,7 +80,11 @@ export default function SidebarLayout() {
         borderRight: `1px solid ${c.border}`,
         display: sidebarOpen ? 'flex' : 'none',
         flexDirection: 'column',
-        flexShrink: 0
+        flexShrink: 0,
+        position: isMobile ? 'fixed' : 'relative',
+        height: '100vh',
+        zIndex: 50,
+        top: 0, left: 0,
       }}>
         {/* LOGO & TOGGLE */}
         <div style={{ padding: '1.2rem 1.5rem', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -297,7 +320,7 @@ export default function SidebarLayout() {
           </button>
         )}
 
-        <div style={{ paddingTop: sidebarOpen ? '0' : '3.5rem' }}>
+        <div style={{ paddingTop: !sidebarOpen ? '3.5rem' : 0 }}>
           <Outlet />
         </div>
         <ChatWidget storeId={activeStore?.id} />

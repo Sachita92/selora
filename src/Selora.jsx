@@ -50,6 +50,9 @@ const GlobalStyles = () => (
     @media (max-width: 900px) {
       .nav-links { display:none !important; }
       .two-col, .how-grid, .feat-inner, .price-inner, .testi-inner { grid-template-columns:1fr !important; }
+      .slide { padding:6rem 1.2rem 3rem; }
+      .mob-pad { padding-left:1.2rem !important; padding-right:1.2rem !important; }
+      .mob-vpad { padding-top:3.5rem !important; padding-bottom:3.5rem !important; }
     }
   `}</style>
 );
@@ -236,8 +239,12 @@ function Navbar({scrolled}) {
         Se<span style={{color:"var(--g)"}}>lo</span>ra
       </div>
       <div className="nav-links" style={{display:"flex",alignItems:"center"}}>
-        {["Features","How It Works","Pricing"].map(l=>(
-          <a key={l} href="#" style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none",marginLeft:"2rem"}}>{l}</a>
+        {[
+          { label: "Features", path: "/features" },
+          { label: "How It Works", path: "/how-it-works" },
+          { label: "Pricing", path: "/pricing" }
+        ].map(item => (
+          <Link key={item.label} to={item.path} style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none",marginLeft:"2rem"}}>{item.label}</Link>
         ))}
         <Link to="/demo" style={{fontSize:".82rem",fontWeight:500,color:"var(--g)",textDecoration:"none",marginLeft:"2rem"}}>Book a Demo</Link>
       </div>
@@ -281,7 +288,7 @@ function Hero() {
           </div>
 
           {/* Headline */}
-          <h1 className="au1" style={{fontFamily:"Cormorant Garamond,serif",fontSize:"clamp(2.2rem,4.5vw,4rem)",fontWeight:500,lineHeight:1.08,letterSpacing:"-.5px",maxWidth:750,marginBottom:"1.3rem",color:"var(--dark)"}}>
+          <h1 className="au1" style={{fontFamily:"Cormorant Garamond,serif",fontSize:"clamp(2rem,8vw,4rem)",fontWeight:500,lineHeight:1.08,letterSpacing:"-.5px",maxWidth:750,marginBottom:"1.3rem",color:"var(--dark)"}}>
             {slide.h1.map((line, li) => (
               <span key={li}>
                 {li === slide.italic
@@ -299,10 +306,22 @@ function Hero() {
 
           {/* Buttons */}
           <div className="au3" style={{display:"flex",gap:".9rem",flexWrap:"wrap",justifyContent:"center"}}>
-            <Link to="/signup" style={{ textDecoration: "none" }}>
-             <BtnP>{slide.cta}</BtnP>
+            <Link 
+              to={slide.cta === "See It in Action" ? "/demo" : "/signup"} 
+              style={{ textDecoration: "none" }}
+            >
+              <BtnP>{slide.cta}</BtnP>
             </Link>
-            <Link to="/demo" style={{ textDecoration: "none" }}>
+            <Link 
+              to={
+                slide.cta2 === "See How It Works" 
+                  ? "/how-it-works" 
+                  : slide.cta2 === "Learn More" 
+                    ? "/features" 
+                    : "/demo"
+              } 
+              style={{ textDecoration: "none" }}
+            >
               <BtnS>{slide.cta2}</BtnS>
             </Link>
           </div>
@@ -356,7 +375,7 @@ function StatsBar({ data }) {
 // ─── Features ─────────────────────────────────────────────────────────────────
 function Features() {
   return (
-    <section style={{padding:"5.5rem 4rem",maxWidth:1160,margin:"0 auto"}}>
+    <section className="mob-pad mob-vpad" style={{padding:"5.5rem 4rem",maxWidth:1160,margin:"0 auto"}}>
       <div style={{textAlign:"center",maxWidth:540,margin:"0 auto 3rem"}}>
         <Tag center>What Selora Does</Tag>
         <Title center>Six ways your collection<br/>grows every day</Title>
@@ -430,7 +449,7 @@ function Dashboard({ data }) {
 function HowItWorks({ data }) {
   return (
     <div style={{background:"var(--bg2)",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",padding:"5.5rem 0"}}>
-      <div className="how-grid" style={{maxWidth:1160,margin:"0 auto",padding:"0 4rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5rem",alignItems:"center"}}>
+      <div className="how-grid mob-pad" style={{maxWidth:1160,margin:"0 auto",padding:"0 4rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5rem",alignItems:"center"}}>
         <div>
           <Tag>How It Works</Tag>
           <Title>Three steps to a<br/>self-growing collection</Title>
@@ -456,7 +475,7 @@ function HowItWorks({ data }) {
 // ─── Pricing ──────────────────────────────────────────────────────────────────
 function Pricing() {
   return (
-    <section style={{padding:"5.5rem 4rem",maxWidth:1160,margin:"0 auto",borderTop:"1px solid var(--border)"}}>
+    <section className="mob-pad mob-vpad" style={{padding:"5.5rem 4rem",maxWidth:1160,margin:"0 auto",borderTop:"1px solid var(--border)"}}>
       <div style={{textAlign:"center",maxWidth:500,margin:"0 auto"}}>
         <Tag center>Pricing</Tag>
         <Title center>Grow your collection,<br/>pay as you scale</Title>
@@ -498,7 +517,7 @@ function Pricing() {
 function Testimonials() {
   return (
     <div style={{background:"var(--bg2)",borderTop:"1px solid var(--border)",padding:"5.5rem 0"}}>
-      <div style={{maxWidth:1160,margin:"0 auto",padding:"0 4rem"}}>
+      <div className="mob-pad" style={{maxWidth:1160,margin:"0 auto",padding:"0 4rem"}}>
         <div style={{textAlign:"center",marginBottom:"3rem"}}>
           <Tag center>From Real Sellers</Tag>
           <Title center>Collections that bloom with Selora</Title>

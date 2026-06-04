@@ -126,11 +126,10 @@ export default function ChatWidget({ storeId }) {
         </button>
       )}
 
-      {/* Chat panel */}
       {open && (
         <div ref={widgetRef} style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 1001,
-          width: 400, height: 560,
+          width: 400, maxWidth: 'calc(100vw - 32px)', height: 560, maxHeight: 'calc(100vh - 100px)',
           background: c.card, borderRadius: 20,
           border: `1px solid ${c.border}`,
           boxShadow: '0 20px 60px rgba(0,0,0,.12), 0 4px 20px rgba(0,0,0,.06)',

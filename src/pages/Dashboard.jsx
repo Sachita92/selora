@@ -17,13 +17,11 @@ const s = {
   navRight:{ display:'flex', alignItems:'center', gap:'1rem' },
   email:   { fontSize:'.78rem', color:c.muted },
   signout: { fontSize:'.78rem', color:c.muted, background:'none', border:`1px solid ${c.border}`, padding:'.35rem .8rem', borderRadius:6, cursor:'pointer', fontFamily:'Inter, sans-serif' },
-  body:    { maxWidth:1100, margin:'0 auto', padding:'2.5rem 2rem' },
   header:  { display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'2rem', flexWrap:'wrap', gap:'1rem' },
   h1:      { fontFamily:'Fraunces, serif', fontSize:'1.8rem', fontWeight:500, color:c.dark, letterSpacing:'-.3px' },
   btnP:    { background:c.green, color:'#fff', border:'none', padding:'.65rem 1.4rem', borderRadius:8, fontSize:'.82rem', fontWeight:600, cursor:'pointer', fontFamily:'Inter, sans-serif', textDecoration:'none', display:'inline-block' },
   card:    { background:c.card, border:`1px solid ${c.border}`, borderRadius:14, padding:'1.6rem' },
   cardTit: { fontFamily:'Fraunces, serif', fontSize:'1rem', fontWeight:500, color:c.dark, marginBottom:'1rem' },
-  grid3:   { display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem', marginBottom:'1.5rem' },
   metric:  { background:c.bg2, border:`1px solid ${c.border}`, borderRadius:10, padding:'1.1rem' },
   mVal:    { fontFamily:'Fraunces, serif', fontSize:'1.5rem', fontWeight:500, color:c.dark, letterSpacing:'-.3px' },
   mLbl:    { fontSize:'.65rem', color:c.muted, textTransform:'uppercase', letterSpacing:'.08em', marginTop:'.2rem' },
@@ -116,7 +114,7 @@ export default function Dashboard() {
 
   return (
     <div style={s.page}>
-      <div style={s.body}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '2.5rem 2rem 5rem' }}>
 
         {/* HEADER */}
         <div style={s.header}>
@@ -164,7 +162,7 @@ export default function Dashboard() {
             {latestReport && (
               <div style={{marginBottom:'1.5rem'}}>
                 <div style={s.tag}>Latest Report</div>
-                <div style={s.grid3}>
+                <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem', marginBottom:'1.5rem'}}>
                   <div style={s.metric}>
                     <div style={s.mVal}>{latestReport.actions_taken?.length || 0}</div>
                     <div style={s.mLbl}>Actions Taken</div>
@@ -244,7 +242,7 @@ export default function Dashboard() {
             </div>
 
             {/* CHAT SESSIONS & CONVERSATION HISTORY */}
-            <div style={{display:'grid', gridTemplateColumns:'2fr 1fr', gap:'1.5rem', marginTop:'1.5rem'}}>
+            <div style={{display:'grid', gridTemplateColumns:'1fr', gap:'1.5rem', marginTop:'1.5rem'}}>
               
               {/* CONNECTED STORES */}
               <div style={s.card}>

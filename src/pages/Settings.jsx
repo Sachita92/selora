@@ -123,21 +123,8 @@ export default function Settings() {
   }
 
   return (
-    <div style={s.page}>
-
-      {/* NAV */}
-      <nav style={s.nav}>
-        <Link to="/" style={s.logo}>Se<span style={{ color: c.green }}>lo</span>ra</Link>
-        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', fontSize: '.82rem' }}>
-          <Link to="/dashboard" style={{ color: c.muted, textDecoration: 'none' }}>Dashboard</Link>
-          <Link to="/products"  style={{ color: c.muted, textDecoration: 'none' }}>Products</Link>
-          <Link to="/settings"  style={{ color: c.dark, textDecoration: 'none', fontWeight: 600, borderBottom: `2px solid ${c.green}`, paddingBottom: '.15rem' }}>Settings</Link>
-          <span style={{ color: c.muted }}>{user?.email}</span>
-          <button onClick={signOut} style={{ fontSize: '.78rem', color: c.muted, background: 'none', border: `1px solid ${c.border}`, padding: '.35rem .8rem', borderRadius: 6, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Sign out</button>
-        </div>
-      </nav>
-
-      <div style={s.body}>
+    <div style={{ minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ maxWidth: 860, margin: '0 auto', padding: '2.5rem 2rem 5rem' }}>
 
         {/* HEADER */}
         <div style={{ marginBottom: '2rem' }}>

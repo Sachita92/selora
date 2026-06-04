@@ -11,10 +11,7 @@ const c = {
 }
 
 const s = {
-  page:    { minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif' },
-  nav:     { background: c.card, borderBottom: `1px solid ${c.border}`, padding: '.9rem 2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  logo:    { fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 600, color: c.dark, textDecoration: 'none' },
-  body:    { maxWidth: 1200, margin: '0 auto', padding: '2.5rem 2rem' },
+  body:    { maxWidth: 1200, margin: '0 auto' },
   header:  { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' },
   h1:      { fontFamily: 'Fraunces, serif', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px' },
   card:    { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' },
@@ -126,21 +123,8 @@ export default function Products() {
   }
 
   return (
-    <div style={s.page}>
-
-      {/* NAV */}
-      <nav style={s.nav}>
-        <Link to="/" style={s.logo}>Se<span style={{ color: c.green }}>lo</span>ra</Link>
-        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', fontSize: '.82rem' }}>
-          <Link to="/dashboard" style={{ color: c.muted, textDecoration: 'none' }}>Dashboard</Link>
-          <Link to="/products"  style={{ color: c.dark, textDecoration: 'none', fontWeight: 600, borderBottom: `2px solid ${c.green}`, paddingBottom: '.15rem' }}>Products</Link>
-          <Link to="/settings"  style={{ color: c.muted, textDecoration: 'none' }}>Settings</Link>
-          <span style={{ color: c.muted }}>{user?.email}</span>
-          <button onClick={signOut} style={{ fontSize: '.78rem', color: c.muted, background: 'none', border: `1px solid ${c.border}`, padding: '.35rem .8rem', borderRadius: 6, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Sign out</button>
-        </div>
-      </nav>
-
-      <div style={s.body}>
+    <div style={{ minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '2.5rem 2rem 5rem' }}>
 
         {/* HEADER */}
         <div style={s.header}>
@@ -226,16 +210,15 @@ export default function Products() {
             <Link to="/connect" style={{ ...s.btnP, marginTop: '1rem', display: 'inline-block' }}>Connect a Store</Link>
           </div>
         ) : (
-          <div style={s.card}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    {['Product', 'Price', 'Stock', 'Sales (30d)', 'Revenue (30d)', 'Status'].map(h => (
-                      <th key={h} style={s.th}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
+          <div className="overflow-x-auto" style={s.card}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
+              <thead>
+                <tr>
+                  {['Product', 'Price', 'Stock', 'Sales (30d)', 'Revenue (30d)', 'Status'].map(h => (
+                    <th key={h} style={s.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
                 <tbody>
                   {filtered.map((p, i) => {
                     const sl = salesLabel(p.sales_last_30_days)
@@ -287,7 +270,6 @@ export default function Products() {
                 </tbody>
               </table>
             </div>
-          </div>
         )}
       </div>
       <ChatWidget storeId={activeStore?.id} />
