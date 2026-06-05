@@ -154,7 +154,6 @@ export default function Products() {
                 {stores.map(st => <option key={st.id} value={st.id}>{st.shop_name}</option>)}
               </select>
             )}
-            <Link to="/dashboard" style={{ ...s.btnP, background: 'transparent', color: c.green, border: `1px solid ${c.border}` }}>← Dashboard</Link>
           </div>
         </div>
 
@@ -236,7 +235,8 @@ export default function Products() {
                     const isLast = i === filtered.length - 1
                     const tdStyle = { ...s.td, borderBottom: isLast ? 'none' : s.td.borderBottom }
                     return (
-                      <tr key={p.id} style={{ transition: 'background .15s' }}
+                      <tr key={p.id} style={{ transition: 'background .15s', cursor: 'pointer' }}
+                        onClick={() => navigate(`/products/${p.id}`)}
                         onMouseEnter={e => e.currentTarget.style.background = c.bg2}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       >

@@ -16,6 +16,7 @@ import Support       from './pages/Support'
 import BookDemo      from './pages/BookDemo'
 import Products      from './pages/Products'
 import Settings      from './pages/Settings'
+import ProductDetail from './pages/ProductDetail'
 import FeaturesPage   from './pages/FeaturesPage'
 import HowItWorksPage from './pages/HowItWorksPage'
 import PricingPage    from './pages/PricingPage'
@@ -53,6 +54,7 @@ export default function App() {
               <Route path="/connect"   element={<Connect />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/products"  element={<Products />} />
+              <Route path="/products/:id" element={<ProductDetail />} />
               <Route path="/settings"  element={<Settings />} />
             </Route>
 
