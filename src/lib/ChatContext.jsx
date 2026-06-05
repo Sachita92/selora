@@ -134,6 +134,11 @@ export function ChatProvider({ children }) {
 
       setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }])
       if (!open) setHasNewMessage(true)
+
+      // If actions were taken, trigger custom event to reload lists automatically
+      if (data.actions?.length > 0) {
+        window.dispatchEvent(new CustomEvent('selora-action-taken', { detail: { storeId } }))
+      }
       
       // Refresh sessions list
       loadSessions(storeId)

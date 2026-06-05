@@ -53,6 +53,17 @@ export default function Dashboard() {
     }
   }, [activeStore])
 
+  useEffect(() => {
+    const handleActionTaken = (e) => {
+      if (activeStore && e.detail?.storeId === activeStore.id) {
+        fetchLogs(activeStore.id)
+        fetchReports(activeStore.id)
+      }
+    }
+    window.addEventListener('selora-action-taken', handleActionTaken)
+    return () => window.removeEventListener('selora-action-taken', handleActionTaken)
+  }, [activeStore])
+
   const fetchLogs = async (storeId) => {
     try {
       const res  = await fetch(`${API_URL}/api/stores/${storeId}/logs`)

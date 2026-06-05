@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 
 const c = {
   g: '#5A8A67', g2: '#78A885', gpale: '#EDF3EE',
@@ -60,12 +61,259 @@ function PageNav() {
   )
 }
 
+// ─── Shopify Connect Mock Demo ───────────────────────────────────────────────
+function ShopifyConnectDemo({ c }) {
+  const [url, setUrl] = useState('')
+  const [status, setStatus] = useState('idle')
+
+  const handleConnect = (e) => {
+    e.preventDefault()
+    if (!url.trim()) return
+    setStatus('connecting')
+    setTimeout(() => {
+      setStatus('connected')
+    }, 1500)
+  }
+
+  const handleReset = () => {
+    setUrl('')
+    setStatus('idle')
+  }
+
+  return (
+    <div style={{ background: '#fff', border: `1px solid ${c.border}`, borderRadius: 16, padding: '1.8rem', boxShadow: '0 8px 30px rgba(90,138,103,.04)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '1.2rem' }}>
+        <span style={{ fontSize: '1.8rem' }}>🛍️</span>
+        <div style={{ textAlign: 'left' }}>
+          <div style={{ fontSize: '.88rem', fontWeight: 600, color: c.dark }}>Shopify Integration</div>
+          <div style={{ fontSize: '.72rem', color: c.muted }}>Link your store in one click</div>
+        </div>
+      </div>
+
+      {status === 'idle' && (
+        <form onSubmit={handleConnect} style={{ display: 'flex', flexDirection: 'column', gap: '.8rem' }}>
+          <input 
+            type="text" 
+            placeholder="your-store.myshopify.com" 
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            style={{
+              width: '100%', padding: '.7rem .9rem', borderRadius: 8, border: `1px solid ${c.border}`,
+              fontSize: '.82rem', fontFamily: 'Inter,sans-serif', outline: 'none', background: '#FAFAF8',
+              color: c.dark, boxSizing: 'border-box'
+            }}
+            required
+          />
+          <button 
+            type="submit"
+            style={{
+              background: c.g, color: '#fff', border: 'none', borderRadius: 8, padding: '.7rem',
+              fontSize: '.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif',
+              boxShadow: '0 4px 14px rgba(90,138,103,.2)', transition: 'all .2s'
+            }}
+          >
+            Connect Store
+          </button>
+        </form>
+      )}
+
+      {status === 'connecting' && (
+        <div style={{ textAlign: 'center', padding: '1.2rem 0' }}>
+          <div style={{
+            width: 24, height: 24, border: `2px solid ${c.gpale}`, borderTop: `2px solid ${c.g}`,
+            borderRadius: '50%', margin: '0 auto .8rem', animation: 'spin .8s linear infinite'
+          }} />
+          <p style={{ fontSize: '.8rem', color: c.muted, fontWeight: 300 }}>Syncing product catalog...</p>
+        </div>
+      )}
+
+      {status === 'connected' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeUp 0.4s ease both' }}>
+          <div style={{ background: c.gpale, border: `1px solid #BBF7D0`, borderRadius: 8, padding: '.8rem 1rem', display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+            <span style={{ color: c.g, fontSize: '1.1rem', fontWeight: 'bold' }}>✓</span>
+            <div style={{ fontSize: '.78rem', color: c.dark, fontWeight: 500, textAlign: 'left' }}>
+              Connected to <span style={{ fontWeight: 600 }}>{url}</span>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
+            <div style={{ background: c.bg2, borderRadius: 8, padding: '.6rem', textAlign: 'center', border: `1px solid ${c.border}` }}>
+              <div style={{ fontSize: '1rem', fontWeight: 600, color: c.dark }}>247</div>
+              <div style={{ fontSize: '.6rem', color: c.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Products Synced</div>
+            </div>
+            <div style={{ background: c.bg2, borderRadius: 8, padding: '.6rem', textAlign: 'center', border: `1px solid ${c.border}` }}>
+              <div style={{ fontSize: '1rem', fontWeight: 600, color: c.dark }}>Ready</div>
+              <div style={{ fontSize: '.6rem', color: c.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>Agent Status</div>
+            </div>
+          </div>
+          <button 
+            onClick={handleReset}
+            style={{
+              background: 'transparent', color: c.muted, border: 'none', fontSize: '.72rem',
+              cursor: 'pointer', textDecoration: 'underline', fontFamily: 'Inter,sans-serif', alignSelf: 'center'
+            }}
+          >
+            Disconnect store
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Goals Setup Mock Demo ───────────────────────────────────────────────────
+const GOALS_LIST = [
+  { id: 'rev', label: 'Maximize Total Revenue', icon: '📈', desc: 'Prioritizes sales volume and store traffic.' },
+  { id: 'margin', label: 'Improve Profit Margins', icon: '💰', desc: 'Focuses on higher margins and price optimization.' },
+  { id: 'inv', label: 'Clear Slow Inventory', icon: '📦', desc: 'Reduces prices of slow-moving items to clear space.' },
+  { id: 'ad', label: 'Optimize Ad Budget', icon: '📣', desc: 'Reallocates ad dollars away from failing items.' }
+]
+
+function GoalsSetupDemo({ c }) {
+  const [selected, setSelected] = useState(['rev', 'margin'])
+
+  const toggleGoal = (id) => {
+    setSelected(prev => 
+      prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]
+    )
+  }
+
+  return (
+    <div style={{ background: '#fff', border: `1px solid ${c.border}`, borderRadius: 16, padding: '1.6rem', boxShadow: '0 8px 30px rgba(90,138,103,.04)' }}>
+      <div style={{ fontSize: '.88rem', fontWeight: 600, color: c.dark, marginBottom: '.3rem', textAlign: 'left' }}>Tailor Agent Objectives</div>
+      <div style={{ fontSize: '.72rem', color: c.muted, marginBottom: '1rem', textAlign: 'left' }}>Toggle goals to customize Selora's nightly algorithms</div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', marginBottom: '1.2rem' }}>
+        {GOALS_LIST.map(g => {
+          const isActive = selected.includes(g.id)
+          return (
+            <div 
+              key={g.id}
+              onClick={() => toggleGoal(g.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '.7rem', padding: '.7rem 1rem',
+                borderRadius: 10, border: `1px solid ${isActive ? c.g : c.border}`,
+                background: isActive ? c.gpale : '#FAFAF8', cursor: 'pointer',
+                transition: 'all .2s ease-in-out'
+              }}
+            >
+              <span style={{ fontSize: '1.1rem' }}>{g.icon}</span>
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div style={{ fontSize: '.78rem', fontWeight: 600, color: c.dark }}>{g.label}</div>
+                <div style={{ fontSize: '.62rem', color: c.muted, fontWeight: 300 }}>{g.desc}</div>
+              </div>
+              <div style={{
+                width: 16, height: 16, borderRadius: 4, border: `1px solid ${isActive ? c.g : c.border}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: isActive ? c.g : '#fff', color: '#fff', fontSize: '.6rem', fontWeight: 'bold'
+              }}>
+                {isActive && '✓'}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div style={{ background: c.bg2, borderRadius: 8, padding: '.6rem .8rem', border: `1px solid ${c.border}`, fontSize: '.72rem', color: c.text, display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+        <span style={{ color: c.g }}>⚡</span>
+        <span style={{ textAlign: 'left' }}>Selora will deploy <span style={{ fontWeight: 600, color: c.g }}>{selected.length} strategies</span> overnight.</span>
+      </div>
+    </div>
+  )
+}
+
+// ─── Morning Report Mock Demo ─────────────────────────────────────────────────
+const MOCK_ACTIONS = [
+  { id: 1, action: 'Repriced Silk Wrap Dress to $89', reason: 'Summer seasonal demand surge', active: true },
+  { id: 2, action: 'Updated Floral Maxi description', reason: 'Occasion terms: wedding guest', active: true },
+  { id: 3, action: 'Shifted $20 ad budget to Linen Shorts', reason: 'High converting, low stockout risk', active: true }
+]
+
+function MorningReportDemo({ c }) {
+  const [actions, setActions] = useState(MOCK_ACTIONS)
+
+  const toggleAction = (id) => {
+    setActions(prev => 
+      prev.map(a => a.id === id ? { ...a, active: !a.active } : a)
+    )
+  }
+
+  const activeCount = actions.filter(a => a.active).length
+
+  return (
+    <div style={{ background: '#fff', border: `1px solid ${c.border}`, borderRadius: 16, padding: '1.6rem', boxShadow: '0 8px 30px rgba(90,138,103,.04)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+        <div style={{ textAlign: 'left' }}>
+          <div style={{ fontSize: '.88rem', fontWeight: 600, color: c.dark }}>Overnight Growth Log</div>
+          <div style={{ fontSize: '.72rem', color: c.muted }}>Review and approve actions</div>
+        </div>
+        <div style={{ background: c.gpale, color: c.g, fontSize: '.68rem', padding: '.25rem .6rem', borderRadius: 20, fontWeight: 700 }}>
+          {activeCount} Actions
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', marginBottom: '1rem' }}>
+        {actions.map(act => (
+          <div 
+            key={act.id}
+            style={{
+              padding: '.7rem .9rem', borderRadius: 10, border: `1px solid ${c.border}`,
+              background: act.active ? '#fff' : '#FAFAF8',
+              opacity: act.active ? 1 : 0.65,
+              transition: 'all .25s ease',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.5rem'
+            }}
+          >
+            <div style={{ textAlign: 'left', flex: 1 }}>
+              <div style={{ fontSize: '.78rem', fontWeight: 600, color: act.active ? c.dark : c.muted, textDecoration: act.active ? 'none' : 'line-through' }}>
+                {act.action}
+              </div>
+              <div style={{ fontSize: '.62rem', color: c.muted, marginTop: '.1rem' }}>
+                💡 {act.reason}
+              </div>
+            </div>
+            <button
+              onClick={() => toggleAction(act.id)}
+              style={{
+                border: `1px solid ${act.active ? '#FCA5A5' : c.border}`,
+                background: act.active ? '#FEF2F2' : '#F3F4F6',
+                color: act.active ? '#EF4444' : c.dark,
+                borderRadius: 6, padding: '.3rem .6rem', fontSize: '.68rem',
+                fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif',
+                transition: 'all .2s'
+              }}
+            >
+              {act.active ? 'Undo' : 'Approve'}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: '.6rem', borderTop: `1px solid ${c.border}`, paddingTop: '1rem' }}>
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: '1rem', fontWeight: 600, color: c.dark }}>+18%</div>
+          <div style={{ fontSize: '.58rem', color: c.muted, textTransform: 'uppercase' }}>Daily Revenue</div>
+        </div>
+        <div style={{ width: 1, background: c.border }} />
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: '1rem', fontWeight: 600, color: c.dark }}>$4.8K</div>
+          <div style={{ fontSize: '.58rem', color: c.muted, textTransform: 'uppercase' }}>Sales Generated</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
 export default function HowItWorksPage() {
   return (
     <>
       <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
         @media (max-width: 900px) {
-          .hiw-grid { grid-template-columns:1fr !important; }
+          .hiw-grid { grid-template-columns:1fr !important; gap: 2rem !important; }
         }
       `}</style>
       <PageNav />
@@ -83,8 +331,8 @@ export default function HowItWorksPage() {
 
         {/* STEPS — detailed */}
         {STEPS.map((step, i) => (
-          <div key={step.num} style={{borderTop:`1px solid ${c.border}`,background: i % 2 === 0 ? '#fff' : c.bg2}}>
-            <div className="hiw-grid" style={{maxWidth:1160,margin:'0 auto',padding:'3.5rem 4rem',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'5rem',alignItems:'center',direction: i % 2 === 0 ? 'ltr' : 'rtl'}}>
+          <div key={step.num} style={{borderTop: i === 0 ? 'none' : `1px solid ${c.border}`, background: i % 2 === 0 ? '#fff' : c.bg2}}>
+            <div className="hiw-grid" style={{maxWidth:1160,margin:'0 auto',padding: i === 0 ? '1rem 4rem 3.5rem 4rem' : '3.5rem 4rem',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'5rem',alignItems:'center',direction: i % 2 === 0 ? 'ltr' : 'rtl'}}>
               
               {/* Text side */}
               <div style={{direction:'ltr'}}>
@@ -98,24 +346,11 @@ export default function HowItWorksPage() {
                 </Link>
               </div>
 
-              {/* Visual side */}
-              <div style={{direction:'ltr',background:c.bg,border:`1px solid ${c.border}`,borderRadius:18,padding:'2.5rem',boxShadow:'0 12px 40px rgba(90,138,103,.07)'}}>
-                <div style={{fontSize:'3.5rem',textAlign:'center',marginBottom:'1.2rem'}}>{step.icon}</div>
-                <div style={{textAlign:'center'}}>
-                  <div style={{fontFamily:'Fraunces,serif',fontSize:'1.3rem',fontWeight:500,color:c.dark,marginBottom:'.5rem'}}>{step.title}</div>
-                  <p style={{fontSize:'.82rem',color:c.muted,lineHeight:1.7,fontWeight:300}}>{step.desc}</p>
-                </div>
-                <div style={{marginTop:'1.5rem',background:'#fff',borderRadius:10,padding:'1rem',border:`1px solid ${c.border}`}}>
-                  <div style={{display:'flex',alignItems:'center',gap:'.4rem',marginBottom:'.6rem'}}>
-                    <div style={{width:6,height:6,borderRadius:'50%',background:c.g}} />
-                    <span style={{fontSize:'.65rem',fontWeight:600,color:c.muted,textTransform:'uppercase',letterSpacing:'.06em'}}>
-                      {i === 0 ? 'Connection Status' : i === 1 ? 'Goal Configuration' : 'Morning Report'}
-                    </span>
-                  </div>
-                  <div style={{fontSize:'.78rem',color:c.text,fontWeight:500}}>
-                    {i === 0 ? '✓ Store connected · 247 products synced' : i === 1 ? '✓ Revenue growth + margin optimization' : '✓ 4 actions taken · $4,821 revenue'}
-                  </div>
-                </div>
+              {/* Visual side (Interactive Mockups) */}
+              <div style={{direction:'ltr', width: '100%', maxWidth: 440, margin: '0 auto'}}>
+                {i === 0 && <ShopifyConnectDemo c={c} />}
+                {i === 1 && <GoalsSetupDemo c={c} />}
+                {i === 2 && <MorningReportDemo c={c} />}
               </div>
             </div>
           </div>

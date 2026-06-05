@@ -190,6 +190,20 @@ def get_store_by_id(store_id: str) -> dict:
     return result.data[0] if result.data else None
 
 
+def get_store_by_url(shop_url: str) -> dict:
+    """Get a single store by its shop URL domain."""
+    if not shop_url:
+        return None
+    # Strip protocol prefix if present
+    if "://" in shop_url:
+        shop_url = shop_url.split("://")[-1]
+    # Strip trailing slashes
+    shop_url = shop_url.rstrip("/")
+
+    result = db().table("stores").select("*").eq("shop_url", shop_url).execute()
+    return result.data[0] if result.data else None
+
+
 def update_store_last_synced(store_id: str):
     """Update the last_synced_at timestamp for a store."""
     from datetime import datetime, timezone

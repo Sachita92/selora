@@ -53,6 +53,8 @@ def build_install_url(shop: str) -> str:
     return url, state
 
 
+import base64
+
 def verify_hmac(params: dict, hmac_value: str) -> bool:
     """
     Verify that the callback came from Shopify (not a fake request).
@@ -69,6 +71,27 @@ def verify_hmac(params: dict, hmac_value: str) -> bool:
     ).hexdigest()
 
     return hmac.compare_digest(digest, hmac_value)
+
+
+def verify_webhook_hmac(raw_body: bytes, hmac_header: str) -> bool:
+    """
+    Verify that a webhook request came from Shopify.
+    Shopify hashes the raw request body with our API secret and base64 encodes it.
+    """
+    if not hmac_header:
+        return False
+    webhook_secret = os.getenv("SHOPIFY_WEBHOOK_SECRET") or SHOPIFY_API_SECRET
+    if not webhook_secret:
+        return False
+
+    digest = hmac.new(
+        webhook_secret.encode("utf-8"),
+        raw_body,
+        hashlib.sha256,
+    ).digest()
+
+    calculated_hmac = base64.b64encode(digest).decode("utf-8")
+    return hmac.compare_digest(calculated_hmac, hmac_header)
 
 
 def exchange_code_for_token(shop: str, code: str) -> str:

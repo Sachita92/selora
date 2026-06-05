@@ -49,6 +49,16 @@ export default function Products() {
     })
   }, [])
 
+  useEffect(() => {
+    const handleActionTaken = (e) => {
+      if (activeStore && e.detail?.storeId === activeStore.id) {
+        fetchProducts(activeStore.id)
+      }
+    }
+    window.addEventListener('selora-action-taken', handleActionTaken)
+    return () => window.removeEventListener('selora-action-taken', handleActionTaken)
+  }, [activeStore])
+
   const fetchStores = async (email) => {
     try {
       const res  = await fetch(`${API_URL}/api/stores?email=${encodeURIComponent(email)}`)

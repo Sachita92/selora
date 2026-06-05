@@ -338,7 +338,7 @@ def chat_with_agent(store_id: str, body: ChatRequest):
         )
         snapshot = adapter.get_store_snapshot()
         products_summary = "\n".join([
-            f"  • {p.title} — ${p.price}, {p.inventory} in stock, "
+            f"  • {p.title} (ID: {p.id}) — ${p.price}, {p.inventory} in stock, "
             f"{p.sales_last_30_days} sold (30d), ${p.revenue_last_30_days:.2f} revenue"
             for p in snapshot.products[:20]
         ])
@@ -758,6 +758,67 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
     return {"status": "success"}
 
 
+# ─── Shopify Webhooks ────────────────────────────────────────────────────────
+
+@app.post("/api/webhooks/shopify/product-update")
+async def shopify_product_update(
+    request: Request,
+    background_tasks: BackgroundTasks
+):
+    """Shopify webhook triggered when a product is updated."""
+    return await process_shopify_webhook(request, background_tasks, topic="products/update")
+
+
+@app.post("/api/webhooks/shopify/order-create")
+async def shopify_order_create(
+    request: Request,
+    background_tasks: BackgroundTasks
+):
+    """Shopify webhook triggered when a new order is created."""
+    return await process_shopify_webhook(request, background_tasks, topic="orders/create")
+
+
+async def process_shopify_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    topic: str
+) -> JSONResponse:
+    """Helper to process Shopify webhooks with signature verification."""
+    from auth import verify_webhook_hmac
+    from database import get_store_by_url
+
+    # Retrieve raw body and headers
+    raw_body = await request.body()
+    hmac_header = request.headers.get("x-shopify-hmac-sha256")
+    shop_domain = request.headers.get("x-shopify-shop-domain")
+
+    # Verify Shopify HMAC signature
+    if not verify_webhook_hmac(raw_body, hmac_header):
+        print(f"⚠️ Shopify webhook HMAC verification failed for topic: {topic}")
+        raise HTTPException(status_code=401, detail="Webhook signature verification failed")
+
+    if not shop_domain:
+        print(f"⚠️ Shopify webhook missing x-shopify-shop-domain header")
+        raise HTTPException(status_code=400, detail="Missing shop domain header")
+
+    # Look up store in database
+    store = get_store_by_url(shop_domain)
+    if not store:
+        # Return 200 to prevent Shopify from retrying and eventually disabling the webhook
+        print(f"ℹ️ Received webhook for unregistered shop: {shop_domain}. Ignoring.")
+        return JSONResponse(
+            status_code=200,
+            content={"status": "ignored", "reason": f"Shop {shop_domain} not registered"}
+        )
+
+    # Trigger agent run loop asynchronously in the background
+    background_tasks.add_task(_run_agent_task, store, False)
+    print(f"✅ Scheduled background agent run for store: {store['shop_name']} ({shop_domain}) via webhook '{topic}'")
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "message": f"Agent task scheduled for {shop_domain}"}
+    )
 
 
 # ─── Agent Scheduler ─────────────────────────────────────────────────────────

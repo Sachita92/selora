@@ -20,7 +20,7 @@ def get_tools_definition() -> list:
                     "properties": {
                         "product_id": {
                             "type": "string",
-                            "description": "The product ID to reprice",
+                            "description": "The unique numerical product ID (e.g., '9243184750834') from the store context. Do NOT use the product title/name.",
                         },
                         "new_price": {
                             "type": "number",
@@ -53,7 +53,7 @@ def get_tools_definition() -> list:
                     "properties": {
                         "product_id": {
                             "type": "string",
-                            "description": "The product ID to optimize",
+                            "description": "The unique numerical product ID (e.g., '9243184750834') to optimize. Do NOT use the product title/name.",
                         },
                         "new_title": {
                             "type": "string",
@@ -89,7 +89,7 @@ def get_tools_definition() -> list:
                     "properties": {
                         "product_id": {
                             "type": "string",
-                            "description": "The product ID that needs restocking",
+                            "description": "The unique numerical product ID (e.g., '9243184750834') that needs restocking. Do NOT use the product title/name.",
                         },
                         "current_inventory": {
                             "type": "integer",

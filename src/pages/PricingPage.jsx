@@ -1,11 +1,14 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
+import { useAppContext } from '../lib/AppContext'
 
 const c = {
   g: '#5A8A67', g2: '#78A885', gpale: '#EDF3EE',
   bg: '#F8FAF8', bg2: '#F1F5F1',
   border: '#E4EBE5', dark: '#1A271C', text: '#2E3D30', muted: '#7B907D',
 }
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const PLANS = [
   {
@@ -88,8 +91,50 @@ function PageNav() {
 }
 
 export default function PricingPage() {
+  const navigate = useNavigate()
+  const { user } = useAppContext()
   const [billingPeriod, setBillingPeriod] = useState('monthly') // 'monthly' or 'annual'
   const [activeFaq, setActiveFaq] = useState(null)
+  const [checkoutLoading, setCheckoutLoading] = useState(null)
+
+  const handlePlanSelect = async (planSlug) => {
+    if (planSlug === 'free') {
+      if (user) {
+        navigate('/dashboard')
+      } else {
+        navigate('/signup')
+      }
+      return
+    }
+
+    if (user) {
+      setCheckoutLoading(planSlug)
+      try {
+        const res = await fetch(`${API_URL}/api/billing/create-checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: user.id,
+            email: user.email,
+            plan: planSlug
+          })
+        })
+        const data = await res.json()
+        if (data.url) {
+          window.location.href = data.url
+        } else {
+          alert(data.detail || 'Checkout session creation failed')
+          setCheckoutLoading(null)
+        }
+      } catch (e) {
+        console.error(e)
+        alert('Failed to launch checkout session')
+        setCheckoutLoading(null)
+      }
+    } else {
+      navigate(`/signup?plan=${planSlug}`)
+    }
+  }
 
   return (
     <>
@@ -195,20 +240,22 @@ export default function PricingPage() {
                     ))}
                   </ul>
                   
-                  <Link 
-                    to="/signup" 
+                  <button 
+                    onClick={() => handlePlanSelect(plan.slug)}
+                    disabled={checkoutLoading !== null}
                     style={{
                       display: 'block', width: '100%', padding: '.8rem', borderRadius: 8,
-                      fontWeight: 600, fontSize: '.85rem', cursor: 'pointer', fontFamily: 'Inter,sans-serif',
-                      textAlign: 'center', textDecoration: 'none', transition: 'all .25s',
+                      fontWeight: 600, fontSize: '.85rem', cursor: checkoutLoading !== null ? 'not-allowed' : 'pointer', 
+                      fontFamily: 'Inter,sans-serif', textAlign: 'center', transition: 'all .25s',
                       background: plan.feat ? c.g : 'transparent',
                       color: plan.feat ? '#fff' : c.dark,
                       border: plan.feat ? `1px solid ${c.g}` : `1px solid ${c.border}`,
-                      boxShadow: plan.feat ? '0 4px 18px rgba(90,138,103,.25)' : 'none'
+                      boxShadow: plan.feat ? '0 4px 18px rgba(90,138,103,.25)' : 'none',
+                      outline: 'none', opacity: checkoutLoading !== null ? 0.7 : 1
                     }}
                   >
-                    {plan.cta}
-                  </Link>
+                    {checkoutLoading === plan.slug ? 'Redirecting...' : plan.cta}
+                  </button>
                 </div>
               )
             })}

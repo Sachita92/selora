@@ -165,11 +165,50 @@ class ShopifyAdapter(BaseAdapter):
             recent_orders=universal_orders,
         )
 
+    def _resolve_product_id(self, product_id: str) -> str:
+        """
+        If product_id is not a numeric string (e.g. if the AI passed the title instead of the ID),
+        attempt to find the product in the active store products and return its numeric ID.
+        """
+        product_id_str = str(product_id).strip()
+        if product_id_str.isdigit():
+            return product_id_str
+
+        # Try to extract a long number (Shopify ID) from the string
+        import re
+        match = re.search(r'\b\d{10,}\b', product_id_str)
+        if match:
+            extracted_id = match.group(0)
+            print(f"   [OK] Extracted numerical ID {extracted_id} from '{product_id_str}'")
+            return extracted_id
+
+        print(f"[WARNING] Product ID '{product_id_str}' is not numeric. Attempting to resolve by title...")
+        try:
+            products = self._get_products()
+            # Try exact match first
+            for p in products:
+                if str(p.get("title")).lower() == product_id_str.lower():
+                    print(f"   [OK] Resolved '{product_id_str}' to ID {p['id']} via exact match")
+                    return str(p["id"])
+            
+            # Try substring match
+            for p in products:
+                title = str(p.get("title")).lower()
+                pid_lower = product_id_str.lower()
+                if pid_lower in title or title in pid_lower:
+                    print(f"   [OK] Resolved '{product_id_str}' to ID {p['id']} via partial match")
+                    return str(p["id"])
+        except Exception as e:
+            print(f"   [ERROR] Failed to resolve product ID by title: {e}")
+            
+        return product_id_str
+
     def reprice_product(self, product_id: str, new_price: float) -> bool:
         """
         Change the price of all variants of a product.
         Returns True if successful.
         """
+        product_id = self._resolve_product_id(product_id)
         try:
             # Get current variants
             data = self._get(f"products/{product_id}.json")
@@ -201,6 +240,7 @@ class ShopifyAdapter(BaseAdapter):
         Update a product's title and/or description.
         Returns True if successful.
         """
+        product_id = self._resolve_product_id(product_id)
         try:
             update_data = {"id": product_id}
             if title:
