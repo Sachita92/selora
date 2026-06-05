@@ -1,6 +1,7 @@
 import os
 import requests
 from datetime import datetime, timedelta
+from typing import Optional
 from dotenv import load_dotenv
 from adapters.base import (
     BaseAdapter,
@@ -137,6 +138,13 @@ class ShopifyAdapter(BaseAdapter):
             # Calculate sales stats
             stats = self._calculate_product_stats(product["id"], raw_orders)
 
+            # Extract product image URL
+            image_url = None
+            if product.get("image"):
+                image_url = product.get("image").get("src")
+            elif product.get("images") and len(product.get("images")) > 0:
+                image_url = product.get("images")[0].get("src")
+
             universal_products.append(UniversalProduct(
                 id=str(product["id"]),
                 title=product.get("title", ""),
@@ -149,6 +157,7 @@ class ShopifyAdapter(BaseAdapter):
                 conversion_rate=0.0,   # needs analytics API — placeholder for now
                 views_last_30_days=0,  # needs analytics API — placeholder for now
                 platform="shopify",
+                image_url=image_url,
                 raw=product,
             ))
 
@@ -254,4 +263,58 @@ class ShopifyAdapter(BaseAdapter):
 
         except Exception as e:
             print(f"   ✗ Failed to update listing for product {product_id}: {e}")
+            return False
+
+    def add_product(self, title: str, price: float, description: str = "", inventory: int = 10, image_url: Optional[str] = None) -> bool:
+        """
+        Add a new product to the Shopify store.
+        Returns True if successful.
+        """
+        try:
+            url = f"{self.base_url}/products.json"
+            
+            # Prepare variants list
+            variant = {
+                "price": str(round(price, 2)),
+                "inventory_quantity": inventory,
+                "inventory_management": "shopify"
+            }
+            
+            product_data = {
+                "title": title,
+                "body_html": description,
+                "status": "active",
+                "variants": [variant]
+            }
+            
+            if image_url:
+                product_data["images"] = [{"src": image_url}]
+                
+            response = requests.post(
+                url, 
+                headers=self.headers, 
+                json={"product": product_data}
+            )
+            response.raise_for_status()
+            new_prod = response.json().get("product", {})
+            print(f"   ✓ Added new product '{title}' to Shopify (ID: {new_prod.get('id')})")
+            return True
+        except Exception as e:
+            print(f"   ✗ Failed to add product '{title}': {e}")
+            return False
+
+    def delete_product(self, product_id: str) -> bool:
+        """
+        Delete a product from the Shopify store.
+        Returns True if successful.
+        """
+        product_id = self._resolve_product_id(product_id)
+        try:
+            url = f"{self.base_url}/products/{product_id}.json"
+            response = requests.delete(url, headers=self.headers)
+            response.raise_for_status()
+            print(f"   ✓ Deleted product {product_id} from Shopify")
+            return True
+        except Exception as e:
+            print(f"   ✗ Failed to delete product {product_id}: {e}")
             return False

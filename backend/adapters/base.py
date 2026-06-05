@@ -15,7 +15,8 @@ class UniversalProduct:
     revenue_last_30_days: float
     conversion_rate: float              # % of visitors who buy
     views_last_30_days: int
-    platform: str                       # "shopify", "amazon", "ebay" etc.
+    platform: str
+    image_url: Optional[str] = None
     raw: dict = field(default_factory=dict)  # original platform data
 
     def to_dict(self):
@@ -31,6 +32,7 @@ class UniversalProduct:
             "conversion_rate": self.conversion_rate,
             "views_last_30_days": self.views_last_30_days,
             "platform": self.platform,
+            "image_url": self.image_url,
         }
 
 
@@ -117,4 +119,12 @@ class BaseAdapter:
 
     def get_platform_name(self) -> str:
         """Return the platform name e.g. 'shopify'."""
+        raise NotImplementedError
+
+    def add_product(self, title: str, price: float, description: str = "", inventory: int = 10, image_url: Optional[str] = None) -> bool:
+        """Add a new product to the store. Returns True if successful."""
+        raise NotImplementedError
+
+    def delete_product(self, product_id: str) -> bool:
+        """Delete a product from the store. Returns True if successful."""
         raise NotImplementedError

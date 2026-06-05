@@ -143,6 +143,64 @@ def get_tools_definition() -> list:
                 },
             },
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "add_product",
+                "description": (
+                    "Add a new product/clothing item to the store catalog. "
+                    "Use when the user requests to create or list a new item. "
+                    "Always ask for the product title and price if not specified."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "description": "The name or title of the new product (e.g., 'Classic Fit Denim Pant')",
+                        },
+                        "price": {
+                            "type": "number",
+                            "description": "The sale price of the new product (e.g., 39.99)",
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": "A detailed product description, highlighting features and styling options",
+                        },
+                        "inventory": {
+                            "type": "integer",
+                            "description": "Initial stock quantity to set (default is 10)",
+                        },
+                        "image_url": {
+                            "type": "string",
+                            "description": "Optional URL of the product image asset",
+                        },
+                    },
+                    "required": ["title", "price"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "delete_product",
+                "description": (
+                    "Delete or remove a product from the store catalog. "
+                    "Use when the user requests to delete, remove, or throw away a product listing. "
+                    "Always ask for the product title or ID to identify what to delete."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "product_id": {
+                            "type": "string",
+                            "description": "The unique product ID (e.g., '9243184750834') or the exact product title to delete.",
+                        },
+                    },
+                    "required": ["product_id"],
+                },
+            },
+        },
     ]
 
 
@@ -234,6 +292,33 @@ def execute_tool(
             print(f"   • {action}")
         print(f"{'='*50}\n")
         return {"success": True, "tool": tool_name, "report": tool_args}
+
+    # ── add_product ───────────────────────────────────────────────────────────
+    elif tool_name == "add_product":
+        success = adapter.add_product(
+            title=tool_args["title"],
+            price=float(tool_args["price"]),
+            description=tool_args.get("description", ""),
+            inventory=int(tool_args.get("inventory", 10)),
+            image_url=tool_args.get("image_url"),
+        )
+        return {
+            "success": success,
+            "tool": tool_name,
+            "title": tool_args["title"],
+            "price": float(tool_args["price"]),
+        }
+
+    # ── delete_product ────────────────────────────────────────────────────────
+    elif tool_name == "delete_product":
+        success = adapter.delete_product(
+            product_id=str(tool_args["product_id"])
+        )
+        return {
+            "success": success,
+            "tool": tool_name,
+            "product_id": tool_args["product_id"],
+        }
 
     else:
         print(f"   ✗ Unknown tool: {tool_name}")
