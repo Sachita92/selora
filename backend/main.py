@@ -612,22 +612,26 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_mock")
 
 # Setup plan lookup mapping
 PLAN_PRICE_MAP = {
-    "growth": os.getenv("STRIPE_PRICE_GROWTH", "price_growth_mock"),
-    "scale": os.getenv("STRIPE_PRICE_SCALE", "price_scale_mock"),
+    "growth_monthly": os.getenv("STRIPE_PRICE_GROWTH", "price_growth_mock"),
+    "growth_annual": os.getenv("STRIPE_PRICE_GROWTH_YEARLY", "price_growth_yearly_mock"),
+    "scale_monthly": os.getenv("STRIPE_PRICE_SCALE", "price_scale_mock"),
+    "scale_annual": os.getenv("STRIPE_PRICE_SCALE_YEARLY", "price_scale_yearly_mock"),
 }
 
 class CheckoutRequest(BaseModel):
     user_id: str
     email: str
     plan: str  # 'growth' or 'scale'
+    billing_period: str = "monthly"  # 'monthly' or 'annual'
 
 @app.post("/api/billing/create-checkout")
 def create_checkout_session(body: CheckoutRequest):
     """Create a Stripe checkout session for a customer."""
-    if body.plan not in PLAN_PRICE_MAP:
-        raise HTTPException(status_code=400, detail="Invalid plan selection")
+    plan_key = f"{body.plan}_{body.billing_period}"
+    if plan_key not in PLAN_PRICE_MAP:
+        raise HTTPException(status_code=400, detail="Invalid plan or billing period selection")
 
-    price_id = PLAN_PRICE_MAP[body.plan]
+    price_id = PLAN_PRICE_MAP[plan_key]
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
     try:
@@ -639,17 +643,17 @@ def create_checkout_session(body: CheckoutRequest):
         checkout_session = stripe.checkout.Session.create(
             customer=customer_id,
             customer_email=body.email if not customer_id else None,
-            payment_method_types=["card"],
+            ui_mode="embedded_page",
             line_items=[{"price": price_id, "quantity": 1}],
             mode="subscription",
-            success_url=f"{frontend_url}/dashboard?session_id={{CHECKOUT_SESSION_ID}}&billing_status=success",
-            cancel_url=f"{frontend_url}/dashboard?billing_status=cancel",
+            return_url=f"{frontend_url}/dashboard?session_id={{CHECKOUT_SESSION_ID}}&billing_status=success",
             metadata={
                 "user_id": body.user_id,
                 "plan": body.plan,
+                "billing_period": body.billing_period,
             }
         )
-        return {"url": checkout_session.url}
+        return {"clientSecret": checkout_session.client_secret}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Stripe session error: {str(e)}")
 
@@ -679,6 +683,19 @@ def create_portal_session(body: dict):
         raise HTTPException(status_code=500, detail=f"Portal error: {str(e)}")
 
 
+@app.get("/api/billing/history")
+def get_billing_history(email: str = Query(..., description="User email")):
+    """Get billing history (events) for a user."""
+    from database import get_or_create_user, db
+    try:
+        user = get_or_create_user(email)
+        client = db()
+        res = client.table("billing_events").select("*").eq("user_id", user["id"]).order("created_at", desc=True).execute()
+        return {"history": res.data or []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch billing history: {str(e)}")
+
+
 @app.post("/api/billing/webhook")
 async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
     """Stripe webhook to handle subscription updates in real-time."""
@@ -698,6 +715,10 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
 
     event_type = event["type"]
     event_data = event["data"]["object"]
+    if hasattr(event_data, "to_dict"):
+        event_data = event_data.to_dict()
+    else:
+        event_data = dict(event_data)
 
     from database import update_user_subscription, update_user_subscription_by_stripe_id, save_billing_event
 
@@ -711,8 +732,16 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
         if user_id and plan:
             # Fetch subscription expiration dates
             sub = stripe.Subscription.retrieve(subscription_id)
-            from datetime import datetime, timezone
-            period_end = datetime.fromtimestamp(sub.current_period_end, tz=timezone.utc).isoformat()
+            sub_dict = sub.to_dict() if hasattr(sub, "to_dict") else dict(sub)
+            current_period_end_timestamp = sub_dict.get("current_period_end")
+            
+            from datetime import datetime, timezone, timedelta
+            if current_period_end_timestamp:
+                period_end = datetime.fromtimestamp(current_period_end_timestamp, tz=timezone.utc).isoformat()
+            else:
+                billing_period = metadata.get("billing_period", "monthly")
+                days = 365 if billing_period == "annual" else 30
+                period_end = (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
             
             update_user_subscription(
                 user_id=user_id,
@@ -745,13 +774,17 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
             if items:
                 price_id = items[0].get("price", {}).get("id")
                 # Reverse lookup the plan type from price ids
-                for plan_name, pid in PLAN_PRICE_MAP.items():
+                for plan_key, pid in PLAN_PRICE_MAP.items():
                     if pid == price_id:
-                        plan = plan_name
+                        plan = plan_key.split("_")[0]
                         break
 
-        from datetime import datetime, timezone
-        period_end = datetime.fromtimestamp(event_data.get("current_period_end"), tz=timezone.utc).isoformat()
+        from datetime import datetime, timezone, timedelta
+        current_period_end_timestamp = event_data.get("current_period_end")
+        if current_period_end_timestamp:
+            period_end = datetime.fromtimestamp(current_period_end_timestamp, tz=timezone.utc).isoformat()
+        else:
+            period_end = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
 
         # Update in database using Stripe ID
         updated = update_user_subscription_by_stripe_id(

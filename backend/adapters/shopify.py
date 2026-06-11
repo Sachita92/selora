@@ -77,7 +77,7 @@ class ShopifyAdapter(BaseAdapter):
             return data.get("orders", [])
         except requests.exceptions.HTTPError as e:
             if e.response is not None and e.response.status_code == 403:
-                print("   ⚠️  Orders API: 403 Forbidden (Protected Customer Data scope not granted). Skipping order stats.")
+                print("   [WARNING] Orders API: 403 Forbidden (Protected Customer Data scope not granted). Skipping order stats.")
                 return []
             raise
 
@@ -102,14 +102,14 @@ class ShopifyAdapter(BaseAdapter):
         Fetch everything from Shopify and return as a StoreSnapshot.
         This is what the AI agent sees.
         """
-        print("📦 Fetching store data from Shopify...")
+        print("[Shopify] Fetching store data from Shopify...")
 
         shop_info = self._get_shop_info()
         raw_products = self._get_products()
         raw_orders   = self._get_orders(days=30)   # returns [] on 403 — never crashes
 
-        print(f"   ✓ Found {len(raw_products)} products")
-        print(f"   ✓ Found {len(raw_orders)} orders in last 30 days")
+        print(f"   [OK] Found {len(raw_products)} products")
+        print(f"   [OK] Found {len(raw_orders)} orders in last 30 days")
 
         # Convert orders to universal format
         universal_orders = []
@@ -237,11 +237,11 @@ class ShopifyAdapter(BaseAdapter):
                 }
             })
 
-            print(f"   ✓ Repriced product {product_id} to ${new_price}")
+            print(f"   [OK] Repriced product {product_id} to ${new_price}")
             return True
 
         except Exception as e:
-            print(f"   ✗ Failed to reprice product {product_id}: {e}")
+            print(f"   [ERROR] Failed to reprice product {product_id}: {e}")
             return False
 
     def update_listing(self, product_id: str, title: str = None, description: str = None) -> bool:
@@ -258,11 +258,11 @@ class ShopifyAdapter(BaseAdapter):
                 update_data["body_html"] = description
 
             self._put(f"products/{product_id}.json", {"product": update_data})
-            print(f"   ✓ Updated listing for product {product_id}")
+            print(f"   [OK] Updated listing for product {product_id}")
             return True
 
         except Exception as e:
-            print(f"   ✗ Failed to update listing for product {product_id}: {e}")
+            print(f"   [ERROR] Failed to update listing for product {product_id}: {e}")
             return False
 
     def add_product(self, title: str, price: float, description: str = "", inventory: int = 10, image_url: Optional[str] = None) -> bool:
@@ -297,10 +297,10 @@ class ShopifyAdapter(BaseAdapter):
             )
             response.raise_for_status()
             new_prod = response.json().get("product", {})
-            print(f"   ✓ Added new product '{title}' to Shopify (ID: {new_prod.get('id')})")
+            print(f"   [OK] Added new product '{title}' to Shopify (ID: {new_prod.get('id')})")
             return True
         except Exception as e:
-            print(f"   ✗ Failed to add product '{title}': {e}")
+            print(f"   [ERROR] Failed to add product '{title}': {e}")
             return False
 
     def delete_product(self, product_id: str) -> bool:
@@ -313,8 +313,8 @@ class ShopifyAdapter(BaseAdapter):
             url = f"{self.base_url}/products/{product_id}.json"
             response = requests.delete(url, headers=self.headers)
             response.raise_for_status()
-            print(f"   ✓ Deleted product {product_id} from Shopify")
+            print(f"   [OK] Deleted product {product_id} from Shopify")
             return True
         except Exception as e:
-            print(f"   ✗ Failed to delete product {product_id}: {e}")
+            print(f"   [ERROR] Failed to delete product {product_id}: {e}")
             return False

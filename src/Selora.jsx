@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { useAppContext } from "./lib/AppContext";
 
 // ─── Global Styles ────────────────────────────────────────────────────────────
 const GlobalStyles = () => (
@@ -214,8 +215,8 @@ const ACTIVITY = [
 
 const PLANS = [
   { name:"Free",       price:"0",    slug:"free",   desc:"Get started at no cost. Perfect for exploring what Selora can do.",              features:["1 Store","Up to 50 Products","3 Optimizations / mo","Basic Reports","Community Support"],                                    feat:false, cta:"Get Started Free" },
-  { name:"Growth",     price:"29",   slug:"growth", desc:"For fashion sellers ready to accelerate with AI-powered growth.",                features:["1 Store","Unlimited Products","30 Optimizations / mo","Full Growth Agent","Auto Pricing","Listing Rewriter","Email Support"], feat:true,  cta:"Start Free Trial" },
-  { name:"Scale",      price:"79",   slug:"scale",  desc:"For established brands scaling across multiple stores.",                         features:["3 Stores","Unlimited Products","Unlimited Optimizations","Priority Support","Ad Optimization","Early pay.sh Access"],          feat:false, cta:"Upgrade to Scale" },
+  { name:"Growth",     price:"9.99", slug:"growth", desc:"For fashion sellers ready to accelerate with AI-powered growth.",                features:["1 Store","Unlimited Products","30 Optimizations / mo","Full Growth Agent","Auto Pricing","Listing Rewriter","Email Support"], feat:true,  cta:"Start Free Trial" },
+  { name:"Scale",      price:"29.99", slug:"scale",  desc:"For established brands scaling across multiple stores.",                         features:["3 Stores","Unlimited Products","Unlimited Optimizations","Priority Support","Ad Optimization","Early pay.sh Access"],          feat:false, cta:"Upgrade to Scale" },
 ];
 
 const TESTIMONIALS = [
@@ -474,6 +475,8 @@ function HowItWorks({ data }) {
 
 // ─── Pricing ──────────────────────────────────────────────────────────────────
 function Pricing() {
+  const { user } = useAppContext();
+
   return (
     <section className="mob-pad mob-vpad" style={{padding:"5.5rem 4rem",maxWidth:1160,margin:"0 auto",borderTop:"1px solid var(--border)"}}>
       <div style={{textAlign:"center",maxWidth:500,margin:"0 auto"}}>
@@ -482,32 +485,42 @@ function Pricing() {
         <Sub center>Start free. No contracts, no hidden fees, no surprises.</Sub>
       </div>
       <div className="price-inner" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.3rem",marginTop:"3rem"}}>
-        {PLANS.map(plan=>(
-          <div key={plan.name} className={`price-card${plan.feat?" feat":""}`}>
-            <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:plan.feat?"rgba(26,39,28,.5)":"var(--muted)",marginBottom:".8rem",fontFamily:"Inter,sans-serif"}}>{plan.name}</div>
-            {plan.price === "0" ? (
-              <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
-                Free
-              </div>
-            ) : (
-              <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
-                <sup style={{fontSize:"1rem",verticalAlign:"super",color:"var(--g)"}}>$</sup>{plan.price}
-                <span style={{fontSize:".8rem",color:"var(--muted)",fontWeight:400,fontFamily:"Inter,sans-serif"}}>/mo</span>
-              </div>
-            )}
-            <p style={{fontSize:".78rem",color:"var(--muted)",margin:".65rem 0 1.2rem",fontWeight:300,lineHeight:1.6}}>{plan.desc}</p>
-            <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".55rem",marginBottom:"1.6rem"}}>
-              {plan.features.map(f=>(
-                <li key={f} style={{fontSize:".78rem",color:"var(--text)",display:"flex",alignItems:"center",gap:".5rem",fontWeight:300}}>
-                  <span style={{color:"var(--g)",fontWeight:700}}>✓</span>{f}
-                </li>
-              ))}
-            </ul>
-            <Link to="/signup" style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",textDecoration:"none",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff",border:"1px solid var(--g)",boxShadow:"0 4px 18px rgba(90,138,103,.28)"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"})}}>
-              {plan.cta}
-            </Link>
-          </div>
-        ))}
+        {PLANS.map(plan => {
+          const getLinkTarget = () => {
+            if (user) {
+              return plan.slug === 'free' ? '/dashboard' : `/pricing?plan=${plan.slug}`;
+            } else {
+              return plan.slug === 'free' ? '/signup' : `/signup?plan=${plan.slug}`;
+            }
+          };
+
+          return (
+            <div key={plan.name} className={`price-card${plan.feat?" feat":""}`}>
+              <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:plan.feat?"rgba(26,39,28,.5)":"var(--muted)",marginBottom:".8rem",fontFamily:"Inter,sans-serif"}}>{plan.name}</div>
+              {plan.price === "0" ? (
+                <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
+                  Free
+                </div>
+              ) : (
+                <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
+                  <sup style={{fontSize:"1rem",verticalAlign:"super",color:"var(--g)"}}>$</sup>{plan.price}
+                  <span style={{fontSize:".8rem",color:"var(--muted)",fontWeight:400,fontFamily:"Inter,sans-serif"}}>/mo</span>
+                </div>
+              )}
+              <p style={{fontSize:".78rem",color:"var(--muted)",margin:".65rem 0 1.2rem",fontWeight:300,lineHeight:1.6}}>{plan.desc}</p>
+              <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".55rem",marginBottom:"1.6rem"}}>
+                {plan.features.map(f=>(
+                  <li key={f} style={{fontSize:".78rem",color:"var(--text)",display:"flex",alignItems:"center",gap:".5rem",fontWeight:300}}>
+                    <span style={{color:"var(--g)",fontWeight:700}}>✓</span>{f}
+                  </li>
+                ))}
+              </ul>
+              <Link to={getLinkTarget()} style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",textDecoration:"none",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff",border:"1px solid var(--g)",boxShadow:"0 4px 18px rgba(90,138,103,.28)"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"})}}>
+                {plan.cta}
+              </Link>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

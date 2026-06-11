@@ -1,6 +1,50 @@
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
 import { useAppContext } from '../lib/AppContext'
+import { loadStripe } from '@stripe/stripe-js'
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+
+const overlayStyle = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(26, 39, 28, 0.45)',
+  backdropFilter: 'blur(8px)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 1000,
+  padding: '2rem',
+}
+
+const modalStyle = {
+  background: '#fff',
+  border: '1px solid #E4EBE5',
+  borderRadius: 16,
+  width: '100%',
+  maxWidth: 1000,
+  maxHeight: '90vh',
+  overflowY: 'auto',
+  boxShadow: '0 24px 64px rgba(26,39,28,.15)',
+  position: 'relative',
+  display: 'flex',
+  flexDirection: 'column',
+}
+
+const closeBtnStyle = {
+  position: 'absolute',
+  top: '1.2rem',
+  right: '1.5rem',
+  background: 'none',
+  border: 'none',
+  fontSize: '1.8rem',
+  cursor: 'pointer',
+  color: '#7B907D',
+  fontWeight: 300,
+  zIndex: 10,
+  lineHeight: 1,
+}
 
 const c = {
   g: '#5A8A67', g2: '#78A885', gpale: '#EDF3EE',
@@ -22,7 +66,7 @@ const PLANS = [
   },
   {
     name: 'Growth',
-    price: '29',
+    price: '9.99',
     desc: 'Designed for active fashion stores looking to scale operations.',
     features: ['1 Store connection', 'Unlimited products', '30 optimizations / month', 'Full overnight growth agent', 'Automatic smart pricing', 'AI listing rewriter', 'Standard email support'],
     cta: 'Start Free Trial',
@@ -31,7 +75,7 @@ const PLANS = [
   },
   {
     name: 'Scale',
-    price: '79',
+    price: '29.99',
     desc: 'For larger brands running multiple storefronts and campaigns.',
     features: ['3 Store connections', 'Unlimited products', 'Unlimited optimizations', 'Priority email & chat support', 'Dynamic ad budget reallocation', 'Early product access', 'Custom pricing guardrails'],
     cta: 'Upgrade to Scale',
@@ -96,8 +140,9 @@ export default function PricingPage() {
   const [billingPeriod, setBillingPeriod] = useState('monthly') // 'monthly' or 'annual'
   const [activeFaq, setActiveFaq] = useState(null)
   const [checkoutLoading, setCheckoutLoading] = useState(null)
+  const [checkoutPlan, setCheckoutPlan] = useState(null) // { slug, period }
 
-  const handlePlanSelect = async (planSlug) => {
+  const handlePlanSelect = (planSlug, periodOverride) => {
     if (planSlug === 'free') {
       if (user) {
         navigate('/dashboard')
@@ -107,34 +152,32 @@ export default function PricingPage() {
       return
     }
 
+    const activePeriod = periodOverride || billingPeriod
+
     if (user) {
-      setCheckoutLoading(planSlug)
-      try {
-        const res = await fetch(`${API_URL}/api/billing/create-checkout`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: user.id,
-            email: user.email,
-            plan: planSlug
-          })
-        })
-        const data = await res.json()
-        if (data.url) {
-          window.location.href = data.url
-        } else {
-          alert(data.detail || 'Checkout session creation failed')
-          setCheckoutLoading(null)
-        }
-      } catch (e) {
-        console.error(e)
-        alert('Failed to launch checkout session')
-        setCheckoutLoading(null)
-      }
+      setCheckoutPlan({ slug: planSlug, period: activePeriod })
     } else {
-      navigate(`/signup?plan=${planSlug}`)
+      navigate(`/signup?plan=${planSlug}${activePeriod === 'annual' ? '&period=annual' : ''}`)
     }
   }
+
+  // Auto-checkout if plan is passed in query string and user is logged in
+  useEffect(() => {
+    if (user && checkoutPlan === null) {
+      const searchParams = new URLSearchParams(window.location.search)
+      const plan = searchParams.get('plan')
+      const period = searchParams.get('period') || 'monthly'
+      if (plan && plan !== 'free') {
+        const activePeriod = period === 'annual' || period === 'yearly' ? 'annual' : 'monthly'
+        if (activePeriod === 'annual') {
+          setBillingPeriod('annual')
+        }
+        // Clear parameter from URL so it doesn't trigger repeatedly if user cancels/returns
+        navigate(window.location.pathname, { replace: true })
+        setCheckoutPlan({ slug: plan, period: activePeriod })
+      }
+    }
+  }, [user, navigate, checkoutPlan])
 
   return (
     <>
@@ -190,10 +233,10 @@ export default function PricingPage() {
           <div style={{maxWidth:1160,margin:'0 auto',padding:'0 4rem'}}>
             <div className="pricing-grid" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'1.5rem'}}>
             {PLANS.map(plan => {
-              const basePrice = parseInt(plan.price)
-              const displayedPrice = billingPeriod === 'annual' 
-                ? Math.round(basePrice * 0.8) 
-                : basePrice
+              const basePrice = parseFloat(plan.price)
+              const displayedPrice = basePrice === 0 
+                ? 'Free' 
+                : (billingPeriod === 'annual' ? (basePrice * 0.8).toFixed(2) : basePrice.toFixed(2))
 
               return (
                 <div 
@@ -220,9 +263,9 @@ export default function PricingPage() {
                   
                   <div style={{display:'flex',alignItems:'baseline',marginBottom:'.8rem'}}>
                     <span style={{fontFamily:'Fraunces,serif',fontSize:'2.8rem',fontWeight:500,color:c.dark,letterSpacing:'-1px'}}>
-                      {displayedPrice === 0 ? 'Free' : `$${displayedPrice}`}
+                      {displayedPrice === 'Free' ? 'Free' : `$${displayedPrice}`}
                     </span>
-                    {displayedPrice > 0 && (
+                    {displayedPrice !== 'Free' && (
                       <span style={{fontSize:'.82rem',color:c.muted,marginLeft:'.25rem'}}>/month</span>
                     )}
                   </div>
@@ -423,6 +466,136 @@ export default function PricingPage() {
           <div style={{fontSize:'.7rem',color:'#c0c8c1'}}>© 2025 Selora. All rights reserved.</div>
         </footer>
       </div>
+
+      {checkoutPlan && (
+        <CheckoutModal 
+          planSlug={checkoutPlan.slug} 
+          billingPeriod={checkoutPlan.period} 
+          onClose={() => setCheckoutPlan(null)} 
+          user={user}
+        />
+      )}
     </>
+  )
+}
+
+function CheckoutModal({ planSlug, billingPeriod, onClose, user }) {
+  const [clientSecret, setClientSecret] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const planInfo = PLANS.find(p => p.slug === planSlug)
+
+  useEffect(() => {
+    if (!planSlug || !planInfo) {
+      setError('Invalid plan selected.')
+      setLoading(false)
+      return
+    }
+
+    const initCheckout = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/billing/create-checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: user.id,
+            email: user.email,
+            plan: planSlug,
+            billing_period: billingPeriod
+          })
+        })
+        const data = await res.json()
+        if (data.clientSecret) {
+          setClientSecret(data.clientSecret)
+        } else {
+          setError(data.detail || 'Failed to initialize payment session')
+        }
+      } catch (e) {
+        setError('Could not connect to payment servers.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    initCheckout()
+  }, [planSlug, planInfo, user, billingPeriod])
+
+  if (!planInfo) return null
+
+  const basePrice = parseFloat(planInfo.price)
+  const priceAmount = billingPeriod === 'annual' ? (basePrice * 0.8) : basePrice
+  const priceLabel = billingPeriod === 'annual' ? `$${priceAmount.toFixed(2)}/month` : `$${priceAmount.toFixed(2)}/month`
+  const yearlyTotal = priceAmount * 12
+  const periodLabel = billingPeriod === 'annual' ? `Billed annually ($${yearlyTotal.toFixed(2)}/year)` : 'Billed monthly'
+
+  return (
+    <div style={overlayStyle}>
+      <div style={modalStyle}>
+        <button onClick={onClose} style={closeBtnStyle}>&times;</button>
+        
+        <div className="checkout-split" style={{ display: 'grid', gridTemplateColumns: '4.2fr 5.8fr', minHeight: '500px' }}>
+          {/* LEFT SIDEBAR */}
+          <div style={{ padding: '2.5rem', background: '#F8FAF8', borderRight: '1px solid #E4EBE5', display: 'flex', flexDirection: 'column', gap: '1.8rem' }}>
+            <div>
+              <span style={{ fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.12em', color: '#5A8A67', display: 'block', marginBottom: '.4rem' }}>Your Subscription</span>
+              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.8rem', fontWeight: 500, color: '#1A271C', letterSpacing: '-.5px' }}>{planInfo.name}</h2>
+              <p style={{ fontSize: '.78rem', color: '#7B907D', marginTop: '.3rem', fontWeight: 300, lineHeight: 1.5 }}>Native checkouts are fully secured and encrypted by Stripe.</p>
+            </div>
+
+            <div style={{ background: '#fff', border: '1px solid #E4EBE5', borderRadius: 12, padding: '1.2rem' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1A271C', fontFamily: 'Fraunces, serif' }}>{priceLabel}</div>
+              <div style={{ fontSize: '.72rem', color: '#7B907D', marginTop: '.2rem' }}>{periodLabel}</div>
+              {billingPeriod === 'annual' && (
+                <div style={{ fontSize: '.68rem', color: '#5A8A67', fontWeight: 600, marginTop: '.4rem', background: '#EDF3EE', padding: '.2rem .5rem', borderRadius: 4, display: 'inline-block' }}>
+                  Save 20% with annual billing
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h4 style={{ fontSize: '.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: '#1A271C', marginBottom: '.6rem' }}>Features Included:</h4>
+              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                {planInfo.features.map(f => (
+                  <li key={f} style={{ fontSize: '.78rem', color: '#2E3D30', display: 'flex', gap: '.4rem', alignItems: 'center', fontWeight: 300 }}>
+                    <span style={{ color: '#5A8A67', fontWeight: 700 }}>✓</span>{f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div style={{ display: 'flex', gap: '.5rem', marginTop: 'auto', borderTop: '1px solid #E4EBE5', paddingTop: '1.2rem' }}>
+              <span style={{ fontSize: '1rem' }}>🔒</span>
+              <span style={{ fontSize: '.68rem', color: '#7B907D', lineHeight: 1.4, fontWeight: 300 }}>
+                PCI-DSS Compliant. We never store or handle your credit card data.
+              </span>
+            </div>
+          </div>
+
+          {/* RIGHT PANEL (Checkout Form) */}
+          <div style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                <div style={{ width: 32, height: 32, border: '2.5px solid #EDF3EE', borderTopColor: '#5A8A67', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                <p style={{ marginTop: '1rem', color: '#7B907D', fontSize: '.8rem' }}>Initializing Stripe secure frame...</p>
+              </div>
+            ) : error ? (
+              <div style={{ textAlign: 'center', padding: '1rem' }}>
+                <span style={{ fontSize: '2rem' }}>⚠️</span>
+                <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.2rem', margin: '.5rem 0' }}>Failed to load checkout</h3>
+                <p style={{ fontSize: '.8rem', color: '#7B907D', marginBottom: '1.5rem' }}>{error}</p>
+                <button onClick={onClose} style={{ background: '#5A8A67', color: '#fff', border: 'none', padding: '.5rem 1.2rem', borderRadius: 6, fontSize: '.8rem', fontWeight: 600, cursor: 'pointer' }}>Close Modal</button>
+              </div>
+            ) : (
+              clientSecret && (
+                <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
+                  <EmbeddedCheckout />
+                </EmbeddedCheckoutProvider>
+              )
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

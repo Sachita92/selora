@@ -132,6 +132,15 @@ export default function Dashboard() {
   const [scrollIndex, setScrollIndex] = useState(0)
   const [isHovered, setIsHovered]     = useState(false)
 
+  // Redirect to pricing checkout if plan parameter is specified
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    const plan = searchParams.get('plan')
+    if (plan && plan !== 'free') {
+      navigate(`/pricing?plan=${plan}`, { replace: true })
+    }
+  }, [navigate])
+
   // ── Fetch logs, reports, and products when active store changes ───────────
   useEffect(() => {
     if (activeStore) {
@@ -218,17 +227,8 @@ export default function Dashboard() {
     }
   }
 
-  const handleUpgrade = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/billing/create-checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user.id, email: user.email, plan: 'growth' })
-      })
-      const data = await res.json()
-      if (data.url) window.location.href = data.url
-      else alert("Stripe session creation failed")
-    } catch (e) { alert("Error launching checkout session") }
+  const handleUpgrade = () => {
+    navigate('/pricing')
   }
 
   const formatAction = (log) => {

@@ -24,13 +24,20 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
 
+  const searchParams = new URLSearchParams(window.location.search)
+  const plan = searchParams.get('plan')
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate('/dashboard')
+        if (plan && plan !== 'free') {
+          navigate(`/pricing?plan=${plan}`)
+        } else {
+          navigate('/dashboard')
+        }
       }
     })
-  }, [navigate])
+  }, [navigate, plan])
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -43,7 +50,11 @@ export default function Login() {
       setError(error.message)
       setLoading(false)
     } else {
-      navigate('/dashboard')
+      if (plan && plan !== 'free') {
+        navigate(`/pricing?plan=${plan}`)
+      } else {
+        navigate('/dashboard')
+      }
     }
   }
 
@@ -103,7 +114,7 @@ export default function Login() {
 
         <p style={{textAlign:'center', fontSize:'.84rem', color:'#7B907D'}}>
           Don't have an account?{' '}
-          <Link to="/signup" style={s.link}>Create one free</Link>
+          <Link to={plan ? `/signup?plan=${plan}` : "/signup"} style={s.link}>Create one free</Link>
         </p>
       </div>
     </div>

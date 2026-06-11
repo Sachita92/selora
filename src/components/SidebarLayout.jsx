@@ -395,16 +395,7 @@ export default function SidebarLayout() {
           <div 
             onClick={async () => {
               if (!user.subscription_plan || user.subscription_plan === 'free') {
-                try {
-                  const res = await fetch(`${API_URL}/api/billing/create-checkout`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: user.id, email: user.email, plan: 'growth' })
-                  })
-                  const data = await res.json()
-                  if (data.url) window.location.href = data.url
-                  else alert("Stripe session creation failed")
-                } catch (e) { alert("Error launching checkout session") }
+                navigate('/pricing')
               } else if (user.stripe_customer_id) {
                 try {
                   const res = await fetch(`${API_URL}/api/billing/portal`, {
@@ -453,18 +444,7 @@ export default function SidebarLayout() {
               </div>
               {(!user.subscription_plan || user.subscription_plan === 'free') && (
                 <button 
-                  onClick={async () => {
-                    try {
-                      const res = await fetch(`${API_URL}/api/billing/create-checkout`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ user_id: user.id, email: user.email, plan: 'growth' })
-                      })
-                      const data = await res.json()
-                      if (data.url) window.location.href = data.url
-                      else alert("Stripe session creation failed")
-                    } catch (e) { alert("Error launching checkout session") }
-                  }}
+                  onClick={() => navigate('/pricing')}
                   style={{ background: c.green, color: '#fff', border: 'none', padding: '.2rem .6rem', borderRadius: 4, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Upgrade

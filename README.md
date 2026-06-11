@@ -1,36 +1,40 @@
-# Selora
+# Selora Fashion Platform
 
 > Your store grows while you sleep.
 
-Selora is an AI-powered e-commerce growth agent that automatically handles pricing, listings, ads, and inventory — so every day you wake up to a store that's a little better than yesterday.
+Selora is a world-class luxury AI-powered growth platform for e-commerce. Built with a premium forest green editorial design, it automates pricing, listing copywriting, inventory alerts, and growth reporting for Shopify merchants. 
+
+The application is a fully integrated SaaS platform combining a React frontend, a Python (FastAPI) backend API, a Supabase (PostgreSQL) database, and Stripe subscription billing.
 
 ---
 
-## What Selora Does
+## Current Status & Key Features
 
-| Feature | Description |
-|---|---|
-| **Smart Pricing** | Monitors the market 24/7 and adjusts prices automatically to stay competitive without hurting margins |
-| **Listing Optimizer** | Rewrites product titles and descriptions to be clearer, more searchable, and more convincing |
-| **Ad Management** | Shifts ad budget away from what isn't working and toward what is |
-| **Growth Reports** | Plain-English daily summary of how your store grew and what the agent did |
-| **Inventory Alerts** | Tracks sell-through rate and warns you before you run out of stock |
-| **Full Transparency** | Every action the agent takes is logged and explained — you're always in control |
+- **Multi-Store Dashboard**: Displays sales metrics, agent activity logs, and growth reports. Features an interactive **Connected Stores switcher at the top** to instantly reload the active store's data across the frontend.
+- **Smart Repricing & Copymriting Agent**: A background execution engine using LLMs (Groq API) to reprice products within defined guardrails, optimize listings with high-fashion copy, and trigger restock alerts.
+- **Interactive AI Chat Widget**: A persistent chat drawer on the dashboard allowing merchants to speak directly with Selora to query product info, adjust prices, list new items, or delete products.
+- **Shopify OAuth Integration**: Automatic merchant onboarding and store authorization.
+- **Stripe Billing System**: Fully integrated Free, Growth, and Scale billing tiers with Stripe checkout redirects and customer subscription portals.
+- **Supabase Integration**: Centralized storage for user sessions, connected store configurations, chat history, and optimization logs.
 
 ---
 
-## Tech Stack
+## Technology Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React + Vite |
-| Styling | Tailwind CSS |
-| Fonts | Fraunces (headings) + Inter (body) |
-| Routing | React Router DOM |
-| Deployment | Vercel |
-| AI Agent | Claude (Anthropic API) — coming soon |
-| Database | PostgreSQL — coming soon |
-| Backend | Node.js — coming soon |
+### Frontend
+- **Framework**: React (Vite)
+- **Routing**: React Router DOM (v6)
+- **State Management**: React Context (`AppContext`, `ChatContext`)
+- **Styling**: Premium Custom Vanilla CSS (Forest Green & Ivory themes)
+- **Deployment**: Vercel configuration (`vercel.json`)
+
+### Backend
+- **Framework**: FastAPI (Python 3.10+)
+- **Server**: Uvicorn
+- **E-Commerce Adapter**: Shopify API (REST & OAuth)
+- **AI Engine**: Groq SDK / LLM (Tool-Calling enabled)
+- **Database client**: Supabase Python SDK
+- **Billing Provider**: Stripe Python SDK
 
 ---
 
@@ -38,90 +42,112 @@ Selora is an AI-powered e-commerce growth agent that automatically handles prici
 
 ```
 selora/
-├── public/
-├── src/
+├── backend/                  # Python FastAPI API & Agent code
+│   ├── adapters/             # E-commerce platform connectors (ShopifyAdapter)
+│   ├── agent/                # LLM system prompts and tool calling definitions
+│   ├── migrations/           # Database migration SQL schema scripts
+│   ├── auth.py               # Shopify HMAC security & OAuth helpers
+│   ├── database.py           # Supabase DB operations and model mapping
+│   ├── main.py               # FastAPI router and background tasks setup
+│   └── requirements.txt      # Python dependencies
+├── src/                      # React Frontend codebase
+│   ├── assets/               # Brand assets & images
+│   ├── components/
+│   │   ├── ChatWidget.jsx     # Conversational AI drawer widget
+│   │   └── SidebarLayout.jsx  # Primary navigation and chat session menu
+│   ├── lib/
+│   │   ├── AppContext.jsx     # Global user, store list, and activeStore context
+│   │   ├── ChatContext.jsx    # Conversation state & session list context
+│   │   └── supabase.js        # Supabase client credentials initialization
 │   ├── pages/
-│   │   ├── PrivacyPolicy.jsx     # Privacy Policy page
-│   │   └── Terms.jsx             # Terms of Service page
-│   ├── App.jsx                   # Routes
-│   ├── Selora.jsx                # Main landing page
-│   ├── main.jsx                  # Entry point
-│   └── index.css                 # Global styles (Tailwind)
+│   │   ├── LandingPage.jsx    # Public marketing page (Selora.jsx)
+│   │   ├── Dashboard.jsx      # Analytics charts, logs, and stores panel
+│   │   ├── Products.jsx       # Inventory grid and sorting controls
+│   │   ├── Settings.jsx       # Repricing guardrails & schedule options
+│   │   ├── Connect.jsx        # Shopify onboarding page
+│   │   ├── Login.jsx          # Elegant split-screen authorization
+│   │   └── ...                # Pricing, support, and public pages
+│   ├── App.css
+│   ├── App.jsx                # SPA Route configuration
+│   └── index.css              # Theme colors & fonts variables
 ├── index.html
-├── vercel.json                   # SPA routing fix for Vercel
-├── vite.config.js
-└── package.json
+├── package.json
+└── vite.config.js
 ```
 
 ---
 
-## Getting Started
+## Setup & Configuration
 
-### Prerequisites
-- Node.js 18+
-- npm or yarn
+### 1. Database Setup (Supabase)
+Initialize your database by running the SQL scripts located in `backend/migrations/` in your Supabase SQL Editor:
+1. `create_stripe_subscriptions.sql` - Sets up users, stores, logs, and reports tables.
+2. `create_chat_messages.sql` - Creates chat message logs and sessions tracking.
+3. `create_support_and_demo.sql` - Creates support requests and demo bookers.
 
-### Installation
+### 2. Backend Setup
+Navigate to the `backend` directory and configure the `.env` file:
 
 ```bash
-# Clone the repo
-git clone git@github.com:Sachita92/selora.git
-cd selora
+cd backend
+```
+
+Create a `backend/.env` file:
+```env
+GROQ_API_KEY=your_groq_api_key
+SHOPIFY_API_KEY=your_shopify_api_key
+SHOPIFY_API_SECRET=your_shopify_secret
+SHOPIFY_APP_URL=http://localhost:8000
+FRONTEND_URL=http://localhost:5173
+
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_KEY=your-supabase-service-key
+
+STRIPE_SECRET_KEY=your_stripe_secret
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+STRIPE_PRICE_GROWTH=price_growth_id
+STRIPE_PRICE_SCALE=price_scale_id
+```
+
+Run the backend:
+```bash
+# Set up a virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows use: .\venv\Scripts\activate
 
 # Install dependencies
+pip install -r requirements.txt
+
+# Run the FastAPI server
+uvicorn main:app --reload
+```
+The API will be available at [http://localhost:8000](http://localhost:8000).
+
+### 3. Frontend Setup
+Navigate to the root directory and configure the frontend `.env` file:
+
+Create a `.env` file in the root:
+```env
+VITE_API_URL=http://localhost:8000
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+Run the frontend client:
+```bash
+# Install packages
 npm install
 
-# Start development server
+# Run Vite dev server
 npm run dev
 ```
-
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### Build for Production
-
-```bash
-npm run build
-```
-
-### Deploy to Vercel
-
-```bash
-# Push to main branch — Vercel auto-deploys
-git add .
-git commit -m "your message"
-git push
-```
-
 ---
 
-## Pages
+## Production Build & Deployments
+- Build Vite assets for production: `npm run build`
+- Frontend is configured to deploy directly to Vercel (using the `vercel.json` rewrite settings to enable clean client-side routing).
 
-| Route | Page |
-|---|---|
-| `/` | Landing page |
-| `/privacy` | Privacy Policy |
-| `/terms` | Terms of Service |
-
----
-
-## Contributing
-
-This project is currently in private development. Contribution guidelines will be added when the project opens up.
-
----
-
-## Legal
-
-- [Privacy Policy](https://selora.vercel.app/privacy)
-- [Terms of Service](https://selora.vercel.app/terms)
-
----
-
-## Contact
-
-- Email: support@selora.com
-- Location: Kathmandu, Nepal
-
----
-
-*Built with love in Nepal*
+*Built for premium e-commerce growth.*

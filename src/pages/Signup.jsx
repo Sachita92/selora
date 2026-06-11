@@ -27,6 +27,9 @@ export default function Signup() {
   const [error, setError]       = useState('')
   const [success, setSuccess]   = useState(false)
 
+  const searchParams = new URLSearchParams(window.location.search)
+  const plan = searchParams.get('plan')
+
   const handleSignup = async (e) => {
     e.preventDefault()
     setError('')
@@ -42,6 +45,10 @@ export default function Signup() {
 
     setLoading(true)
 
+    const emailRedirectTo = plan
+      ? `${window.location.origin}/dashboard?plan=${plan}`
+      : `${window.location.origin}/dashboard`
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -49,7 +56,7 @@ export default function Signup() {
         data: {
           name: name,
         },
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo,
       }
     })
 
@@ -77,7 +84,7 @@ export default function Signup() {
               We sent a confirmation link to <strong style={{color:'#1A271C'}}>{email}</strong>.<br/>
               Click it to activate your account.
             </p>
-            <Link to="/login" style={{...s.link, fontSize:'.85rem'}}>Back to sign in →</Link>
+            <Link to={plan ? `/login?plan=${plan}` : "/login"} style={{...s.link, fontSize:'.85rem'}}>Back to sign in →</Link>
           </div>
         </div>
       </div>
@@ -162,7 +169,7 @@ export default function Signup() {
         <div style={{borderTop:'1px solid #E4EBE5', marginTop:'1.5rem', paddingTop:'1.5rem', textAlign:'center'}}>
           <p style={{fontSize:'.84rem', color:'#7B907D'}}>
             Already have an account?{' '}
-            <Link to="/login" style={s.link}>Sign in</Link>
+            <Link to={plan ? `/login?plan=${plan}` : "/login"} style={s.link}>Sign in</Link>
           </p>
         </div>
       </div>
