@@ -393,19 +393,11 @@ export default function SidebarLayout() {
         {/* SUBSCRIPTION */}
         {isCollapsed && !isMobile ? (
           <div 
-            onClick={async () => {
+            onClick={() => {
               if (!user.subscription_plan || user.subscription_plan === 'free') {
                 navigate('/pricing')
-              } else if (user.stripe_customer_id) {
-                try {
-                  const res = await fetch(`${API_URL}/api/billing/portal`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: user.id })
-                  })
-                  const data = await res.json()
-                  if (data.url) window.location.href = data.url
-                } catch (e) { alert("Failed to open billing portal") }
+              } else {
+                navigate('/settings?tab=billing')
               }
             }}
             style={{ 
@@ -457,17 +449,7 @@ export default function SidebarLayout() {
             </div>
             {user.stripe_customer_id && (
               <button 
-                onClick={async () => {
-                  try {
-                    const res = await fetch(`${API_URL}/api/billing/portal`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ user_id: user.id })
-                    })
-                    const data = await res.json()
-                    if (data.url) window.location.href = data.url
-                  } catch (e) { alert("Failed to open billing portal") }
-                }}
+                onClick={() => navigate('/settings?tab=billing')}
                 style={{ background: 'none', border: 'none', color: c.green, fontSize: '.7rem', cursor: 'pointer', padding: 0, marginTop: '.5rem', textDecoration: 'underline' }}
               >
                 Manage Billing

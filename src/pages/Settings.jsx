@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import ChatWidget from '../components/ChatWidget'
 
@@ -44,6 +44,7 @@ function Toggle({ value, onChange }) {
 
 export default function Settings() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [user, setUser]               = useState(null)
   const [stores, setStores]           = useState([])
   const [activeStore, setActiveStore] = useState(null)
@@ -54,9 +55,23 @@ export default function Settings() {
   const [error, setError]             = useState('')
 
   const [activeTab, setActiveTab] = useState('agent') // 'agent' or 'billing'
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const tab = params.get('tab')
+    if (tab === 'billing') {
+      setActiveTab('billing')
+    } else if (tab === 'agent') {
+      setActiveTab('agent')
+    }
+  }, [location.search])
+
   const [billingHistory, setBillingHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
-  const [portalLoading, setPortalLoading] = useState(false)
+  const [subscriptions, setSubscriptions] = useState([])
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(false)
+  const [pendingCancels, setPendingCancels] = useState([])
+  const [savingBilling, setSavingBilling] = useState(false)
 
   // Fetch billing history
   const fetchBillingHistory = async (email) => {
@@ -72,32 +87,62 @@ export default function Settings() {
     }
   }
 
-  const handleManageSubscription = async () => {
-    if (!user) return
-    setPortalLoading(true)
+  // Fetch Stripe subscriptions
+  const fetchSubscriptions = async (email) => {
+    setLoadingSubscriptions(true)
     try {
-      const res = await fetch(`${API_URL}/api/billing/portal`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user.id })
-      })
+      const res = await fetch(`${API_URL}/api/billing/subscriptions?email=${encodeURIComponent(email)}`)
       const data = await res.json()
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        alert(data.detail || 'Failed to open customer portal')
+      setSubscriptions(data.subscriptions || [])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoadingSubscriptions(false)
+    }
+  }
+
+  // Toggle cancellation queue locally
+  const togglePendingCancel = (subId) => {
+    setPendingCancels(prev => 
+      prev.includes(subId) ? prev.filter(id => id !== subId) : [...prev, subId]
+    )
+  }
+
+  // Save all queued cancellations to the backend API
+  const saveBillingChanges = async () => {
+    if (pendingCancels.length === 0) return
+    if (!window.confirm("Are you sure you want to save these changes and cancel the selected subscription(s)?")) return
+    setSavingBilling(true)
+    try {
+      for (const subId of pendingCancels) {
+        const res = await fetch(`${API_URL}/api/billing/cancel-subscription`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription_id: subId })
+        })
+        const data = await res.json()
+        if (!res.ok || !data.success) {
+          throw new Error(data.detail || "Failed to cancel subscription")
+        }
+      }
+      alert("Billing changes saved successfully. Selected subscription(s) scheduled to cancel.")
+      setPendingCancels([])
+      if (user) {
+        fetchSubscriptions(user.email)
       }
     } catch (e) {
       console.error(e)
-      alert('Error connecting to billing servers.')
+      alert(`Error saving changes: ${e.message || e}`)
     } finally {
-      setPortalLoading(false)
+      setSavingBilling(false)
     }
   }
 
   useEffect(() => {
     if (activeTab === 'billing' && user) {
       fetchBillingHistory(user.email)
+      fetchSubscriptions(user.email)
+      setPendingCancels([])
     }
   }, [activeTab, user])
 
@@ -205,22 +250,113 @@ export default function Settings() {
                 )}
               </div>
             </div>
-
-            {plan !== 'free' ? (
-              <button 
-                onClick={handleManageSubscription}
-                disabled={portalLoading}
-                style={s.btnP}
-              >
-                {portalLoading ? 'Redirecting...' : 'Manage Subscription'}
-              </button>
-            ) : (
+            
+            {plan === 'free' && (
               <Link to="/pricing" style={{ ...s.btnP, textDecoration: 'none' }}>
                 Upgrade Plan
               </Link>
             )}
           </div>
         </div>
+
+        {/* ACTIVE SUBSCRIPTIONS */}
+        {plan !== 'free' && (
+          <div style={s.section}>
+            <div style={s.sTitle}>Active Stripe Subscriptions</div>
+            <div style={s.sSub}>Manage and cancel your active recurring payment plans.</div>
+            
+            {loadingSubscriptions ? (
+              <p style={{ fontSize: '.82rem', color: c.muted, fontWeight: 300 }}>Loading active subscriptions...</p>
+            ) : subscriptions.length === 0 ? (
+              <p style={{ fontSize: '.82rem', color: c.muted, fontWeight: 300 }}>No active subscriptions found in Stripe.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {subscriptions.map(sub => {
+                  const isPendingCancel = pendingCancels.includes(sub.id)
+                  return (
+                    <div key={sub.id} style={{ 
+                      padding: '1.2rem', 
+                      border: `1px solid ${c.border}`, 
+                      borderRadius: 10, 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '1rem',
+                      background: (sub.cancel_at_period_end || isPendingCancel) ? '#FAF9F9' : '#fff'
+                    }}>
+                      <div>
+                        <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center' }}>
+                          <h4 style={{ fontSize: '.92rem', fontWeight: 600, color: c.dark }}>{sub.plan_name}</h4>
+                          {isPendingCancel && (
+                            <span style={{ fontSize: '.65rem', fontWeight: 600, padding: '.15rem .45rem', borderRadius: 4, background: '#FEF2F2', color: '#DC2626' }}>
+                              Pending Cancel
+                            </span>
+                          )}
+                        </div>
+                        <p style={{ fontSize: '.8rem', color: c.muted, marginTop: '.2rem', fontWeight: 300 }}>
+                          Amount: ${sub.amount.toFixed(2)} / {sub.interval}
+                        </p>
+                        {sub.card_last4 && (
+                          <p style={{ fontSize: '.78rem', color: c.green, marginTop: '.4rem', fontWeight: 500 }}>
+                            💳 Paid via {sub.card_brand} ending in {sub.card_last4}
+                          </p>
+                        )}
+                        <p style={{ fontSize: '.78rem', color: c.muted, marginTop: '.4rem', fontWeight: 300 }}>
+                          {sub.cancel_at_period_end ? (
+                            <span style={{ color: '#DC2626', fontWeight: 500 }}>
+                              Expires on {formatDate(sub.current_period_end)} (Cancellation Pending)
+                            </span>
+                          ) : isPendingCancel ? (
+                            <span style={{ color: '#DC2626', fontWeight: 500 }}>
+                              Will expire on {formatDate(sub.current_period_end)} (unsaved changes)
+                            </span>
+                          ) : (
+                            <span>Renews on {formatDate(sub.current_period_end)}</span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div>
+                        {sub.cancel_at_period_end ? (
+                          <button 
+                            disabled 
+                            style={{ 
+                              ...s.btnS, 
+                              background: '#F1F5F1', 
+                              color: c.muted, 
+                              border: `1px solid ${c.border}`,
+                              cursor: 'not-allowed',
+                              fontSize: '.8rem',
+                              padding: '.5rem 1rem'
+                            }}
+                          >
+                            Cancellation Scheduled
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => togglePendingCancel(sub.id)}
+                            style={{ 
+                              ...s.btnS, 
+                              background: 'transparent', 
+                              color: isPendingCancel ? c.dark : '#DC2626', 
+                              border: isPendingCancel ? `1px solid ${c.border}` : '1px solid #FECACA',
+                              fontSize: '.8rem',
+                              padding: '.5rem 1rem',
+                              fontWeight: 500
+                            }}
+                          >
+                            {isPendingCancel ? 'Undo Cancel' : 'Cancel Subscription'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* BILLING HISTORY TABLE */}
         <div style={s.section}>
@@ -280,6 +416,28 @@ export default function Settings() {
             </div>
           )}
         </div>
+
+        {/* SAVE BILLING CHANGES BUTTON AT THE BOTTOM */}
+        {plan !== 'free' && (
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            {pendingCancels.length > 0 && (
+              <button 
+                style={s.btnS} 
+                onClick={() => setPendingCancels([])}
+                disabled={savingBilling}
+              >
+                Discard Changes
+              </button>
+            )}
+            <button 
+              style={s.btnP} 
+              onClick={saveBillingChanges} 
+              disabled={pendingCancels.length === 0 || savingBilling}
+            >
+              {savingBilling ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        )}
       </div>
     )
   }

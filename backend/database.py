@@ -15,14 +15,8 @@ def get_client() -> Client:
     return create_client(url, key)
 
 
-# Singleton client — reuse across requests
-_client: Client = None
-
 def db() -> Client:
-    global _client
-    if _client is None:
-        _client = get_client()
-    return _client
+    return get_client()
 
 
 # ─── Users ────────────────────────────────────────────────────────────────────

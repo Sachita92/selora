@@ -683,6 +683,88 @@ def create_portal_session(body: dict):
         raise HTTPException(status_code=500, detail=f"Portal error: {str(e)}")
 
 
+class CancelSubscriptionRequest(BaseModel):
+    subscription_id: str
+
+@app.get("/api/billing/subscriptions")
+def get_user_subscriptions(email: str = Query(..., description="User email")):
+    """Get active subscriptions from Stripe for a user."""
+    from database import get_or_create_user
+    try:
+        user = get_or_create_user(email)
+        customer_id = user.get("stripe_customer_id")
+        if not customer_id:
+            return {"subscriptions": []}
+
+        subs = stripe.Subscription.list(customer=customer_id, status="all", limit=20)
+        formatted_subs = []
+
+        for sub in subs.data:
+            sub_dict = sub.to_dict() if hasattr(sub, "to_dict") else dict(sub)
+            items = sub_dict.get("items", {}).get("data", [])
+            plan_name = "Growth Plan"
+            amount = 9.99
+            interval = "month"
+
+            if items:
+                price_id = items[0].get("price", {}).get("id")
+                for plan_key, pid in PLAN_PRICE_MAP.items():
+                    if pid == price_id:
+                        if "scale" in plan_key:
+                            plan_name = "Scale Plan"
+                            amount = 287.88 if "yearly" in plan_key or "annual" in plan_key else 29.99
+                        else:
+                            plan_name = "Growth Plan"
+                            amount = 95.88 if "yearly" in plan_key or "annual" in plan_key else 9.99
+                        interval = "year" if "yearly" in plan_key or "annual" in plan_key else "month"
+                        break
+
+            card_brand = None
+            card_last4 = None
+            pm_id = sub_dict.get("default_payment_method")
+            if pm_id:
+                try:
+                    pm = stripe.PaymentMethod.retrieve(pm_id)
+                    pm_dict = pm.to_dict() if hasattr(pm, "to_dict") else dict(pm)
+                    card_data = pm_dict.get("card", {})
+                    card_brand = card_data.get("brand")
+                    card_last4 = card_data.get("last4")
+                except Exception as e:
+                    print(f"Error retrieving payment method: {e}")
+
+            from datetime import datetime, timezone
+            period_end_ts = None
+            if items:
+                period_end_ts = items[0].get("current_period_end")
+            period_end_iso = datetime.fromtimestamp(period_end_ts, tz=timezone.utc).isoformat() if period_end_ts else None
+
+            formatted_subs.append({
+                "id": sub_dict.get("id"),
+                "status": sub_dict.get("status"),
+                "plan_name": plan_name,
+                "amount": amount,
+                "interval": interval,
+                "cancel_at_period_end": sub_dict.get("cancel_at_period_end"),
+                "current_period_end": period_end_iso,
+                "card_brand": card_brand,
+                "card_last4": card_last4
+            })
+
+        return {"subscriptions": formatted_subs}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch subscriptions: {str(e)}")
+
+
+@app.post("/api/billing/cancel-subscription")
+def cancel_subscription(body: CancelSubscriptionRequest):
+    """Cancel a subscription at the end of the billing period."""
+    try:
+        sub = stripe.Subscription.modify(body.subscription_id, cancel_at_period_end=True)
+        return {"success": True, "subscription": sub}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to cancel subscription: {str(e)}")
+
+
 @app.get("/api/billing/history")
 def get_billing_history(email: str = Query(..., description="User email")):
     """Get billing history (events) for a user."""
