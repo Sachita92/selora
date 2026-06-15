@@ -297,6 +297,7 @@ class ChatRequest(BaseModel):
     message: str
     session_id: str
     history: List[ChatMessage] = []
+    is_guest: Optional[bool] = False
 
 
 @app.get("/api/chat/{store_id}/history")
@@ -377,7 +378,25 @@ def chat_with_agent(store_id: str, body: ChatRequest):
         snapshot = None
 
     # Build system prompt for chat mode
-    system_prompt = f"""You are Selora, a friendly and expert AI growth assistant for fashion e-commerce stores.
+    if body.is_guest:
+        system_prompt = f"""You are Selora, a friendly and expert AI growth assistant for fashion e-commerce stores.
+
+You're having a conversation with a guest user on the landing page who has NOT signed in or connected a store yet. 
+To demonstrate your capabilities, you have loaded a demo store context ('{store.get("shop_name", "Demo Store")}') to show what you can do.
+
+YOUR ROLE IN GUEST MODE:
+- Be welcoming, friendly, and helpful.
+- Recognize that the user is a guest (unauthenticated/unsigned in).
+- Answer questions about the demo store, its products, sales, and performance, to show how smart you are.
+- CRITICAL: If the user asks you to take ANY action or perform any task that changes store data (such as repricing a product, optimizing a listing, restocking alerts, adding a new product, deleting a product, etc.), you MUST politely tell the user that they need to sign in first, connect their own Shopify store, and then you can perform those tasks for them.
+- Suggest: "To do this on your own store, please click 'Sign In' or 'Get Started Free' at the top right to create an account and connect your store!"
+- Be warm, conversational, and encouraging.
+- Never execute tools that modify store state in guest mode.
+
+CURRENT DEMO STORE DATA (for display/read-only demonstration purposes):
+{store_context}"""
+    else:
+        system_prompt = f"""You are Selora, a friendly and expert AI growth assistant for fashion e-commerce stores.
 
 You're having a conversation with the store owner. You have access to their live store data and can take actions on their behalf using your tools.
 
@@ -416,7 +435,7 @@ When the user asks you to do something (e.g. "lower the price of X", "rewrite th
 
     # Call Groq with tools
     client = Groq(api_key=groq_key)
-    tools = get_tools_definition()
+    tools = None if body.is_guest else get_tools_definition()
     actions_taken = []
     max_iterations = 5
     final_response = ""
@@ -425,13 +444,16 @@ When the user asks you to do something (e.g. "lower the price of X", "rewrite th
         for iteration in range(max_iterations):
             print(f"\n💬 Chat agent thinking... (iteration {iteration + 1})")
 
-            response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=messages,
-                tools=tools,
-                tool_choice="auto",
-                max_tokens=2048,
-            )
+            kwargs = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": messages,
+                "max_tokens": 2048,
+            }
+            if tools:
+                kwargs["tools"] = tools
+                kwargs["tool_choice"] = "auto"
+
+            response = client.chat.completions.create(**kwargs)
 
             message = response.choices[0].message
 

@@ -83,7 +83,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
     const text = input.trim()
     if (!text || loading || !storeId) return
     setInput('')
-    await sendGlobalMessage(text, storeId)
+    await sendGlobalMessage(text, storeId, isLandingPage)
   }
 
   const handleKeyDown = (e) => {
@@ -99,7 +99,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
       // Direct call to send message logic
       if (!text.trim() || loading || !storeId) return
       setInput('')
-      sendGlobalMessage(text, storeId)
+      sendGlobalMessage(text, storeId, isLandingPage)
     }, 50)
   }
 
@@ -207,7 +207,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                 <div style={{ fontSize: '.9rem', fontWeight: 600, color: '#fff' }}>Selora Agent</div>
                 <div style={{ fontSize: '.65rem', color: 'rgba(255,255,255,.7)', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#86EFAC', display: 'inline-block' }} />
-                  Online — connected to your store
+                  {isLandingPage ? 'Online — Demo Mode' : 'Online — connected to your store'}
                 </div>
               </div>
             </div>

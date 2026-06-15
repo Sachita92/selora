@@ -98,7 +98,7 @@ export function ChatProvider({ children }) {
     selectSession(newId, storeId)
   }
 
-  const sendMessage = async (text, storeId) => {
+  const sendMessage = async (text, storeId, isGuest = false) => {
     if (!text.trim() || loading || !storeId) return
 
     const userMsg = { role: 'user', content: text }
@@ -112,7 +112,7 @@ export function ChatProvider({ children }) {
       const res = await fetch(`${API_URL}/api/chat/${storeId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, session_id: sessionId, history }),
+        body: JSON.stringify({ message: text, session_id: sessionId, history, is_guest: isGuest }),
       })
 
       const data = await res.json()
