@@ -5,6 +5,22 @@ import { useChat } from '../lib/ChatContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+const getOptimizedImageUrl = (url, width = 300) => {
+  if (!url) return url
+  if (url.includes('cdn.shopify.com')) {
+    const separator = url.includes('?') ? '&' : '?'
+    return `${url}${separator}width=${width}`
+  }
+  if (url.includes('images.unsplash.com')) {
+    if (url.includes('w=')) {
+      return url.replace(/w=\d+/, `w=${width}`)
+    }
+    const separator = url.includes('?') ? '&' : '?'
+    return `${url}${separator}w=${width}`
+  }
+  return url
+}
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const c = {
   green: '#5F8D76', dark: '#1A271C', muted: '#7B907D',
@@ -122,13 +138,13 @@ const GlobalStyles = () => (
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { user, stores, activeStore, setActiveStore, loading } = useAppContext()
+  const { user, stores, activeStore, setActiveStore, loading, products, fetchingProducts, fetchProducts } = useAppContext()
   const { sendMessage, setOpen } = useChat()
   const [logs, setLogs]         = useState([])
   const [reports, setReports]   = useState([])
-  const [products, setProducts] = useState([])
+  const [fetchingLogs, setFetchingLogs] = useState(false)
+  const [fetchingReports, setFetchingReports] = useState(false)
   const [running, setRunning]   = useState(false)
-  const [fetchingProducts, setFetchingProducts] = useState(false)
   const [scrollIndex, setScrollIndex] = useState(0)
   const [isHovered, setIsHovered]     = useState(false)
 
@@ -141,17 +157,15 @@ export default function Dashboard() {
     }
   }, [navigate])
 
-  // ── Fetch logs, reports, and products when active store changes ───────────
+  // ── Fetch logs and reports when active store changes ───────────
   useEffect(() => {
     if (activeStore) {
       fetchLogs(activeStore.id)
       fetchReports(activeStore.id)
-      fetchProducts(activeStore.id)
       setScrollIndex(0)
     } else {
       setLogs([])
       setReports([])
-      setProducts([])
       setScrollIndex(0)
     }
   }, [activeStore])
@@ -161,7 +175,7 @@ export default function Dashboard() {
       if (activeStore && e.detail?.storeId === activeStore.id) {
         fetchLogs(activeStore.id)
         fetchReports(activeStore.id)
-        fetchProducts(activeStore.id)
+        fetchProducts(activeStore.id, true)
       }
     }
     window.addEventListener('selora-action-taken', handleActionTaken)
@@ -169,31 +183,28 @@ export default function Dashboard() {
   }, [activeStore])
 
   const fetchLogs = async (storeId) => {
+    setFetchingLogs(true)
     try {
       const res  = await fetch(`${API_URL}/api/stores/${storeId}/logs`)
       const data = await res.json()
       setLogs(data.logs || [])
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setFetchingLogs(false)
+    }
   }
 
   const fetchReports = async (storeId) => {
+    setFetchingReports(true)
     try {
       const res  = await fetch(`${API_URL}/api/stores/${storeId}/reports`)
       const data = await res.json()
       setReports(data.reports || [])
-    } catch (e) { console.error(e) }
-  }
-
-  const fetchProducts = async (storeId) => {
-    setFetchingProducts(true)
-    try {
-      const res = await fetch(`${API_URL}/api/stores/${storeId}/products`)
-      const data = await res.json()
-      setProducts(data.products || [])
     } catch (e) {
       console.error(e)
     } finally {
-      setFetchingProducts(false)
+      setFetchingReports(false)
     }
   }
 
@@ -218,7 +229,7 @@ export default function Dashboard() {
       setTimeout(() => {
         fetchLogs(activeStore.id)
         fetchReports(activeStore.id)
-        fetchProducts(activeStore.id)
+        fetchProducts(activeStore.id, true)
         setRunning(false)
       }, 6000)
     } catch (e) {
@@ -345,7 +356,20 @@ export default function Dashboard() {
                 <Link to="/products" style={{ fontSize: '.75rem', color: c.green, textDecoration: 'none', fontWeight: 600 }}>View catalog →</Link>
               </div>
               {fetchingProducts ? (
-                <p style={{ fontSize: '.82rem', color: c.muted, fontWeight: 300 }}>Syncing active items...</p>
+                <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
+                  {[1, 2, 3, 4].map(n => (
+                    <div key={n} style={{ border: `1px solid ${c.border}`, borderRadius: 10, background: '#fff', width: 'calc(25% - 0.75rem)', flexShrink: 0, height: 210, display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ aspectRatio: '1.15', width: '100%', background: '#F1F4F2' }} />
+                      <div style={{ padding: '.65rem .8rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                        <div style={{ height: 12, background: '#F1F4F2', borderRadius: 4, width: '80%' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'auto' }}>
+                          <div style={{ height: 12, background: '#F1F4F2', borderRadius: 4, width: '40%' }} />
+                          <div style={{ height: 12, background: '#F1F4F2', borderRadius: 4, width: '30%' }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : products.length === 0 ? (
                 <p style={{ fontSize: '.82rem', color: c.muted, fontWeight: 300 }}>No products found in this store.</p>
               ) : (
@@ -356,7 +380,7 @@ export default function Dashboard() {
                     transform: `translateX(calc(-${scrollIndex} * (25% + 0.25rem)))`, 
                     transition: 'transform 0.7s cubic-bezier(0.16, 1, 0.3, 1)',
                   }}>
-                    {products.map((prod) => (
+                    {products.map((prod, index) => (
                       <div 
                         key={prod.id} 
                         onClick={() => navigate(`/products/${prod.id}`)}
@@ -376,9 +400,11 @@ export default function Dashboard() {
                         <div style={{ aspectRatio: '1.15', width: '100%', overflow: 'hidden', background: '#F1F4F2', position: 'relative' }}>
                           {prod.image_url ? (
                             <img 
-                              src={prod.image_url} 
+                              src={getOptimizedImageUrl(prod.image_url, 300)} 
                               alt={prod.title} 
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              fetchPriority={index === 0 ? "high" : "auto"}
+                              loading={index === 0 ? "eager" : "lazy"}
                             />
                           ) : (
                             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', color: c.muted }}>
@@ -424,25 +450,41 @@ export default function Dashboard() {
             </div>
 
             {/* 3. METRICS GRID */}
-            {latestReport && (
-              <div style={{marginBottom:'1.5rem'}}>
-                <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem'}}>
-                  <div style={{ ...s.metricCard, padding: '1rem' }} className="selora-card">
-                    <div style={{ ...s.metricValue, fontSize: '1.4rem' }}>{latestReport.actions_taken?.length || 0}</div>
-                    <div style={{ ...s.metricLabel, fontSize: '.62rem' }}>Actions Taken</div>
+            <div style={{marginBottom:'1.5rem'}}>
+              <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1rem'}}>
+                <div style={{ ...s.metricCard, padding: '1rem' }} className="selora-card">
+                  <div style={{ ...s.metricValue, fontSize: '1.4rem' }}>
+                    {fetchingReports ? (
+                      <div style={{ height: 24, background: '#F1F4F2', borderRadius: 4, width: 40, margin: '.3rem 0' }} />
+                    ) : (
+                      latestReport?.actions_taken?.length || 0
+                    )}
                   </div>
-                  <div style={{ ...s.metricCard, padding: '1rem' }} className="selora-card">
-                    <div style={{ ...s.metricValue, fontSize: '1.4rem' }}>{latestReport.wins?.length || 0}</div>
-                    <div style={{ ...s.metricLabel, fontSize: '.62rem' }}>Wins</div>
-                    <div style={{ fontSize: '.65rem', color: c.green, fontWeight: 600, marginTop: '.2rem' }}>↑ Growing</div>
+                  <div style={{ ...s.metricLabel, fontSize: '.62rem' }}>Actions Taken</div>
+                </div>
+                <div style={{ ...s.metricCard, padding: '1rem' }} className="selora-card">
+                  <div style={{ ...s.metricValue, fontSize: '1.4rem' }}>
+                    {fetchingReports ? (
+                      <div style={{ height: 24, background: '#F1F4F2', borderRadius: 4, width: 40, margin: '.3rem 0' }} />
+                    ) : (
+                      latestReport?.wins?.length || 0
+                    )}
                   </div>
-                  <div style={{ ...s.metricCard, padding: '1rem' }} className="selora-card">
-                    <div style={{ ...s.metricValue, fontSize: '1.4rem' }}>{latestReport.concerns?.length || 0}</div>
-                    <div style={{ ...s.metricLabel, fontSize: '.62rem' }}>Concerns</div>
+                  <div style={{ ...s.metricLabel, fontSize: '.62rem' }}>Wins</div>
+                  <div style={{ fontSize: '.65rem', color: c.green, fontWeight: 600, marginTop: '.2rem' }}>↑ Growing</div>
+                </div>
+                <div style={{ ...s.metricCard, padding: '1rem' }} className="selora-card">
+                  <div style={{ ...s.metricValue, fontSize: '1.4rem' }}>
+                    {fetchingReports ? (
+                      <div style={{ height: 24, background: '#F1F4F2', borderRadius: 4, width: 40, margin: '.3rem 0' }} />
+                    ) : (
+                      latestReport?.concerns?.length || 0
+                    )}
                   </div>
+                  <div style={{ ...s.metricLabel, fontSize: '.62rem' }}>Concerns</div>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* 4. TWO COLUMNS (1fr 1fr - EQUAL WIDTH) */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
@@ -450,7 +492,16 @@ export default function Dashboard() {
               {/* LEFT COLUMN: AGENT ACTIVITY */}
               <div style={s.card} className="selora-card">
                 <div style={{ ...s.cardTit, marginBottom: '1rem' }}>Agent Activity</div>
-                {logs.length === 0 ? (
+                {fetchingLogs ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                    {[1, 2, 3, 4].map(n => (
+                      <div key={n} style={{ ...s.logItem, margin: 0, padding: '.5rem .6rem', height: 35 }}>
+                        <div style={s.dot} />
+                        <div style={{ height: 12, background: '#F1F4F2', borderRadius: 4, width: '60%' }} />
+                      </div>
+                    ))}
+                  </div>
+                ) : logs.length === 0 ? (
                   <p style={{ fontSize: '.82rem', color: c.muted, fontWeight: 300, lineHeight: 1.7 }}>
                     No activity yet. Run the agent to see what Selora does to your store.
                   </p>
@@ -472,7 +523,13 @@ export default function Dashboard() {
               {/* RIGHT COLUMN: LATEST GROWTH REPORT */}
               <div style={s.card} className="selora-card">
                 <div style={{ ...s.cardTit, marginBottom: '1rem' }}>Latest Growth Report</div>
-                {!latestReport ? (
+                {fetchingReports ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.8rem' }}>
+                    <div style={{ height: 14, background: '#F1F4F2', borderRadius: 4, width: '100%' }} />
+                    <div style={{ height: 14, background: '#F1F4F2', borderRadius: 4, width: '95%' }} />
+                    <div style={{ height: 14, background: '#F1F4F2', borderRadius: 4, width: '70%' }} />
+                  </div>
+                ) : !latestReport ? (
                   <p style={{ fontSize: '.82rem', color: c.muted, fontWeight: 300, lineHeight: 1.7 }}>
                     No reports yet. Run the agent to generate your first growth report.
                   </p>

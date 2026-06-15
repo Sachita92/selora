@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "./lib/AppContext";
+import ChatWidget from "./components/ChatWidget";
 
 // ─── Global Styles ────────────────────────────────────────────────────────────
 const GlobalStyles = () => (
@@ -625,6 +626,9 @@ export default function Selora() {
       <Testimonials/>
       <CTA/>
       <Footer/>
+      {publicStats?.demo_store_id && (
+        <ChatWidget storeId={publicStats.demo_store_id} isLandingPage={true} />
+      )}
     </>
   );
 }

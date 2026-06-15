@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import ChatWidget from '../components/ChatWidget'
+import { useAppContext } from '../lib/AppContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -30,64 +31,23 @@ const s = {
 
 export default function Products() {
   const navigate = useNavigate()
-  const [user, setUser]         = useState(null)
-  const [stores, setStores]     = useState([])
-  const [activeStore, setActiveStore] = useState(null)
-  const [products, setProducts] = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [fetching, setFetching] = useState(false)
+  const { user, stores, activeStore, setActiveStore, products, fetchingProducts, productsStats, fetchProducts } = useAppContext()
   const [search, setSearch]     = useState('')
   const [sortBy, setSortBy]     = useState('revenue')
   const [filterBy, setFilterBy] = useState('all')
-  const [stats, setStats]       = useState({ revenue: 0, orders: 0 })
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) { navigate('/login'); return }
-      setUser(session.user)
-      fetchStores(session.user.email)
-    })
-  }, [])
+  const fetching = fetchingProducts
+  const stats = productsStats
 
   useEffect(() => {
     const handleActionTaken = (e) => {
       if (activeStore && e.detail?.storeId === activeStore.id) {
-        fetchProducts(activeStore.id)
+        fetchProducts(activeStore.id, true)
       }
     }
     window.addEventListener('selora-action-taken', handleActionTaken)
     return () => window.removeEventListener('selora-action-taken', handleActionTaken)
-  }, [activeStore])
-
-  const fetchStores = async (email) => {
-    try {
-      const res  = await fetch(`${API_URL}/api/stores?email=${encodeURIComponent(email)}`)
-      const data = await res.json()
-      setStores(data.stores || [])
-      if (data.stores?.length > 0) {
-        setActiveStore(data.stores[0])
-        fetchProducts(data.stores[0].id)
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchProducts = async (storeId) => {
-    setFetching(true)
-    try {
-      const res  = await fetch(`${API_URL}/api/stores/${storeId}/products`)
-      const data = await res.json()
-      setProducts(data.products || [])
-      setStats({ revenue: data.total_revenue_30d || 0, orders: data.total_orders_30d || 0 })
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setFetching(false)
-    }
-  }
+  }, [activeStore, fetchProducts])
 
   const signOut = async () => {
     await supabase.auth.signOut()
@@ -122,14 +82,6 @@ export default function Products() {
     if (sales === 0) return { label: 'No sales', bg: '#F3F4F6', color: '#6B7280' }
     if (sales < 5)   return { label: `${sales} sold`, bg: '#EFF6FF', color: '#1D4ED8' }
     return { label: `${sales} sold`, bg: '#F0FDF4', color: '#166534' }
-  }
-
-  if (loading) {
-    return (
-      <div style={{ ...s.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: c.muted, fontSize: '.9rem' }}>Loading products...</p>
-      </div>
-    )
   }
 
   return (

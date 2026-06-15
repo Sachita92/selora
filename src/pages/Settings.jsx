@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import ChatWidget from '../components/ChatWidget'
+import { useAppContext } from '../lib/AppContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -45,11 +46,8 @@ function Toggle({ value, onChange }) {
 export default function Settings() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [user, setUser]               = useState(null)
-  const [stores, setStores]           = useState([])
-  const [activeStore, setActiveStore] = useState(null)
+  const { user, stores, activeStore, setActiveStore } = useAppContext()
   const [settings, setSettings]       = useState(null)
-  const [loading, setLoading]         = useState(true)
   const [saving, setSaving]           = useState(false)
   const [saved, setSaved]             = useState(false)
   const [error, setError]             = useState('')
@@ -139,7 +137,7 @@ export default function Settings() {
   }
 
   useEffect(() => {
-    if (activeTab === 'billing' && user) {
+    if (activeTab === 'billing' && user?.email) {
       fetchBillingHistory(user.email)
       fetchSubscriptions(user.email)
       setPendingCancels([])
@@ -147,31 +145,10 @@ export default function Settings() {
   }, [activeTab, user])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) { navigate('/login'); return }
-      setUser(session.user)
-      fetchStores(session.user.email)
-    })
-  }, [])
-
-  const fetchStores = async (email) => {
-    try {
-      const res  = await fetch(`${API_URL}/api/stores?email=${encodeURIComponent(email)}`)
-      const data = await res.json()
-      setStores(data.stores || [])
-      if (data.user) {
-        setUser(prev => ({ ...prev, ...data.user }))
-      }
-      if (data.stores?.length > 0) {
-        setActiveStore(data.stores[0])
-        fetchSettings(data.stores[0].id)
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
+    if (activeStore) {
+      fetchSettings(activeStore.id)
     }
-  }
+  }, [activeStore])
 
   const fetchSettings = async (storeId) => {
     try {
@@ -204,11 +181,6 @@ export default function Settings() {
   }
 
   const update = (key, value) => setSettings(prev => ({ ...prev, [key]: value }))
-
-  const signOut = async () => {
-    await supabase.auth.signOut()
-    navigate('/')
-  }
 
   const renderBillingTab = () => {
     const plan = user?.subscription_plan || 'free'
@@ -442,13 +414,7 @@ export default function Settings() {
     )
   }
 
-  if (loading || !settings) {
-    return (
-      <div style={{ ...s.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: c.muted, fontSize: '.9rem' }}>Loading settings...</p>
-      </div>
-    )
-  }
+  const loading = !activeStore || (activeTab === 'agent' && !settings)
 
   return (
     <div style={{ minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif' }}>
@@ -499,130 +465,134 @@ export default function Settings() {
           </button>
         </div>
 
-        {activeTab === 'agent' ? (
+        {loading ? (
+          <div style={{ ...s.section, textAlign: 'center', padding: '3rem' }}>
+            <p style={{ color: c.muted, fontSize: '.9rem' }}>Loading configuration settings...</p>
+          </div>
+        ) : activeTab === 'agent' ? (
           <>
             {saved  && <div style={s.success}>✓ Settings saved successfully.</div>}
             {error  && <div style={s.danger}>{error}</div>}
 
-        {/* SECTION: Goal */}
-        <div style={s.section}>
-          <div style={s.sTitle}>Growth Goal</div>
-          <div style={s.sSub}>Tell Selora what you're optimizing for. This shapes every decision the agent makes.</div>
-          <div style={s.row}>
-            <div>
-              <div style={s.label}>Primary Goal</div>
-              <div style={s.hint}>What should the agent optimize for above all else?</div>
-            </div>
-            <select style={s.select} value={settings.goal} onChange={e => update('goal', e.target.value)}>
-              <option value="maximize_revenue">Maximize Revenue</option>
-              <option value="maximize_profit">Maximize Profit Margin</option>
-              <option value="increase_conversion">Increase Conversion Rate</option>
-              <option value="clear_inventory">Clear Slow Inventory</option>
-            </select>
-          </div>
-        </div>
-
-        {/* SECTION: Agent Behaviour */}
-        <div style={s.section}>
-          <div style={s.sTitle}>Agent Behaviour</div>
-          <div style={s.sSub}>Control what actions the agent is allowed to take autonomously.</div>
-
-          {[
-            { key: 'auto_reprice', label: 'Auto-reprice products', hint: 'Agent automatically adjusts prices based on sales velocity and season.' },
-            { key: 'auto_optimize_listings', label: 'Auto-optimize listings', hint: 'Agent rewrites weak titles and descriptions with fashion-forward copy.' },
-            { key: 'dry_run', label: 'Dry run mode', hint: 'Agent analyzes and reports but makes NO real changes to your store.' },
-          ].map(({ key, label, hint }, i, arr) => (
-            <div key={key} style={{ ...s.row, borderBottom: i < arr.length - 1 ? s.row.borderBottom : 'none' }}>
-              <div>
-                <div style={s.label}>{label}</div>
-                <div style={s.hint}>{hint}</div>
-              </div>
-              <Toggle value={settings[key]} onChange={v => update(key, v)} />
-            </div>
-          ))}
-        </div>
-
-        {/* SECTION: Pricing Limits */}
-        <div style={s.section}>
-          <div style={s.sTitle}>Pricing Guardrails</div>
-          <div style={s.sSub}>Set hard limits on how much the agent can raise or lower any product's price in a single cycle.</div>
-
-          {[
-            { key: 'max_price_increase_pct', label: 'Max price increase', hint: 'Maximum % the agent can raise a price per cycle.', unit: '%' },
-            { key: 'max_price_decrease_pct', label: 'Max price decrease', hint: 'Maximum % the agent can lower a price per cycle.', unit: '%' },
-          ].map(({ key, label, hint, unit }, i, arr) => (
-            <div key={key} style={{ ...s.row, borderBottom: i < arr.length - 1 ? s.row.borderBottom : 'none' }}>
-              <div>
-                <div style={s.label}>{label}</div>
-                <div style={s.hint}>{hint}</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-                <input
-                  type="number" min={1} max={100}
-                  value={settings[key]}
-                  onChange={e => update(key, Number(e.target.value))}
-                  style={s.input}
-                />
-                <span style={{ fontSize: '.85rem', color: c.muted }}>{unit}</span>
+            {/* SECTION: Goal */}
+            <div style={s.section}>
+              <div style={s.sTitle}>Growth Goal</div>
+              <div style={s.sSub}>Tell Selora what you're optimizing for. This shapes every decision the agent makes.</div>
+              <div style={s.row}>
+                <div>
+                  <div style={s.label}>Primary Goal</div>
+                  <div style={s.hint}>What should the agent optimize for above all else?</div>
+                </div>
+                <select style={s.select} value={settings.goal} onChange={e => update('goal', e.target.value)}>
+                  <option value="maximize_revenue">Maximize Revenue</option>
+                  <option value="maximize_profit">Maximize Profit Margin</option>
+                  <option value="increase_conversion">Increase Conversion Rate</option>
+                  <option value="clear_inventory">Clear Slow Inventory</option>
+                </select>
               </div>
             </div>
-          ))}
-        </div>
 
-        {/* SECTION: Inventory */}
-        <div style={s.section}>
-          <div style={s.sTitle}>Inventory Alerts</div>
-          <div style={s.sSub}>Control when the agent flags products as running low on stock.</div>
-          <div style={{ ...s.row, borderBottom: 'none' }}>
-            <div>
-              <div style={s.label}>Restock alert threshold</div>
-              <div style={s.hint}>Alert when inventory drops below this many units AND the product has recent sales.</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-              <input
-                type="number" min={1} max={500}
-                value={settings.restock_alert_threshold}
-                onChange={e => update('restock_alert_threshold', Number(e.target.value))}
-                style={s.input}
-              />
-              <span style={{ fontSize: '.85rem', color: c.muted }}>units</span>
-            </div>
-          </div>
-        </div>
+            {/* SECTION: Agent Behaviour */}
+            <div style={s.section}>
+              <div style={s.sTitle}>Agent Behaviour</div>
+              <div style={s.sSub}>Control what actions the agent is allowed to take autonomously.</div>
 
-        {/* SECTION: Schedule */}
-        <div style={s.section}>
-          <div style={s.sTitle}>Run Schedule</div>
-          <div style={s.sSub}>How often should the Selora agent analyze and act on your store?</div>
-          <div style={{ ...s.row, borderBottom: 'none' }}>
-            <div>
-              <div style={s.label}>Agent run frequency</div>
-              <div style={s.hint}>How often the agent runs its full analysis cycle.</div>
+              {[
+                { key: 'auto_reprice', label: 'Auto-reprice products', hint: 'Agent automatically adjusts prices based on sales velocity and season.' },
+                { key: 'auto_optimize_listings', label: 'Auto-optimize listings', hint: 'Agent rewrites weak titles and descriptions with fashion-forward copy.' },
+                { key: 'dry_run', label: 'Dry run mode', hint: 'Agent analyzes and reports but makes NO real changes to your store.' },
+              ].map(({ key, label, hint }, i, arr) => (
+                <div key={key} style={{ ...s.row, borderBottom: i < arr.length - 1 ? s.row.borderBottom : 'none' }}>
+                  <div>
+                    <div style={s.label}>{label}</div>
+                    <div style={s.hint}>{hint}</div>
+                  </div>
+                  <Toggle value={settings[key]} onChange={v => update(key, v)} />
+                </div>
+              ))}
             </div>
-            <select style={s.select} value={settings.run_frequency_hours} onChange={e => update('run_frequency_hours', Number(e.target.value))}>
-              <option value={6}>Every 6 hours</option>
-              <option value={12}>Every 12 hours</option>
-              <option value={24}>Once a day (recommended)</option>
-              <option value={48}>Every 2 days</option>
-              <option value={168}>Once a week</option>
-            </select>
-          </div>
-        </div>
 
-        {/* DANGER ZONE */}
-        <div style={{ ...s.section, border: '1px solid #FECACA' }}>
-          <div style={{ ...s.sTitle, color: '#DC2626' }}>Danger Zone</div>
-          <div style={s.sSub}>These actions are irreversible. Please be certain before proceeding.</div>
-          <div style={{ ...s.row, borderBottom: 'none' }}>
-            <div>
-              <div style={s.label}>Disconnect store</div>
-              <div style={s.hint}>Removes this store from Selora. Your Shopify store is unaffected.</div>
+            {/* SECTION: Pricing Limits */}
+            <div style={s.section}>
+              <div style={s.sTitle}>Pricing Guardrails</div>
+              <div style={s.sSub}>Set hard limits on how much the agent can raise or lower any product's price in a single cycle.</div>
+
+              {[
+                { key: 'max_price_increase_pct', label: 'Max price increase', hint: 'Maximum % the agent can raise a price per cycle.', unit: '%' },
+                { key: 'max_price_decrease_pct', label: 'Max price decrease', hint: 'Maximum % the agent can lower a price per cycle.', unit: '%' },
+              ].map(({ key, label, hint, unit }, i, arr) => (
+                <div key={key} style={{ ...s.row, borderBottom: i < arr.length - 1 ? s.row.borderBottom : 'none' }}>
+                  <div>
+                    <div style={s.label}>{label}</div>
+                    <div style={s.hint}>{hint}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+                    <input
+                      type="number" min={1} max={100}
+                      value={settings[key]}
+                      onChange={e => update(key, Number(e.target.value))}
+                      style={s.input}
+                    />
+                    <span style={{ fontSize: '.85rem', color: c.muted }}>{unit}</span>
+                  </div>
+                </div>
+              ))}
             </div>
-            <button style={{ ...s.btnS, color: '#DC2626', border: '1px solid #FECACA' }}>
-              Disconnect Store
-            </button>
-          </div>
-        </div>
+
+            {/* SECTION: Inventory */}
+            <div style={s.section}>
+              <div style={s.sTitle}>Inventory Alerts</div>
+              <div style={s.sSub}>Control when the agent flags products as running low on stock.</div>
+              <div style={{ ...s.row, borderBottom: 'none' }}>
+                <div>
+                  <div style={s.label}>Restock alert threshold</div>
+                  <div style={s.hint}>Alert when inventory drops below this many units AND the product has recent sales.</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+                  <input
+                    type="number" min={1} max={500}
+                    value={settings.restock_alert_threshold}
+                    onChange={e => update('restock_alert_threshold', Number(e.target.value))}
+                    style={s.input}
+                  />
+                  <span style={{ fontSize: '.85rem', color: c.muted }}>units</span>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION: Schedule */}
+            <div style={s.section}>
+              <div style={s.sTitle}>Run Schedule</div>
+              <div style={s.sSub}>How often should the Selora agent analyze and act on your store?</div>
+              <div style={{ ...s.row, borderBottom: 'none' }}>
+                <div>
+                  <div style={s.label}>Agent run frequency</div>
+                  <div style={s.hint}>How often the agent runs its full analysis cycle.</div>
+                </div>
+                <select style={s.select} value={settings.run_frequency_hours} onChange={e => update('run_frequency_hours', Number(e.target.value))}>
+                  <option value={6}>Every 6 hours</option>
+                  <option value={12}>Every 12 hours</option>
+                  <option value={24}>Once a day (recommended)</option>
+                  <option value={48}>Every 2 days</option>
+                  <option value={168}>Once a week</option>
+                </select>
+              </div>
+            </div>
+
+            {/* DANGER ZONE */}
+            <div style={{ ...s.section, border: '1px solid #FECACA' }}>
+              <div style={{ ...s.sTitle, color: '#DC2626' }}>Danger Zone</div>
+              <div style={s.sSub}>These actions are irreversible. Please be certain before proceeding.</div>
+              <div style={{ ...s.row, borderBottom: 'none' }}>
+                <div>
+                  <div style={s.label}>Disconnect store</div>
+                  <div style={s.hint}>Removes this store from Selora. Your Shopify store is unaffected.</div>
+                </div>
+                <button style={{ ...s.btnS, color: '#DC2626', border: '1px solid #FECACA' }}>
+                  Disconnect Store
+                </button>
+              </div>
+            </div>
 
             {/* SAVE BUTTON */}
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>

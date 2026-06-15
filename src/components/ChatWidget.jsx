@@ -16,7 +16,7 @@ const SUGGESTIONS = [
   "Give me a quick store health check",
 ]
 
-export default function ChatWidget({ storeId }) {
+export default function ChatWidget({ storeId, isLandingPage = false }) {
   const {
     messages,
     loading,
@@ -31,9 +31,19 @@ export default function ChatWidget({ storeId }) {
   } = useChat()
 
   const [input, setInput] = useState('')
+  const [showWelcomeBubble, setShowWelcomeBubble] = useState(false)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const widgetRef = useRef(null)
+
+  useEffect(() => {
+    if (isLandingPage && !open) {
+      const timer = setTimeout(() => {
+        setShowWelcomeBubble(true)
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [isLandingPage, open])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -98,10 +108,48 @@ export default function ChatWidget({ storeId }) {
 
   return (
     <>
+      {/* Welcome Bubble */}
+      {!open && showWelcomeBubble && (
+        <div style={{
+          position: 'fixed', bottom: 98, right: 28, zIndex: 1000,
+          background: '#fff', border: `1px solid ${c.border}`,
+          borderRadius: 16, padding: '12px 18px', width: 260,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+          fontFamily: 'Inter, sans-serif', fontSize: '.84rem',
+          lineHeight: 1.4, color: c.dark,
+          animation: 'chatBubbleFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both',
+          cursor: 'pointer',
+        }}
+        onClick={() => { setOpen(true); setShowWelcomeBubble(false); }}
+        >
+          <div style={{ fontWeight: 600, color: c.green, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Selora Agent</span>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#86EFAC', display: 'inline-block' }} />
+          </div>
+          Welcome to Selora! 🌸 Chat with me to see how I grow your fashion store.
+          {/* Close button for bubble */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); setShowWelcomeBubble(false); }}
+            style={{
+              position: 'absolute', top: 8, right: 8, background: 'none', border: 'none',
+              cursor: 'pointer', fontSize: '.75rem', color: c.muted, padding: 2
+            }}
+          >
+            ✕
+          </button>
+          {/* Arrow */}
+          <div style={{
+            position: 'absolute', bottom: -6, right: 24, width: 12, height: 12,
+            background: '#fff', borderRight: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`,
+            transform: 'rotate(45deg)',
+          }} />
+        </div>
+      )}
+
       {/* Floating button */}
       {!open && (
         <button
-          onClick={() => { setOpen(true); setHasNewMessage(false) }}
+          onClick={() => { setOpen(true); setHasNewMessage(false); setShowWelcomeBubble(false); }}
           style={{
             position: 'fixed', bottom: 28, right: 28, zIndex: 1000,
             width: 58, height: 58, borderRadius: '50%',
@@ -197,36 +245,44 @@ export default function ChatWidget({ storeId }) {
             display: 'flex', flexDirection: 'column', gap: '.8rem',
             background: c.bg,
           }}>
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                }}
-              >
-                <div style={{
-                  maxWidth: '82%',
-                  padding: '.7rem 1rem',
-                  borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-                  background: msg.role === 'user'
-                    ? `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`
-                    : c.card,
-                  color: msg.role === 'user' ? '#fff' : c.dark,
-                  border: msg.role === 'user' ? 'none' : `1px solid ${c.border}`,
-                  fontSize: '.82rem',
-                  lineHeight: 1.65,
-                  fontWeight: 300,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  boxShadow: msg.role === 'user'
-                    ? '0 2px 8px rgba(90,138,103,.2)'
-                    : '0 1px 4px rgba(0,0,0,.04)',
-                }}>
-                  {msg.content}
+            {messages.map((msg, i) => {
+              const isUser = msg.role?.toLowerCase().trim() === 'user'
+              let content = msg.content
+              if (i === 0 && isLandingPage && msg.role === 'assistant') {
+                content = "👋 Welcome to Selora! I'm your AI fashion growth agent.\n\nI automatically optimize pricing, list products, manage inventory, and grow sales. I've loaded a demo store context for you so you can see what I can do!\n\nTry asking me:\n• 'Which products are selling the best?'\n• 'How can I improve my store's pricing?'\n• 'Rewrite a listing for a dress'"
+              }
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    justifyContent: isUser ? 'flex-end' : 'flex-start',
+                  }}
+                >
+                  <div style={{
+                    maxWidth: '82%',
+                    padding: '.7rem 1rem',
+                    borderRadius: isUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                    backgroundColor: isUser ? c.green : c.card,
+                    backgroundImage: isUser
+                      ? `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`
+                      : 'none',
+                    color: isUser ? '#fff' : c.dark,
+                    border: isUser ? 'none' : `1px solid ${c.border}`,
+                    fontSize: '.82rem',
+                    lineHeight: 1.65,
+                    fontWeight: 300,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    boxShadow: isUser
+                      ? '0 2px 8px rgba(90,138,103,.2)'
+                      : '0 1px 4px rgba(0,0,0,.04)',
+                  }}>
+                    {content}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
 
             {loading && (
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
@@ -344,6 +400,10 @@ export default function ChatWidget({ storeId }) {
         @keyframes chatDot {
           0%, 80%, 100% { opacity: .4; transform: scale(.8); }
           40% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes chatBubbleFadeIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </>

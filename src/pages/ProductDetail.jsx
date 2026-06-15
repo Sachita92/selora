@@ -5,6 +5,22 @@ import { useChat } from '../lib/ChatContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+const getOptimizedImageUrl = (url, width = 600) => {
+  if (!url) return url
+  if (url.includes('cdn.shopify.com')) {
+    const separator = url.includes('?') ? '&' : '?'
+    return `${url}${separator}width=${width}`
+  }
+  if (url.includes('images.unsplash.com')) {
+    if (url.includes('w=')) {
+      return url.replace(/w=\d+/, `w=${width}`)
+    }
+    const separator = url.includes('?') ? '&' : '?'
+    return `${url}${separator}w=${width}`
+  }
+  return url
+}
+
 const c = {
   green: '#5F8D76', dark: '#1A271C', muted: '#7B907D',
   border: '#E4EBE5', bg: '#F8FAF8', bg2: '#F1F5F1', card: '#fff',
@@ -36,27 +52,51 @@ const s = {
 export default function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { activeStore } = useAppContext()
+  const { activeStore, products, fetchingProducts, loading: storeLoading } = useAppContext()
   const { sendMessage, setOpen } = useChat()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (activeStore && id) {
+    if (storeLoading) {
       setLoading(true)
-      fetch(`${API_URL}/api/stores/${activeStore.id}/products`)
-        .then(res => res.json())
-        .then(data => {
-          const prod = data.products?.find(p => String(p.id) === String(id))
-          setProduct(prod || null)
-          setLoading(false)
-        })
-        .catch(err => {
-          console.error(err)
-          setLoading(false)
-        })
+      return
     }
-  }, [activeStore, id])
+
+    if (!activeStore) {
+      setLoading(false)
+      setProduct(null)
+      return
+    }
+
+    // Check cache first
+    const cached = products.find(p => String(p.id) === String(id))
+    if (cached) {
+      setProduct(cached)
+      setLoading(false)
+      return
+    }
+
+    // If currently fetching, wait for it
+    if (fetchingProducts) {
+      setLoading(true)
+      return
+    }
+
+    // Fallback fetch if not found and not fetching
+    setLoading(true)
+    fetch(`${API_URL}/api/stores/${activeStore.id}/products`)
+      .then(res => res.json())
+      .then(data => {
+        const prod = data.products?.find(p => String(p.id) === String(id))
+        setProduct(prod || null)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error(err)
+        setLoading(false)
+      })
+  }, [activeStore, id, products, fetchingProducts, storeLoading])
 
   if (loading) {
     return (
@@ -103,7 +143,13 @@ export default function ProductDetail() {
         {/* Left Column: Image */}
         <div style={s.imageCol}>
           {product.image_url ? (
-            <img src={product.image_url} alt={product.title} style={s.img} />
+            <img 
+              src={getOptimizedImageUrl(product.image_url, 600)} 
+              alt={product.title} 
+              style={s.img} 
+              fetchPriority="high"
+              loading="eager"
+            />
           ) : (
             <div style={{ fontSize: '5rem' }}>👗</div>
           )}

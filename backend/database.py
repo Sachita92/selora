@@ -6,13 +6,18 @@ load_dotenv()
 
 # ─── Client ───────────────────────────────────────────────────────────────────
 
+_supabase_client = None
+
 def get_client() -> Client:
     """Get a Supabase client using the service role key (bypasses RLS for backend use)."""
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_SERVICE_KEY")  # service role — never expose in frontend
-    if not url or not key:
-        raise ValueError("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in .env")
-    return create_client(url, key)
+    global _supabase_client
+    if _supabase_client is None:
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_SERVICE_KEY")  # service role — never expose in frontend
+        if not url or not key:
+            raise ValueError("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in .env")
+        _supabase_client = create_client(url, key)
+    return _supabase_client
 
 
 def db() -> Client:
@@ -396,16 +401,22 @@ def get_public_stats() -> dict:
         # Get recent activity
         recent_res = client.table("agent_logs").select("action_type,created_at,data").order("created_at", desc=True).limit(5).execute()
         
+        # Get first active store ID as demo store ID
+        demo_res = client.table("stores").select("id").eq("is_active", True).limit(1).execute()
+        demo_store_id = demo_res.data[0]["id"] if demo_res.data else None
+        
         return {
             "total_stores": total_stores,
             "total_actions": total_actions,
-            "recent_activity": recent_res.data or []
+            "recent_activity": recent_res.data or [],
+            "demo_store_id": demo_store_id
         }
     except Exception as e:
         print(f"Error fetching public stats: {e}")
         return {
             "total_stores": 0,
             "total_actions": 0,
-            "recent_activity": []
+            "recent_activity": [],
+            "demo_store_id": None
         }
 

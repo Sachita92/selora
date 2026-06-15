@@ -1,9 +1,15 @@
 import os
+import sys
 import argparse
 from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
 from dotenv import load_dotenv
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
 
 load_dotenv()
 
@@ -184,11 +190,22 @@ def get_store_reports(store_id: str, limit: int = 7):
     return {"reports": reports}
 
 
+_products_cache = {}
+
 @app.get("/api/stores/{store_id}/products")
-def get_store_products(store_id: str):
-    """Fetch live products from the connected store via the Shopify adapter."""
+def get_store_products(store_id: str, force_refresh: bool = False):
+    """Fetch live products from the connected store via the Shopify adapter with caching."""
     from database import get_store_by_id
     from adapters.shopify import ShopifyAdapter
+    import time
+
+    now = time.time()
+    cache_duration = 300 # 5 minutes
+
+    if not force_refresh and store_id in _products_cache:
+        cached = _products_cache[store_id]
+        if now - cached["timestamp"] < cache_duration:
+            return cached["data"]
 
     store = get_store_by_id(store_id)
     if not store:
@@ -200,11 +217,16 @@ def get_store_products(store_id: str):
             access_token=store["access_token"],
         )
         snapshot = adapter.get_store_snapshot()
-        return {
+        data = {
             "products": [p.to_dict() for p in snapshot.products],
             "total_revenue_30d": snapshot.total_revenue_30d,
             "total_orders_30d": snapshot.total_orders_30d,
         }
+        _products_cache[store_id] = {
+            "timestamp": now,
+            "data": data
+        }
+        return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch products: {e}")
 

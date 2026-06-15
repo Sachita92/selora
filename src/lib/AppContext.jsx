@@ -9,6 +9,9 @@ export function AppProvider({ children }) {
   const [stores, setStores] = useState([])
   const [activeStore, setActiveStore] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [products, setProducts] = useState([])
+  const [fetchingProducts, setFetchingProducts] = useState(false)
+  const [productsStats, setProductsStats] = useState({ revenue: 0, orders: 0 })
 
   // Auth check & store fetch
   useEffect(() => {
@@ -65,6 +68,35 @@ export function AppProvider({ children }) {
     }
   }
 
+  const fetchProducts = async (storeId, forceRefresh = false) => {
+    if (!storeId) return
+    setFetchingProducts(true)
+    try {
+      const url = `${API_URL}/api/stores/${storeId}/products${forceRefresh ? '?force_refresh=true' : ''}`
+      const res = await fetch(url)
+      const data = await res.json()
+      setProducts(data.products || [])
+      setProductsStats({
+        revenue: data.total_revenue_30d || 0,
+        orders: data.total_orders_30d || 0
+      })
+    } catch (e) {
+      console.error('Failed to fetch products:', e)
+    } finally {
+      setFetchingProducts(false)
+    }
+  }
+
+  // Fetch products automatically in the background when activeStore changes
+  useEffect(() => {
+    if (activeStore) {
+      fetchProducts(activeStore.id)
+    } else {
+      setProducts([])
+      setProductsStats({ revenue: 0, orders: 0 })
+    }
+  }, [activeStore])
+
   const logout = async () => {
     await supabase.auth.signOut()
     setUser(null)
@@ -78,7 +110,11 @@ export function AppProvider({ children }) {
       stores, setStores,
       activeStore, setActiveStore,
       loading, logout,
-      fetchStores
+      fetchStores,
+      products, setProducts,
+      fetchingProducts,
+      productsStats, setProductsStats,
+      fetchProducts
     }}>
       {children}
     </AppContext.Provider>
