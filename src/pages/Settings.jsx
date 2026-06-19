@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import ChatWidget from '../components/ChatWidget'
 import { useAppContext } from '../lib/AppContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -607,7 +606,6 @@ export default function Settings() {
         )}
 
       </div>
-      <ChatWidget storeId={activeStore?.id} />
     </div>
   )
 }

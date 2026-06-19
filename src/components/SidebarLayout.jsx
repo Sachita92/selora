@@ -3,7 +3,6 @@ import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { useChat } from '../lib/ChatContext'
 import { supabase } from '../lib/supabase'
-import ChatWidget from './ChatWidget'
 
 const c = {
   green: '#5F8D76', dark: '#1A271C', muted: '#7B907D',
@@ -623,7 +622,6 @@ export default function SidebarLayout() {
         <div style={{ paddingTop: !sidebarOpen ? '3.5rem' : 0 }}>
           <Outlet />
         </div>
-        <ChatWidget storeId={activeStore?.id} />
       </div>
 
     </div>

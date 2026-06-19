@@ -113,6 +113,7 @@ const FAQS = [
 ]
 
 function PageNav() {
+  const { user } = useAppContext()
   return (
     <nav style={{position:'fixed',top:0,left:0,right:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'1rem 3.5rem',background:'rgba(248,250,248,.97)',backdropFilter:'blur(14px)',borderBottom:`1px solid ${c.border}`,fontFamily:'Inter,sans-serif'}}>
       <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'1.2rem',fontWeight:700,letterSpacing:'-.3px',color:c.dark,textDecoration:'none'}}>
@@ -125,10 +126,18 @@ function PageNav() {
         <Link to="/demo" style={{color:c.g,textDecoration:'none',fontWeight:500}}>Book a Demo</Link>
       </div>
       <div style={{display:'flex',gap:'.7rem',alignItems:'center'}}>
-        <Link to="/login" style={{fontSize:'.82rem',fontWeight:500,color:c.muted,textDecoration:'none'}}>Sign In</Link>
-        <Link to="/signup" style={{background:c.g,color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
-          Get Started Free
-        </Link>
+        {user ? (
+          <Link to="/dashboard" style={{background:c.g,color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
+            Dashboard
+          </Link>
+        ) : (
+          <>
+            <Link to="/login" style={{fontSize:'.82rem',fontWeight:500,color:c.muted,textDecoration:'none'}}>Sign In</Link>
+            <Link to="/signup" style={{background:c.g,color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
+              Get Started Free
+            </Link>
+          </>
+        )}
       </div>
     </nav>
   )
@@ -141,6 +150,7 @@ export default function PricingPage() {
   const [activeFaq, setActiveFaq] = useState(null)
   const [checkoutLoading, setCheckoutLoading] = useState(null)
   const [checkoutPlan, setCheckoutPlan] = useState(null) // { slug, period }
+  const [showComparison, setShowComparison] = useState(false)
 
   const handlePlanSelect = (planSlug, periodOverride) => {
     if (planSlug === 'free') {
@@ -182,6 +192,10 @@ export default function PricingPage() {
   return (
     <>
       <style>{`
+        @keyframes pricingSlideUp {
+          from { opacity: 0; transform: translateY(15px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
         @media (max-width: 900px) {
           .pricing-grid { grid-template-columns:1fr !important; }
           .comparison-table-wrapper { overflow-x: auto; }
@@ -303,56 +317,88 @@ export default function PricingPage() {
               )
             })}
           </div>
+
+          {/* Toggle Button */}
+          <div style={{ textAlign: 'center', marginTop: '3.5rem' }}>
+            <button
+              onClick={() => setShowComparison(prev => !prev)}
+              style={{
+                background: 'none',
+                border: `1px solid ${c.border}`,
+                borderRadius: 24,
+                padding: '.6rem 1.8rem',
+                fontSize: '.82rem',
+                color: c.g,
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontFamily: 'Inter,sans-serif',
+                outline: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '.4rem'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = c.gpale; e.currentTarget.style.borderColor = c.g }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = c.border }}
+            >
+              {showComparison ? 'Hide Detailed Comparison ▲' : 'Compare Detailed Features ▼'}
+            </button>
+          </div>
+
+          {/* Collapsible Comparison Table */}
+          {showComparison && (
+            <div style={{
+              marginTop: '3.5rem',
+              background: '#fff',
+              border: `1px solid ${c.border}`,
+              borderRadius: 16,
+              padding: '3.5rem 3rem',
+              boxShadow: '0 8px 30px rgba(0,0,0,.03)',
+              animation: 'pricingSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both'
+            }}>
+              <div style={{maxWidth: 900, margin: '0 auto'}}>
+                <div className="comparison-table-wrapper">
+                  <table className="comparison-table" style={{width:'100%',borderCollapse:'collapse',fontSize:'.82rem',textAlign:'left'}}>
+                    <thead>
+                      <tr style={{borderBottom:`2px solid ${c.border}`}}>
+                        <th style={{padding:'1rem .5rem',fontWeight:600,color:c.dark,width:'40%'}}>Features</th>
+                        <th style={{padding:'1rem .5rem',fontWeight:600,color:c.dark,width:'20%'}}>Free</th>
+                        <th style={{padding:'1rem .5rem',fontWeight:600,color:c.dark,width:'20%'}}>Growth</th>
+                        <th style={{padding:'1rem .5rem',fontWeight:600,color:c.dark,width:'20%'}}>Scale</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {COMPARISON.map(cat => (
+                        <tr key={cat.category}>
+                          <td colSpan={4} style={{padding:0}}>
+                            <table style={{width:'100%',borderCollapse:'collapse'}}>
+                              <tbody>
+                                <tr>
+                                  <td colSpan={4} style={{padding:'1.5rem .5rem .5rem',fontWeight:700,color:c.g,textTransform:'uppercase',letterSpacing:'.06em',fontSize:'.68rem'}}>
+                                    {cat.category}
+                                  </td>
+                                </tr>
+                                {cat.items.map((row, idx) => (
+                                  <tr key={idx} style={{borderBottom:`1px solid ${c.border}`}}>
+                                    <td style={{padding:'.9rem .5rem',color:c.dark,width:'40%',fontWeight:500}}>{row.name}</td>
+                                    <td style={{padding:'.9rem .5rem',color:c.text,width:'20%'}}>{row.free}</td>
+                                    <td style={{padding:'.9rem .5rem',color:c.text,width:'20%'}}>{row.growth}</td>
+                                    <td style={{padding:'.9rem .5rem',color:c.text,width:'20%',fontWeight:row.scale.includes('Priority') || row.scale === '✓' ? 600 : 400}}>{row.scale}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-        {/* DETAILED COMPARISON TABLE */}
-        <div style={{background: '#fff', borderTop: `1px solid ${c.border}`, padding: '5.5rem 4rem'}}>
-          <div style={{maxWidth: 900, margin: '0 auto'}}>
-            <div style={{textAlign: 'center', marginBottom: '3.5rem'}}>
-              <p style={{fontSize:'.68rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'.14em',color:c.g,marginBottom:'.7rem'}}>Comparison</p>
-              <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.6rem,3vw,2.2rem)',fontWeight:500,color:c.dark,letterSpacing:'-.3px'}}>Feature comparison</h2>
-            </div>
-
-            <div className="comparison-table-wrapper">
-              <table className="comparison-table" style={{width:'100%',borderCollapse:'collapse',fontSize:'.82rem',textAlign:'left'}}>
-                <thead>
-                  <tr style={{borderBottom:`2px solid ${c.border}`}}>
-                    <th style={{padding:'1rem .5rem',fontWeight:600,color:c.dark,width:'40%'}}>Features</th>
-                    <th style={{padding:'1rem .5rem',fontWeight:600,color:c.dark,width:'20%'}}>Free</th>
-                    <th style={{padding:'1rem .5rem',fontWeight:600,color:c.dark,width:'20%'}}>Growth</th>
-                    <th style={{padding:'1rem .5rem',fontWeight:600,color:c.dark,width:'20%'}}>Scale</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARISON.map(cat => (
-                    <tr key={cat.category}>
-                      <td colSpan={4} style={{padding:0}}>
-                        <table style={{width:'100%',borderCollapse:'collapse'}}>
-                          <tbody>
-                            <tr>
-                              <td colSpan={4} style={{padding:'1.5rem .5rem .5rem',fontWeight:700,color:c.g,textTransform:'uppercase',letterSpacing:'.06em',fontSize:'.68rem'}}>
-                                {cat.category}
-                              </td>
-                            </tr>
-                            {cat.items.map((row, idx) => (
-                              <tr key={idx} style={{borderBottom:`1px solid ${c.border}`}}>
-                                <td style={{padding:'.9rem .5rem',color:c.dark,width:'40%',fontWeight:500}}>{row.name}</td>
-                                <td style={{padding:'.9rem .5rem',color:c.text,width:'20%'}}>{row.free}</td>
-                                <td style={{padding:'.9rem .5rem',color:c.text,width:'20%'}}>{row.growth}</td>
-                                <td style={{padding:'.9rem .5rem',color:c.text,width:'20%',fontWeight:row.scale.includes('Priority') || row.scale === '✓' ? 600 : 400}}>{row.scale}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
 
         {/* FAQ ACCORDION */}
         <div style={{background:c.bg2,borderTop:`1px solid ${c.border}`,padding:'5.5rem 4rem'}}>

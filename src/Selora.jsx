@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "./lib/AppContext";
-import ChatWidget from "./components/ChatWidget";
 
 // ─── Global Styles ────────────────────────────────────────────────────────────
 const GlobalStyles = () => (
@@ -27,9 +26,8 @@ const GlobalStyles = () => (
     .pdot  { animation: pulse 2.2s infinite; }
     .float { animation: float 4.5s ease-in-out infinite; }
 
-    .slide { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8rem 2rem 4rem; opacity:0; transform:translateY(16px); transition:opacity 1.4s cubic-bezier(0.4,0,0.2,1), transform 1.4s cubic-bezier(0.4,0,0.2,1); pointer-events:none; z-index:2; }
+    .slide { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:4.5rem 2rem 3rem; opacity:0; transform:translateY(16px); transition:opacity 0.45s ease, transform 0.45s ease; pointer-events:none; z-index:2; }
     .slide.active { opacity:1; transform:translateY(0); pointer-events:all; }
-    .slide.active { opacity:1; pointer-events:all; }
     // .slide-dot { width:20px; height:2px; background:rgba(90,138,103,.25); border:none; cursor:pointer; transition:all .35s; padding:0; }
     // .slide-dot.active { background:var(--g); width:36px; }
 
@@ -235,6 +233,7 @@ const BtnS  = ({children,style,onClick}) => <button onClick={onClick} style={{ba
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 function Navbar({scrolled}) {
+  const { user } = useAppContext();
   return (
     <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"1rem 3.5rem",background:scrolled?"rgba(248,250,248,.97)":"rgba(248,250,248,.88)",backdropFilter:"blur(14px)",borderBottom:"1px solid var(--border)",transition:"background .3s"}}>
       <div style={{fontFamily:"Inter,sans-serif",fontSize:"1.2rem",fontWeight:700,letterSpacing:"-.3px",color:"var(--dark)"}}>
@@ -251,10 +250,18 @@ function Navbar({scrolled}) {
         <Link to="/demo" style={{fontSize:".82rem",fontWeight:500,color:"var(--g)",textDecoration:"none",marginLeft:"2rem"}}>Book a Demo</Link>
       </div>
       <div style={{display:"flex",gap:".7rem",alignItems:"center"}}>
-        <Link to="/login" style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none"}}>Sign In</Link>
-        <Link to="/signup" style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
-          Get Started Free
-        </Link>
+        {user ? (
+          <Link to="/dashboard" style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
+            Dashboard
+          </Link>
+        ) : (
+          <>
+            <Link to="/login" style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none"}}>Sign In</Link>
+            <Link to="/signup" style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
+              Get Started Free
+            </Link>
+          </>
+        )}
       </div>
     </nav>
   );
@@ -263,26 +270,45 @@ function Navbar({scrolled}) {
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 function Hero() {
   const [current, setCurrent] = useState(0);
+  const [exiting, setExiting] = useState(false);
   const timerRef = useRef(null);
+  const exitTimerRef = useRef(null);
   const total = SLIDES.length;
 
-  const goTo = (n) => setCurrent(((n % total) + total) % total);
+  const EXIT_MS = 450;
+
+  const advance = (next) => {
+    setExiting(true);
+    clearTimeout(exitTimerRef.current);
+    exitTimerRef.current = setTimeout(() => {
+      setCurrent(next);
+      setExiting(false);
+    }, EXIT_MS);
+  };
+
+  const goTo = (n) => advance(((n % total) + total) % total);
 
   const startAuto = () => {
     clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => setCurrent(c => (c + 1) % total), 6500);
+    timerRef.current = setInterval(() => advance(c => (c + 1) % total), 6500);
   };
 
-  useEffect(() => { startAuto(); return () => clearInterval(timerRef.current); }, []);
+  useEffect(() => {
+    startAuto();
+    return () => {
+      clearInterval(timerRef.current);
+      clearTimeout(exitTimerRef.current);
+    };
+  }, []);
 
   return (
-    <div style={{position:"relative",height:"100vh",minHeight:700,overflow:"hidden",background:"linear-gradient(170deg,#EEF4EF 0%,var(--bg) 55%)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+    <div style={{position:"relative",minHeight:620,overflow:"hidden",background:"linear-gradient(170deg,#EEF4EF 0%,var(--bg) 55%)",display:"flex",alignItems:"center",justifyContent:"center"}}>
       {/* Snowflake canvas */}
       <SnowCanvas />
 
       {/* Slides */}
       {SLIDES.map((slide, i) => (
-        <div key={i} className={`slide${current===i?" active":""}`}>
+        <div key={i} className={`slide${current === i && !exiting ? " active" : ""}`}>
           {/* Badge */}
           <div className="au" style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"#fff",border:"1px solid var(--border)",color:"var(--g)",padding:".35rem 1rem",borderRadius:999,fontSize:".72rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",marginBottom:"1.8rem",boxShadow:"0 2px 10px rgba(90,138,103,.08)",fontFamily:"Inter,sans-serif"}}>
             <span className="pdot" style={{display:"inline-block",width:6,height:6,borderRadius:"50%",background:"var(--g)"}}/>
@@ -343,33 +369,240 @@ function Hero() {
 // ─── Trust ────────────────────────────────────────────────────────────────────
 function TrustBar() {
   return (
-    <div className="au4" style={{background:"#fff",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",padding:"1rem 4rem",display:"flex",alignItems:"center",justifyContent:"center",gap:"2.5rem",flexWrap:"wrap"}}>
+    <div className="au4" style={{background:"#fff",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",padding:"0.6rem 4rem",display:"flex",alignItems:"center",justifyContent:"center",gap:"1.5rem",flexWrap:"wrap"}}>
       {[["👗","Built for fashion"],["⚡","Ready in 5 minutes"],["🔒","Bank-level security"],["💬","Human support"],["🔄","Cancel anytime"]].map(([icon,text])=>(
         <div key={text} style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".78rem",color:"var(--muted)",fontWeight:400}}>
-          <span>{icon}</span>{text}
+          <span style={{fontSize:"14px"}}>{icon}</span>{text}
         </div>
       ))}
     </div>
   );
 }
 
-// ─── Stats ────────────────────────────────────────────────────────────────────
-function StatsBar({ data }) {
-  const displayStats = data ? [
-    { num: data.total_stores > 0 ? `${data.total_stores}` : "12K+", label: "Stores Growing" },
-    { num: data.total_actions > 0 ? `${data.total_actions}` : "150K+", label: "Optimizations Done" },
-    { num: "3.8x", label: "Avg Growth Rate" },
-    { num: "99%",  label: "Uptime" },
-  ] : STATS;
+// ─── Listing Showcase ─────────────────────────────────────────────────────────
+const SHOWCASE_EXAMPLES = [
+  {
+    before: "Floral wrap dress. 100% rayon. S, M, L. Machine washable.",
+    after: "Effortless floral wrap dress — flowy, flattering, brunch-to-backyard."
+  },
+  {
+    before: "Linen blazer. White color. Slim fit. Dry clean only.",
+    after: "Classic white linen blazer — breathable, crisp, sunset-dinner ready."
+  },
+  {
+    before: "Leather boots. Black. Size 6-10. rubber sole. round toe.",
+    after: "Handcrafted black leather boots — weather-resistant, all-day cushioned walk."
+  }
+];
+
+function ListingShowcase() {
+  const [currentExample, setCurrentExample] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentExample((prev) => (prev + 1) % SHOWCASE_EXAMPLES.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const example = SHOWCASE_EXAMPLES[currentExample];
 
   return (
-    <div style={{display:"flex",justifyContent:"center",background:"var(--bg2)",borderBottom:"1px solid var(--border)",flexWrap:"wrap"}}>
-      {displayStats.map((s,i)=>(
-        <div key={i} style={{flex:1,minWidth:140,textAlign:"center",padding:"2rem 1.5rem",borderRight:i<displayStats.length-1?"1px solid var(--border)":"none"}}>
-          <div style={{fontSize:"2rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",letterSpacing:"-.5px"}}>{s.num}</div>
-          <div style={{fontSize:".7rem",color:"var(--muted)",marginTop:".25rem",textTransform:"uppercase",letterSpacing:".08em"}}>{s.label}</div>
+    <div className="mob-pad mob-vpad" style={{ padding: "4rem 2rem 2rem", maxWidth: 1000, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+      {/* Badge */}
+      <div style={{
+        display: "inline-flex",
+        alignItems: "center",
+        background: "var(--gpale)",
+        border: "1px solid var(--border)",
+        color: "var(--g)",
+        padding: ".35rem 1rem",
+        borderRadius: 999,
+        fontSize: ".75rem",
+        fontWeight: 600,
+        letterSpacing: ".05em",
+        marginBottom: "1rem",
+        fontFamily: "Inter, sans-serif"
+      }}>
+        Example — illustrative, not a customer result
+      </div>
+
+      {/* Labels "before" and "after" */}
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        width: "100%",
+        maxWidth: 936,
+        marginBottom: ".25rem",
+        padding: "0 .25rem",
+        fontFamily: "Inter, sans-serif"
+      }}>
+        <span style={{
+          fontSize: ".75rem",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: ".08em",
+          color: "var(--muted)"
+        }}>
+          before
+        </span>
+        <span style={{
+          fontSize: ".75rem",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: ".08em",
+          color: "var(--g)"
+        }}>
+          after (AI Optimized)
+        </span>
+      </div>
+
+      {/* Sweep Strip Container */}
+      <div key={currentExample} style={{
+        position: "relative",
+        width: "100%",
+        maxWidth: 936,
+        height: 80,
+        border: "1px solid var(--border)",
+        borderRadius: 12,
+        background: "var(--bg)",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        marginBottom: "0.8rem"
+      }}>
+        {/* Base Layer: Before Text */}
+        <div style={{
+          padding: "0 2rem",
+          fontSize: ".9rem",
+          color: "var(--muted)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          width: "100%",
+          fontFamily: "Inter, sans-serif"
+        }}>
+          {example.before}
         </div>
-      ))}
+
+        {/* Mask Layer: After Text */}
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: "0%",
+          overflow: "hidden",
+          background: "var(--g-tint)",
+          animation: "sweepW 6s ease-in-out infinite"
+        }}>
+          <div style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: 936,
+            padding: "0 2rem",
+            fontSize: ".9rem",
+            fontWeight: 500,
+            color: "var(--g)",
+            whiteSpace: "nowrap",
+            display: "flex",
+            alignItems: "center",
+            fontFamily: "Inter, sans-serif"
+          }}>
+            {example.after}
+          </div>
+        </div>
+
+        {/* Divider Line */}
+        <div style={{
+          position: "absolute",
+          top: 0,
+          bottom: 0,
+          left: "0%",
+          width: 2,
+          background: "var(--g)",
+          animation: "sweepL 6s ease-in-out infinite",
+          zIndex: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}>
+          {/* Circular Handle */}
+          <div style={{
+            width: 22,
+            height: 22,
+            borderRadius: "50%",
+            background: "var(--g-tint)",
+            border: "1px solid var(--g)",
+            boxShadow: "0 2px 8px rgba(90, 138, 103, 0.15)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "8px",
+            color: "var(--g)",
+            cursor: "ew-resize",
+            userSelect: "none"
+          }}>
+            <span style={{ fontSize: "8px", fontWeight: "bold", display: "flex", gap: "2px" }}>
+              <span>◀</span>
+              <span>▶</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats chips in their own row with top border */}
+      <div style={{
+        width: "100%",
+        maxWidth: 936,
+        borderTop: "1px solid var(--border)",
+        paddingTop: "0.8rem",
+        display: "flex",
+        justifyContent: "space-around",
+        gap: "2rem",
+        flexWrap: "wrap"
+      }}>
+        <div style={{ textAlign: "center", minWidth: 120 }}>
+          <div style={{
+            fontSize: "2.4rem",
+            fontWeight: 500,
+            color: "var(--dark)",
+            fontFamily: "'Cormorant Garamond', serif",
+            lineHeight: 1
+          }}>
+            3.8x
+          </div>
+          <div style={{
+            fontSize: ".75rem",
+            color: "var(--muted)",
+            marginTop: ".35rem",
+            fontFamily: "Inter, sans-serif"
+          }}>
+            avg growth rate
+          </div>
+        </div>
+
+        <div style={{ textAlign: "center", minWidth: 120 }}>
+          <div style={{
+            fontSize: "2.4rem",
+            fontWeight: 500,
+            color: "var(--dark)",
+            fontFamily: "'Cormorant Garamond', serif",
+            lineHeight: 1
+          }}>
+            99%
+          </div>
+          <div style={{
+            fontSize: ".75rem",
+            color: "var(--muted)",
+            marginTop: ".35rem",
+            fontFamily: "Inter, sans-serif"
+          }}>
+            uptime
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -377,8 +610,8 @@ function StatsBar({ data }) {
 // ─── Features ─────────────────────────────────────────────────────────────────
 function Features() {
   return (
-    <section className="mob-pad mob-vpad" style={{padding:"5.5rem 4rem",maxWidth:1160,margin:"0 auto"}}>
-      <div style={{textAlign:"center",maxWidth:540,margin:"0 auto 3rem"}}>
+    <section className="mob-pad mob-vpad" style={{padding:"1.8rem 4rem 5.5rem",maxWidth:1160,margin:"0 auto"}}>
+      <div style={{textAlign:"center",maxWidth:540,margin:"0 auto 2rem"}}>
         <Tag center>What Selora Does</Tag>
         <Title center>Six ways your collection<br/>grows every day</Title>
         <Sub center>Each runs automatically — built specifically for the fashion industry.</Sub>
@@ -619,16 +852,13 @@ export default function Selora() {
       <Navbar scrolled={scrolled}/>
       <Hero/>
       <TrustBar/>
-      <StatsBar data={publicStats}/>
+      <ListingShowcase />
       <Features/>
       <HowItWorks data={publicStats}/>
       <Pricing/>
       <Testimonials/>
       <CTA/>
       <Footer/>
-      {publicStats?.demo_store_id && (
-        <ChatWidget storeId={publicStats.demo_store_id} isLandingPage={true} />
-      )}
     </>
   );
 }

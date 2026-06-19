@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 
 const AppContext = createContext(null)
@@ -12,10 +12,13 @@ export function AppProvider({ children }) {
   const [products, setProducts] = useState([])
   const [fetchingProducts, setFetchingProducts] = useState(false)
   const [productsStats, setProductsStats] = useState({ revenue: 0, orders: 0 })
+  // Ref to prevent duplicate auth subscriptions in React Strict Mode
+  const authSubscriptionRef = useRef(null)
 
   // Auth check & store fetch
   useEffect(() => {
     let mounted = true
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return
       if (session) {
@@ -26,19 +29,27 @@ export function AppProvider({ children }) {
       }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        setUser(null)
-        setStores([])
-        setActiveStore(null)
-      } else {
-        setUser(session.user)
-        fetchStores(session.user.email)
-      }
-    })
+    // Only subscribe once — guard against React Strict Mode double-invoke
+    if (!authSubscriptionRef.current) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!session) {
+          setUser(null)
+          setStores([])
+          setActiveStore(null)
+        } else {
+          setUser(session.user)
+          fetchStores(session.user.email)
+        }
+      })
+      authSubscriptionRef.current = subscription
+    }
+
     return () => {
       mounted = false
-      subscription.unsubscribe()
+      if (authSubscriptionRef.current) {
+        authSubscriptionRef.current.unsubscribe()
+        authSubscriptionRef.current = null
+      }
     }
   }, [])
 

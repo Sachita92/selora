@@ -1,13 +1,241 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
+  /* Elevation staircase - Light Mode */
+  --bg-0: #F8FAF8;
+  --bg-1: #FFFFFF;
+  --bg-2: #EEF4EF;
+  --bg-3: #E4EBE5;
+
+  --border: #E4EBE5;
+  --border-strong: #C7DACB;
+
+  --text-primary: #1A271C;
+  --text-secondary: #3B5A44;
+  --text-muted: #7B907D;
+
   --g: #5A8A67;
   --g2: #78A885;
-  --gpale: #EDF3EE;
-  --bg: #F8FAF8;
-  --bg2: #F1F5F1;
-  --border: #E4EBE5;
-  --dark: #1A271C;
-  --text: #2E3D30;
-  --muted: #7B907D;
+
+  --check-bg: #EEF4EF;
+  --check-border: 1px solid #C7DACB;
+  --check-stroke: #5A8A67;
+
+  --circle-border-outer: 1px solid #E4EBE5;
+  --circle-border-inner: 1px solid #D8E5DA;
+
+  --existing-store-badge: #3B5A44;
+  --theme-toggle-color: #7B907D;
+  --snowflake-color: rgba(90, 138, 103, 0.45);
+  --highlight-bg: rgba(90, 138, 103, 0.04);
+  --g-tint: #EAF3DE;
+
+  /* Theme mappings for variables */
+  --canvas-bg: linear-gradient(170deg, var(--bg-2) 0%, var(--bg-0) 55%);
+  --nav-bg: rgba(248, 250, 248, 0.88);
+  --nav-bg-scrolled: rgba(248, 250, 248, 0.97);
+  --nav-border: var(--border);
+  --logo-text: var(--text-primary);
+  --nav-link: var(--text-muted);
+  --nav-link-hover: var(--text-primary);
+  --nav-link-primary: var(--g);
+  --nav-link-primary-hover: var(--g2);
+  --card-bg: var(--bg-1);
+  --card-border: 1px solid var(--border);
+  --card-shadow: 0 4px 32px rgba(26, 39, 28, 0.07);
+  --card-shadow-hover: 0 16px 48px rgba(26, 39, 28, 0.12);
+  --card-header-bg: linear-gradient(135deg, var(--bg-2) 0%, var(--bg-3) 100%);
+  --card-header-border: 1px solid var(--border-strong);
+  --title-text: var(--text-primary);
+  --sub-text: var(--text-secondary);
+  --body-text: var(--text-secondary);
+  --divider-color: var(--bg-2);
+  --input-bg: var(--bg-1);
+  --input-border: var(--border);
+  --input-prefix-bg: var(--bg-0);
+  --input-prefix-text: var(--text-muted);
+  --input-text: var(--text-primary);
+  --input-focus-shadow: rgba(90, 138, 103, 0.1);
+  --footer-bg: var(--bg-1);
+  --footer-border: var(--border);
+  --footer-text: var(--text-muted);
+  --footer-link: var(--text-muted);
+  --step-number-bg: var(--bg-2);
+  --step-number-border: var(--border-strong);
+  --step-number-text: var(--g);
+  --step-title: var(--text-primary);
+  --step-desc: var(--text-muted);
+  --step-bar: var(--border);
+  
+  --btn-bg: var(--g);
+  --btn-border: none;
+  --btn-text: #ffffff;
+  --btn-hover-bg: #4a7a57;
+  --btn-hover-border: transparent;
+  --btn-hover-text: #ffffff;
+  
+  --existing-store-badge-bg: rgba(90, 138, 103, 0.09);
+  --existing-store-badge-border: rgba(90, 138, 103, 0.18);
+  --existing-store-badge-svg: var(--g);
+  --existing-store-badge-svg-sec: var(--text-primary);
+  --muted-text: var(--text-muted);
+  --theme-toggle-hover: var(--text-primary);
+}
+
+.dark {
+  /* Elevation staircase - Dark Mode */
+  --bg-0: #0A0F0B;   /* page background — deepest */
+  --bg-1: #121A14;   /* card surface */
+  --bg-2: #1B261D;   /* hover / active surface */
+  --bg-3: #243024;   /* highest elevation */
+
+  --border: #2E3D30;        /* visible against bg-1 */
+  --border-strong: #3F5443; /* hover / focus states */
+
+  --text-primary: #F4F9F5;
+  --text-secondary: #C2DDD3;
+  --text-muted: #7FA189;    /* brightened from light-mode muted */
+
+  --g: #6FBF8B;
+  --g2: #8FD4A8;
+
+  --check-bg: #1B261D;
+  --check-border: 1px solid #3F5443;
+  --check-stroke: #6FBF8B;
+
+  --circle-border-outer: 1px solid #2E3D30;
+  --circle-border-inner: 1px solid #243024;
+
+  --existing-store-badge: #C2DDD3;
+  --theme-toggle-color: #C2DDD3;
+  --snowflake-color: rgba(212, 175, 110, 0.12); /* warm gold dust */
+  --highlight-bg: rgba(111, 191, 139, 0.05);
+  --g-tint: rgba(111, 191, 139, 0.14);
+
+  /* Theme mappings for variables */
+  --canvas-bg: linear-gradient(170deg, var(--bg-1) 0%, var(--bg-0) 60%);
+  --nav-bg: rgba(10, 15, 11, 0.8);
+  --nav-bg-scrolled: rgba(10, 15, 11, 0.8);
+  --nav-border: var(--border);
+  --logo-text: var(--text-primary);
+  --nav-link: var(--text-muted);
+  --nav-link-hover: var(--g);
+  --nav-link-primary: var(--g);
+  --nav-link-primary-hover: var(--g2);
+  --card-bg: var(--bg-1);
+  --card-border: 1px solid var(--border);
+  --card-shadow: 0 4px 32px rgba(0, 0, 0, 0.35);
+  --card-shadow-hover: 0 16px 48px rgba(0, 0, 0, 0.5);
+  --card-header-bg: linear-gradient(135deg, var(--bg-2) 0%, var(--bg-1) 100%);
+  --card-header-border: 1px solid var(--border);
+  --title-text: var(--text-primary);
+  --sub-text: var(--text-secondary);
+  --body-text: var(--text-secondary);
+  --divider-color: var(--border);
+  --input-bg: rgba(0, 0, 0, 0.2);
+  --input-border: var(--border);
+  --input-prefix-bg: rgba(0, 0, 0, 0.1);
+  --input-prefix-text: var(--text-muted);
+  --input-text: var(--text-primary);
+  --input-focus-shadow: rgba(111, 191, 139, 0.15);
+  --footer-bg: var(--bg-0);
+  --footer-border: var(--border);
+  --footer-text: var(--text-muted);
+  --footer-link: var(--text-muted);
+  --step-number-bg: var(--bg-2);
+  --step-number-border: var(--border);
+  --step-number-text: var(--text-secondary);
+  --step-title: var(--text-primary);
+  --step-desc: var(--text-muted);
+  --step-bar: var(--border);
+  
+  --btn-bg: var(--bg-2);
+  --btn-border: 1px solid var(--border);
+  --btn-text: var(--text-primary);
+  --btn-hover-bg: var(--g);
+  --btn-hover-border: var(--g);
+  --btn-hover-text: #0A0F0B;
+  
+  --existing-store-badge-bg: rgba(255, 255, 255, 0.03);
+  --existing-store-badge-border: rgba(255, 255, 255, 0.06);
+  --existing-store-badge-svg: var(--text-muted);
+  --existing-store-badge-svg-sec: var(--text-primary);
+  --muted-text: var(--text-muted);
+  --theme-toggle-hover: var(--g);
+}
+
+/* ── Keyframes & Animations ─────────────────────────────────────── */
+@keyframes fadeUp    { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:none} }
+@keyframes fadeIn    { from{opacity:0} to{opacity:1} }
+@keyframes growBar   { from{width:0} to{width:100%} }
+@keyframes shimmer   { 0%{transform:translateX(-100%) skewX(-15deg)} 100%{transform:translateX(260%) skewX(-15deg)} }
+@keyframes popIn     { from{opacity:0;transform:scale(0.9) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+@keyframes sweepW { 0%, 8% { width: 0%; } 45%, 58% { width: 100%; } 95%, 100% { width: 0%; } }
+@keyframes sweepL { 0%, 8% { left: 0%; } 45%, 58% { left: 100%; } 95%, 100% { left: 0%; } }
+
+/* ── Dynamic Layout Helper Classes ───────────────────────────────── */
+.cn-nav-btn:hover { background: #D6EBD9 !important; }
+.cn-nav-link { color: var(--nav-link) !important; transition: color 0.2s; }
+.cn-nav-link:hover { color: var(--nav-link-hover) !important; }
+.cn-nav-link-primary { color: var(--nav-link-primary) !important; transition: color 0.2s; }
+.cn-nav-link-primary:hover { color: var(--nav-link-primary-hover) !important; }
+
+.cn-footer-link { color: var(--footer-link) !important; transition: color 0.2s; }
+.cn-footer-link:hover { color: var(--nav-link-hover) !important; }
+
+.cn-theme-toggle { color: var(--theme-toggle-color) !important; transition: color 0.2s; }
+.cn-theme-toggle:hover { color: var(--theme-toggle-hover) !important; }
+
+.cn-shopify-btn, .cn-selora-btn {
+  background: var(--btn-bg) !important;
+  color: var(--btn-text) !important;
+  border: var(--btn-border) !important;
+  transition: background .18s, border-color .18s, color .18s, box-shadow .18s;
+}
+.cn-shopify-btn:hover:not(:disabled), .cn-selora-btn:hover {
+  background: var(--btn-hover-bg) !important;
+  border-color: var(--btn-hover-border) !important;
+  color: var(--btn-hover-text) !important;
+  box-shadow: 0 4px 18px rgba(90, 138, 103, 0.3);
+}
+
+.cn-selora-btn {
+  position: relative;
+  overflow: hidden;
+}
+.cn-selora-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: translateX(-100%) skewX(-15deg);
+}
+.cn-selora-btn:hover::after {
+  animation: shimmer .55s ease forwards;
+}
+
+.cn-card {
+  background: var(--card-bg) !important;
+  border: var(--card-border) !important;
+  box-shadow: var(--card-shadow) !important;
+  transition: transform .35s cubic-bezier(.16, 1, .3, 1), box-shadow .35s cubic-bezier(.16, 1, .3, 1), background-color .35s, border-color .35s;
+}
+.cn-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--card-shadow-hover) !important;
+}
+
+.cn-input-field:focus {
+  border-color: #5A8A67 !important;
+  box-shadow: 0 0 0 3px var(--input-focus-shadow) !important;
+  outline: none;
+}
+.cn-input-field::placeholder {
+  color: var(--step-desc) !important;
+  opacity: 1;
 }

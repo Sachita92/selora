@@ -1,4 +1,5 @@
 import os
+import threading
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -6,18 +7,17 @@ load_dotenv()
 
 # ─── Client ───────────────────────────────────────────────────────────────────
 
-_supabase_client = None
+_thread_local = threading.local()
 
 def get_client() -> Client:
     """Get a Supabase client using the service role key (bypasses RLS for backend use)."""
-    global _supabase_client
-    if _supabase_client is None:
+    if not hasattr(_thread_local, "supabase_client"):
         url = os.getenv("SUPABASE_URL")
         key = os.getenv("SUPABASE_SERVICE_KEY")  # service role — never expose in frontend
         if not url or not key:
             raise ValueError("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in .env")
-        _supabase_client = create_client(url, key)
-    return _supabase_client
+        _thread_local.supabase_client = create_client(url, key)
+    return _thread_local.supabase_client
 
 
 def db() -> Client:

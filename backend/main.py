@@ -1013,6 +1013,271 @@ def run_scheduler(interval_minutes: int = 60, dry_run: bool = False):
         time.sleep(interval_minutes * 60)
 
 
+
+
+# ─── Selora Native Store Endpoints ───────────────────────────────────────────
+
+from typing import List as _List, Optional as _Optional
+
+class StoreCreateRequest(BaseModel):
+    name: str
+    handle: str
+    description: Optional[str] = None
+    cover_image: Optional[str] = None
+    currency: str = 'USD'
+    is_public: bool = True
+
+class StoreUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    handle: Optional[str] = None
+    description: Optional[str] = None
+    cover_image: Optional[str] = None
+    currency: Optional[str] = None
+    is_public: Optional[bool] = None
+
+class ProductCreateRequest(BaseModel):
+    title: str
+    description: Optional[str] = None
+    price: float
+    compare_at_price: Optional[float] = None
+    inventory: int = 0
+    images: Optional[List[str]] = []
+    tags: Optional[List[str]] = []
+    is_active: bool = True
+
+class ProductUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    compare_at_price: Optional[float] = None
+    inventory: Optional[int] = None
+    images: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+
+
+def _get_user_id_from_token(request: Request) -> str:
+    """Extract user_id from Supabase JWT in Authorization header."""
+    import jwt as pyjwt
+    auth = request.headers.get('Authorization', '')
+    if not auth.startswith('Bearer '):
+        raise HTTPException(status_code=401, detail='Missing or invalid Authorization header')
+    token = auth[7:]
+    try:
+        decoded = pyjwt.decode(token, options={'verify_signature': False})
+        user_id = decoded.get('sub')
+        if not user_id:
+            raise HTTPException(status_code=401, detail='Invalid token: no sub claim')
+        return user_id
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f'Token decode failed: {e}')
+
+
+@app.post('/selora-stores')
+def create_selora_store(body: StoreCreateRequest, request: Request):
+    """Create a new Selora native store for the authenticated user."""
+    from database import db as _db
+    import re
+    user_id = _get_user_id_from_token(request)
+    handle = re.sub(r'[^a-z0-9-]', '', body.handle.lower().replace(' ', '-'))
+    if not handle:
+        raise HTTPException(status_code=400, detail='Invalid handle')
+    try:
+        result = _db().table('selora_stores').insert({
+            'user_id': user_id,
+            'name': body.name,
+            'handle': handle,
+            'description': body.description,
+            'cover_image': body.cover_image,
+            'currency': body.currency,
+            'is_public': body.is_public,
+        }).execute()
+        return result.data[0]
+    except Exception as e:
+        err = str(e)
+        if 'duplicate' in err.lower() or 'unique' in err.lower():
+            raise HTTPException(status_code=409, detail='That handle is already taken. Please choose another.')
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get('/selora-stores/me')
+def get_my_selora_store(request: Request):
+    """Get the current user's Selora store."""
+    from database import db as _db
+    user_id = _get_user_id_from_token(request)
+    result = _db().table('selora_stores').select('*').eq('user_id', user_id).execute()
+    if not result.data:
+        return {'store': None}
+    return {'store': result.data[0]}
+
+
+@app.get('/selora-stores/featured')
+def get_featured_stores():
+    """Public: get featured stores."""
+    from database import db as _db
+    result = _db().table('selora_stores').select('*').eq('is_featured', True).eq('is_public', True).execute()
+    stores = result.data or []
+    enriched = []
+    for store in stores:
+        prod_result = _db().table('selora_products').select('id,title,price,images').eq('store_id', store['id']).eq('is_active', True).limit(4).execute()
+        enriched.append({**store, 'products': prod_result.data or []})
+    return {'stores': enriched}
+
+
+@app.get('/selora-stores/public/{handle}')
+def get_public_store(handle: str):
+    """Public: get store + products by handle."""
+    from database import db as _db
+    store_result = _db().table('selora_stores').select('*').eq('handle', handle).eq('is_public', True).execute()
+    if not store_result.data:
+        raise HTTPException(status_code=404, detail='Store not found')
+    store = store_result.data[0]
+    products_result = _db().table('selora_products').select('*').eq('store_id', store['id']).eq('is_active', True).order('created_at', desc=False).execute()
+    return {'store': store, 'products': products_result.data or []}
+
+
+@app.put('/selora-stores/{store_id}')
+def update_selora_store(store_id: str, body: StoreUpdateRequest, request: Request):
+    """Update store details (owner only)."""
+    from database import db as _db
+    import re
+    user_id = _get_user_id_from_token(request)
+    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail='Store not found')
+    if existing.data[0]['user_id'] != user_id:
+        raise HTTPException(status_code=403, detail='Forbidden')
+    update_data = {k: v for k, v in body.dict().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail='No fields to update')
+    if 'handle' in update_data:
+        update_data['handle'] = re.sub(r'[^a-z0-9-]', '', update_data['handle'].lower().replace(' ', '-'))
+    result = _db().table('selora_stores').update(update_data).eq('id', store_id).execute()
+    return result.data[0]
+
+
+@app.post('/selora-stores/{store_id}/products')
+async def add_product_to_store(store_id: str, request: Request):
+    """Add a product to a store."""
+    from database import db as _db
+    user_id = _get_user_id_from_token(request)
+    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail='Store not found')
+    if existing.data[0]['user_id'] != user_id:
+        raise HTTPException(status_code=403, detail='Forbidden')
+    body_json = await request.json()
+    try:
+        price = float(body_json.get('price', 0))
+        compare_at_price = float(body_json['compare_at_price']) if body_json.get('compare_at_price') else None
+        inventory = int(body_json.get('inventory', 0))
+    except (ValueError, TypeError) as e:
+        raise HTTPException(status_code=400, detail=f'Invalid numeric field: {e}')
+    result = _db().table('selora_products').insert({
+        'store_id': store_id,
+        'title': body_json.get('title', ''),
+        'description': body_json.get('description'),
+        'price': price,
+        'compare_at_price': compare_at_price,
+        'inventory': inventory,
+        'images': body_json.get('images', []),
+        'tags': body_json.get('tags', []),
+        'is_active': body_json.get('is_active', True),
+    }).execute()
+    return result.data[0]
+
+
+@app.get('/selora-stores/{store_id}/products')
+def list_store_products(store_id: str, request: Request):
+    """List all products in a store."""
+    from database import db as _db
+    user_id = _get_user_id_from_token(request)
+    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail='Store not found')
+    if existing.data[0]['user_id'] != user_id:
+        raise HTTPException(status_code=403, detail='Forbidden')
+    result = _db().table('selora_products').select('*').eq('store_id', store_id).order('created_at', desc=False).execute()
+    return {'products': result.data or []}
+
+
+@app.put('/selora-stores/{store_id}/products/{product_id}')
+async def update_product(store_id: str, product_id: str, request: Request):
+    """Edit a product."""
+    from database import db as _db
+    user_id = _get_user_id_from_token(request)
+    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail='Store not found')
+    if existing.data[0]['user_id'] != user_id:
+        raise HTTPException(status_code=403, detail='Forbidden')
+    body_json = await request.json()
+    allowed = ['title', 'description', 'price', 'compare_at_price', 'inventory', 'images', 'tags', 'is_active']
+    update_data = {k: v for k, v in body_json.items() if k in allowed}
+    if not update_data:
+        raise HTTPException(status_code=400, detail='No valid fields to update')
+    result = _db().table('selora_products').update(update_data).eq('id', product_id).eq('store_id', store_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail='Product not found')
+    return result.data[0]
+
+
+@app.delete('/selora-stores/{store_id}/products/{product_id}')
+def delete_product(store_id: str, product_id: str, request: Request):
+    """Delete a product."""
+    from database import db as _db
+    user_id = _get_user_id_from_token(request)
+    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail='Store not found')
+    if existing.data[0]['user_id'] != user_id:
+        raise HTTPException(status_code=403, detail='Forbidden')
+    _db().table('selora_products').delete().eq('id', product_id).eq('store_id', store_id).execute()
+    return {'success': True}
+
+
+@app.post('/selora-stores/events')
+async def track_event(request: Request):
+    """Track a storefront event (view, add_to_cart, purchase). No auth required."""
+    from database import db as _db
+    body_json = await request.json()
+    event_type = body_json.get('event_type', '')
+    if event_type not in ('view', 'add_to_cart', 'purchase'):
+        raise HTTPException(status_code=400, detail='Invalid event_type')
+    _db().table('selora_events').insert({
+        'store_id': body_json.get('store_id'),
+        'product_id': body_json.get('product_id'),
+        'event_type': event_type,
+        'session_id': body_json.get('session_id'),
+    }).execute()
+    return {'success': True}
+
+
+@app.post('/selora-stores/{store_id}/upload-image')
+async def upload_product_image(store_id: str, request: Request):
+    """Upload a product image to Supabase Storage and return the public URL."""
+    import uuid, base64
+    from database import db as _db
+    user_id = _get_user_id_from_token(request)
+    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail='Store not found')
+    if existing.data[0]['user_id'] != user_id:
+        raise HTTPException(status_code=403, detail='Forbidden')
+    body_json = await request.json()
+    file_data_b64 = body_json.get('file_data', '')
+    file_name = body_json.get('file_name', f'{uuid.uuid4()}.jpg')
+    content_type = body_json.get('content_type', 'image/jpeg')
+    file_bytes = base64.b64decode(file_data_b64)
+    path = f'{store_id}/{uuid.uuid4()}-{file_name}'
+    supabase_url = os.getenv('SUPABASE_URL')
+    bucket = 'selora-products'
+    storage = _db().storage.from_(bucket)
+    storage.upload(path, file_bytes, {'content-type': content_type, 'upsert': 'true'})
+    public_url = f'{supabase_url}/storage/v1/object/public/{bucket}/{path}'
+    return {'url': public_url}
+
+
 # ─── CLI entry point ──────────────────────────────────────────────────────────
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Selora Backend")
