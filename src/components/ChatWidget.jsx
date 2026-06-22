@@ -61,6 +61,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
     loadSessions,
     startNewSession,
     sendMessage: sendGlobalMessage,
+    retryLastMessage,
   } = useChat()
 
   const [input, setInput] = useState('')
@@ -70,30 +71,81 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
   const inputRef = useRef(null)
   const widgetRef = useRef(null)
 
-  const [demoState, setDemoState] = useState('input') // 'input', 'loading', 'result', 'chat'
+  const [demoState, setDemoState] = useState('input') // 'input', 'loading', 'result', 'already_used', 'rate_limited', 'error', 'chat', 'refused'
   const [demoInput, setDemoInput] = useState('')
   const [demoResult, setDemoResult] = useState(null)
+  const [loadingPhraseIndex, setLoadingPhraseIndex] = useState(0)
+
+  const LOADING_PHRASES = [
+    "Reading your listing...",
+    "Drafting styling tips...",
+    "Polishing the description..."
+  ]
+
+  useEffect(() => {
+    if (demoState !== 'loading') return
+    const interval = setInterval(() => {
+      setLoadingPhraseIndex(prev => (prev + 1) % 3)
+    }, 800)
+    return () => clearInterval(interval)
+  }, [demoState])
+
+  const getCookie = (name) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  };
 
   const handleDemoSubmit = () => {
-    const text = demoInput.trim()
+    let text = demoInput.trim()
     if (!text) return
+    
+    // Cap at 150 characters
+    if (text.length > 150) {
+      text = text.slice(0, 150)
+    }
+
+    // Check cookie limit
+    if (getCookie('selora_demo_used') === '1') {
+      setDemoState('already_used')
+      return
+    }
+
     setDemoState('loading')
 
-    // TODO (Step 4): Expose listings rewrite endpoint to public marketing page securely.
-    // Right now, listing rewrites require an active Shopify store session and authentication.
-    // In production, to wire this to actual AI:
-    // (a) Create a separate public API endpoint (e.g., POST /api/public/rewrite) wrapping Groq/LLM logic.
-    // (b) Implement rate limiting (e.g., using Redis token bucket) on the public endpoint.
-    // (c) Cap free tries per guest session (e.g., store counter in localStorage or short-lived cookie).
-    // (d) Once the limit is reached (e.g., 3 free rewrites), prompt user with a modal to sign up.
-
-    setTimeout(() => {
-      setDemoResult({
-        before: text,
-        after: getDemoRewrite(text)
+    fetch(`${API_URL}/api/landing/rewrite-demo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: text })
+    })
+      .then(res => {
+        if (res.status === 429) {
+          throw new Error('RATE_LIMIT')
+        }
+        if (!res.ok) {
+          throw new Error('API_ERROR')
+        }
+        return res.json()
       })
-      setDemoState('result')
-    }, 1500)
+      .then(data => {
+        if (data.refused) {
+          setDemoState('refused')
+        } else {
+          setDemoResult(data)
+          // Set short-lived cookie for 48 hours (172800 seconds)
+          document.cookie = "selora_demo_used=1; max-age=172800; path=/;"
+          setDemoState('result')
+        }
+      })
+      .catch(err => {
+        console.error("Demo rewrite failed:", err)
+        if (err.message === 'RATE_LIMIT') {
+          setDemoState('rate_limited')
+        } else {
+          setDemoState('error')
+        }
+      })
   }
 
   useEffect(() => {
@@ -339,13 +391,39 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                   textAlign: 'center',
                   gap: '1rem'
                 }}>
-                  <div style={{ fontSize: '2.5rem' }}>👗</div>
-                  <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: c.dark, lineHeight: 1.4 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: 14, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img src="/s-logo.jpg" alt="Selora S Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: c.dark, lineHeight: 1.4, marginBottom: '.2rem' }}>
                     Fashion Listing AI Rewriter
                   </h3>
                   <p style={{ fontSize: '.84rem', color: c.muted, lineHeight: 1.5, maxWidth: 280 }}>
-                    Paste one of your product titles below and I'll show you what I'd do with it.
+                    Welcome to Selora — paste one of your product titles below and I'll show you what I'd do with it.
                   </p>
+                  <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '.4rem' }}>
+                    {['denim jacket', 'silk dress', 'leather boots'].map((item) => (
+                      <button
+                        key={item}
+                        onClick={() => setDemoInput(item)}
+                        style={{
+                          padding: '.35rem .6rem',
+                          borderRadius: 8,
+                          border: `1px solid ${c.border}`,
+                          background: c.card,
+                          color: c.green,
+                          fontSize: '.72rem',
+                          cursor: 'pointer',
+                          fontFamily: 'Inter, sans-serif',
+                          fontWeight: 500,
+                          transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = c.greenPale; e.currentTarget.style.borderColor = c.green; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = c.card; e.currentTarget.style.borderColor = c.border; }}
+                      >
+                        Try "{item}"
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div style={{
                   padding: '.75rem 1rem',
@@ -357,8 +435,9 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                   <input
                     ref={inputRef}
                     type="text"
+                    maxLength={150}
                     value={demoInput}
-                    onChange={e => setDemoInput(e.target.value)}
+                    onChange={e => setDemoInput(e.target.value.slice(0, 150))}
                     placeholder="e.g., Floral wrap dress"
                     style={{
                       flex: 1,
@@ -425,16 +504,22 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                     borderRadius: '14px 14px 14px 4px',
                     background: c.card,
                     border: `1px solid ${c.border}`,
-                    display: 'flex', gap: '.3rem', alignItems: 'center',
+                    display: 'flex', flexDirection: 'column', gap: '.5rem',
+                    alignItems: 'flex-start',
                   }}>
-                    {[0, 1, 2].map(i => (
-                      <span key={i} style={{
-                        width: 7, height: 7, borderRadius: '50%',
-                        background: c.muted, display: 'inline-block',
-                        animation: `chatDot 1.4s infinite ${i * .2}s`,
-                        opacity: .4,
-                      }} />
-                    ))}
+                    <div style={{ display: 'flex', gap: '.3rem', alignItems: 'center' }}>
+                      {[0, 1, 2].map(i => (
+                        <span key={i} style={{
+                          width: 7, height: 7, borderRadius: '50%',
+                          background: c.muted, display: 'inline-block',
+                          animation: `chatDot 1.4s infinite ${i * .2}s`,
+                          opacity: .4,
+                        }} />
+                      ))}
+                    </div>
+                    <span style={{ fontSize: '.76rem', color: c.muted, fontFamily: 'Inter, sans-serif' }}>
+                      {LOADING_PHRASES[loadingPhraseIndex]}
+                    </span>
                   </div>
                 </div>
                 <div style={{
@@ -471,6 +556,192 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                   </button>
                 </div>
               </>
+            ) : demoState === 'refused' ? (
+              <div style={{
+                flex: 1,
+                padding: '2rem 1.5rem',
+                background: c.bg,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: '1rem'
+              }}>
+                <div style={{ fontSize: '2.5rem' }}>👗</div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: c.dark, lineHeight: 1.4 }}>
+                  Not a fashion product?
+                </h3>
+                <p style={{ fontSize: '.84rem', color: c.muted, lineHeight: 1.6, maxWidth: 280 }}>
+                  I'm specialized in fashion and apparel listings. Please enter a style or item related to clothing, footwear, or accessories.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', width: '100%', maxWidth: 280, marginTop: '.8rem' }}>
+                  <button
+                    onClick={() => {
+                      setDemoState('input');
+                      setDemoInput('');
+                    }}
+                    style={{
+                      padding: '.65rem',
+                      borderRadius: 10,
+                      background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
+                      color: '#fff',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '.82rem',
+                      fontWeight: 600,
+                      fontFamily: 'Inter, sans-serif',
+                      boxShadow: '0 4px 12px rgba(90, 138, 103, 0.2)',
+                    }}
+                  >
+                    🔄 Try again
+                  </button>
+                </div>
+              </div>
+            ) : demoState === 'already_used' ? (
+              <div style={{
+                flex: 1,
+                padding: '2rem 1.5rem',
+                background: c.bg,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: '1rem'
+              }}>
+                <div style={{ fontSize: '2.5rem' }}>✨</div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: c.dark, lineHeight: 1.4 }}>
+                  You've already seen what I can do!
+                </h3>
+                <p style={{ fontSize: '.84rem', color: c.muted, lineHeight: 1.6, maxWidth: 280 }}>
+                  Connect your store and I'll do this for everything you sell.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', width: '100%', maxWidth: 280, marginTop: '.8rem' }}>
+                  <a
+                    href="/connect"
+                    style={{
+                      padding: '.65rem',
+                      borderRadius: 10,
+                      background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
+                      color: '#fff',
+                      textAlign: 'center',
+                      textDecoration: 'none',
+                      fontSize: '.82rem',
+                      fontWeight: 600,
+                      fontFamily: 'Inter, sans-serif',
+                      boxShadow: '0 4px 12px rgba(90, 138, 103, 0.2)',
+                    }}
+                  >
+                    Connect your store →
+                  </a>
+                  <button
+                    onClick={() => setDemoState('chat')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: c.muted,
+                      fontSize: '.72rem',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      marginTop: '.4rem'
+                    }}
+                  >
+                    Skip to normal chat agent
+                  </button>
+                </div>
+              </div>
+            ) : demoState === 'rate_limited' ? (
+              <div style={{
+                flex: 1,
+                padding: '2rem 1.5rem',
+                background: c.bg,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: '1rem'
+              }}>
+                <div style={{ fontSize: '2.5rem' }}>⚠️</div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: c.dark, lineHeight: 1.4 }}>
+                  Too many requests
+                </h3>
+                <p style={{ fontSize: '.84rem', color: c.muted, lineHeight: 1.6, maxWidth: 280 }}>
+                  Please try again later.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', width: '100%', maxWidth: 280, marginTop: '.8rem' }}>
+                  <button
+                    onClick={() => setDemoState('chat')}
+                    style={{
+                      padding: '.65rem',
+                      borderRadius: 10,
+                      background: c.card,
+                      border: `1px solid ${c.green}`,
+                      color: c.green,
+                      fontSize: '.82rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontFamily: 'Inter, sans-serif',
+                    }}
+                  >
+                    Skip to normal chat agent
+                  </button>
+                </div>
+              </div>
+            ) : demoState === 'error' ? (
+              <div style={{
+                flex: 1,
+                padding: '2rem 1.5rem',
+                background: c.bg,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                textAlign: 'center',
+                gap: '1rem'
+              }}>
+                <div style={{ fontSize: '2.5rem' }}>❌</div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: c.dark, lineHeight: 1.4 }}>
+                  Something went wrong
+                </h3>
+                <p style={{ fontSize: '.84rem', color: c.muted, lineHeight: 1.6, maxWidth: 280 }}>
+                  Something went wrong on my end — try again in a moment.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', width: '100%', maxWidth: 280, marginTop: '.8rem' }}>
+                  <button
+                    onClick={handleDemoSubmit}
+                    style={{
+                      padding: '.65rem',
+                      borderRadius: 10,
+                      background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
+                      color: '#fff',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '.82rem',
+                      fontWeight: 600,
+                      fontFamily: 'Inter, sans-serif',
+                      boxShadow: '0 4px 12px rgba(90, 138, 103, 0.2)',
+                    }}
+                  >
+                    🔄 Try again
+                  </button>
+                  <button
+                    onClick={() => setDemoState('input')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: c.muted,
+                      fontSize: '.72rem',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                      marginTop: '.4rem'
+                    }}
+                  >
+                    Go back
+                  </button>
+                </div>
+              </div>
             ) : (
               <>
                 <div style={{
@@ -514,6 +785,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                       color: c.green,
                       fontWeight: 500,
                       lineHeight: 1.5,
+                      whiteSpace: 'pre-wrap',
                     }}>
                       {demoResult.after}
                     </div>
@@ -521,31 +793,12 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
 
                   {/* Try Again & CTA Buttons */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', marginTop: '1rem' }}>
-                    <button
-                      onClick={() => {
-                        setDemoState('input');
-                        setDemoInput('');
-                      }}
-                      style={{
-                        padding: '.65rem',
-                        borderRadius: 10,
-                        background: c.card,
-                        border: `1px solid ${c.green}`,
-                        color: c.green,
-                        fontSize: '.82rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        fontFamily: 'Inter, sans-serif',
-                        transition: 'all .2s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = c.greenPale}
-                      onMouseLeave={e => e.currentTarget.style.background = c.card}
-                    >
-                      🔄 Try another title
-                    </button>
+                    <p style={{ fontSize: '.78rem', color: c.muted, lineHeight: 1.4, textAlign: 'center', margin: '.2rem 0' }}>
+                      Want this done automatically for your whole collection, every night?
+                    </p>
                     
                     <a
-                      href="/signup"
+                      href="/connect"
                       style={{
                         padding: '.65rem',
                         borderRadius: 10,
@@ -559,23 +812,40 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                         boxShadow: '0 4px 12px rgba(90, 138, 103, 0.2)',
                       }}
                     >
-                      🚀 Connect Shopify & Optimize Store
+                      Connect your store →
                     </a>
 
-                    <button
-                      onClick={() => setDemoState('chat')}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: c.muted,
-                        fontSize: '.72rem',
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                        marginTop: '.4rem'
-                      }}
-                    >
-                      Skip to normal chat agent
-                    </button>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '.4rem' }}>
+                      <button
+                        onClick={() => {
+                          setDemoState('input');
+                          setDemoInput('');
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: c.green,
+                          fontSize: '.72rem',
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        🔄 Try another title
+                      </button>
+                      <button
+                        onClick={() => setDemoState('chat')}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: c.muted,
+                          fontSize: '.72rem',
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        Skip to normal chat agent
+                      </button>
+                    </div>
                   </div>
                 </div>
               </>
@@ -594,6 +864,14 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                   if (i === 0 && isLandingPage && msg.role === 'assistant') {
                     content = "👋 Welcome to Selora! I'm your AI fashion growth agent.\n\nI automatically optimize pricing, list products, manage inventory, and grow sales. I've loaded a demo store context for you so you can see what I can do!\n\nTry asking me:\n• 'Which products are selling the best?'\n• 'How can I improve my store's pricing?'\n• 'Rewrite a listing for a dress'"
                   }
+
+                  const hasRewriteRedirect = !isUser && content && content.includes('[TRY_REWRITE_DEMO]')
+                  if (hasRewriteRedirect) {
+                    content = content.replace('[TRY_REWRITE_DEMO]', '').trim()
+                  }
+
+                  const isErrorMessage = !isUser && content === "Sorry, something went wrong on my end — please try again in a moment."
+
                   return (
                     <div
                       key={i}
@@ -622,6 +900,57 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                           : '0 1px 4px rgba(0,0,0,.04)',
                       }}>
                         {content}
+                        {hasRewriteRedirect && (
+                          <div style={{ marginTop: '0.6rem', borderTop: `1px solid ${c.border}`, paddingTop: '0.6rem' }}>
+                            <button
+                              onClick={() => {
+                                setDemoState('input');
+                                setDemoInput('');
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '.45rem .8rem',
+                                borderRadius: 8,
+                                background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
+                                color: '#fff',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '.76rem',
+                                fontWeight: 600,
+                                fontFamily: 'Inter, sans-serif',
+                                boxShadow: '0 2px 6px rgba(90, 138, 103, 0.15)',
+                              }}
+                            >
+                              👗 Try Listing Rewriter Demo
+                            </button>
+                          </div>
+                        )}
+                        {isErrorMessage && (
+                          <div style={{ marginTop: '0.6rem', borderTop: `1px solid ${c.border}`, paddingTop: '0.6rem' }}>
+                            <button
+                              onClick={() => retryLastMessage(storeId, isLandingPage)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '.45rem .8rem',
+                                borderRadius: 8,
+                                background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
+                                color: '#fff',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '.76rem',
+                                fontWeight: 600,
+                                fontFamily: 'Inter, sans-serif',
+                                boxShadow: '0 2px 6px rgba(90, 138, 103, 0.15)',
+                              }}
+                            >
+                              🔄 Retry
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )

@@ -401,8 +401,10 @@ def get_public_stats() -> dict:
         # Get recent activity
         recent_res = client.table("agent_logs").select("action_type,created_at,data").order("created_at", desc=True).limit(5).execute()
         
-        # Get first active store ID as demo store ID
-        demo_res = client.table("stores").select("id").eq("is_active", True).limit(1).execute()
+        # Get pinned store ID as demo store ID
+        import os
+        demo_domain = os.getenv("DEMO_STORE_SHOPIFY_DOMAIN", "selora-test.myshopify.com")
+        demo_res = client.table("stores").select("id").eq("shop_url", demo_domain).eq("is_active", True).execute()
         demo_store_id = demo_res.data[0]["id"] if demo_res.data else None
         
         return {

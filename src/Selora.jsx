@@ -54,6 +54,13 @@ const GlobalStyles = () => (
       .mob-pad { padding-left:1.2rem !important; padding-right:1.2rem !important; }
       .mob-vpad { padding-top:3.5rem !important; padding-bottom:3.5rem !important; }
     }
+    @keyframes skeleton-pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 0.3; }
+    }
+    .skeleton-pulse {
+      animation: skeleton-pulse 1.5s ease-in-out infinite;
+    }
   `}</style>
 );
 
@@ -424,7 +431,7 @@ function ListingShowcase() {
         marginBottom: "1rem",
         fontFamily: "Inter, sans-serif"
       }}>
-        Example — illustrative, not a customer result
+        Demo data
       </div>
 
       {/* Labels "before" and "after" */}
@@ -630,36 +637,209 @@ function Features() {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-function Dashboard({ data }) {
-  const formatAction = (type) => {
-    const map = {
-      reprice_product:  'Repriced product',
-      optimize_listing: 'Optimized listing',
-      restock_alert:    'Restock alert sent',
-      generate_report:  'Generated growth report',
-    }
-    return map[type] || type;
-  };
+// Helper functions for date-seeded PRNG fallback
+function getUTCDateString(offsetDays = 0) {
+  const d = new Date();
+  if (offsetDays !== 0) {
+    d.setUTCDate(d.getUTCDate() + offsetDays);
+  }
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
 
-  const formatTime = (ts) => {
-    if (!ts) return '';
-    return new Date(ts).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-  };
+function cyrb128(str) {
+  let h1 = 1779033703, h2 = 302473470, h3 = 3362450863, h4 = 50249225;
+  for (let i = 0, k; i < str.length; i++) {
+    k = str.charCodeAt(i);
+    h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+    h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+    h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+    h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+  }
+  h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+  h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+  h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+  h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+  return [(h1^h2^h3^h4)>>>0, (h2^h1)>>>0, (h3^h1)>>>0, (h4^h1)>>>0];
+}
 
-  const activityList = data && data.recent_activity && data.recent_activity.length > 0 
-    ? data.recent_activity.map(a => ({ text: formatAction(a.action_type), time: formatTime(a.created_at) }))
-    : ACTIVITY;
+function mulberry32(a) {
+  return function() {
+    let t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+}
+
+function getFallbackDashboardData() {
+  const todayStr = getUTCDateString(0);
+  const yesterdayStr = getUTCDateString(-1);
+
+  const seedToday = cyrb128(todayStr)[0];
+  const seedYesterday = cyrb128(yesterdayStr)[0];
+
+  const rngToday = mulberry32(seedToday);
+  const revToday = Math.round(3000 + rngToday() * 3000);
+  const ordersToday = Math.round(150 + rngToday() * 150);
+  const convToday = Math.round((2.5 + rngToday() * 1.5) * 100) / 100;
+
+  const rngYesterday = mulberry32(seedYesterday);
+  const revYesterday = Math.round(3000 + rngYesterday() * 3000);
+  const ordersYesterday = Math.round(150 + rngYesterday() * 150);
+  const convYesterday = Math.round((2.5 + rngYesterday() * 1.5) * 100) / 100;
+
+  const revenueDelta = ((revToday - revYesterday) / revYesterday) * 100;
+  const ordersDelta = ((ordersToday - ordersYesterday) / ordersYesterday) * 100;
+  const conversionDelta = convToday - convYesterday;
+
+  return {
+    revenue: revToday,
+    revenueDeltaPct: Math.round(revenueDelta * 10) / 10,
+    orders: ordersToday,
+    ordersDeltaPct: Math.round(ordersDelta * 10) / 10,
+    conversionPct: convToday,
+    conversionDeltaPts: Math.round(conversionDelta * 100) / 100,
+    activity: [
+      { action: "Optimized listing", product: "Floral wrap dress", time: "2:00 AM" },
+      { action: "Adjusted price", product: "Leather boots", time: "3:15 AM" },
+      { action: "Restocked alert", product: "Linen blazer", time: "5:30 AM" },
+      { action: "Generated growth report", product: null, time: "7:00 AM" }
+    ]
+  };
+}
+
+const FALLBACK_DASHBOARD_DATA = getFallbackDashboardData();
+
+const SkeletonMetric = () => (
+  <div style={{background:"var(--bg2)",borderRadius:9,padding:".85rem",border:"1px solid var(--border)",display:"flex",flexDirection:"column",gap:".35rem"}}>
+    <div className="skeleton-pulse" style={{width:"60%",height:"1.25rem",background:"var(--border)",borderRadius:4}}/>
+    <div className="skeleton-pulse" style={{width:"40%",height:".62rem",background:"var(--border)",borderRadius:3}}/>
+    <div className="skeleton-pulse" style={{width:"50%",height:".65rem",background:"var(--border)",borderRadius:3}}/>
+  </div>
+);
+
+const SkeletonActivityRow = ({ isLast }) => (
+  <div className="skeleton-pulse" style={{display:"flex",alignItems:"center",gap:".6rem",padding:".55rem .7rem",background:"var(--bg2)",borderRadius:7,border:"1px solid var(--border)",marginBottom:isLast ? 0 : ".45rem"}}>
+    <div style={{width:5,height:5,borderRadius:"50%",background:"var(--border)",flexShrink:0}}/>
+    <div style={{flex:1,height:".72rem",background:"var(--border)",borderRadius:3}}/>
+    <div style={{width:30,height:".65rem",background:"var(--border)",borderRadius:3}}/>
+  </div>
+);
+
+function Dashboard() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/landing/demo-dashboard')
+      .then(r => {
+        if (!r.ok) throw new Error("API responded with an error");
+        return r.json();
+      })
+      .then(d => {
+        setData(d);
+        setLoading(false);
+      })
+      .catch(e => {
+        console.error("Error fetching demo dashboard data, loading fallback:", e);
+        setData(getFallbackDashboardData());
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="float" style={{background:"#fff",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)"}}>
+        <div style={{background:"var(--bg2)",borderBottom:"1px solid var(--border)",padding:".8rem 1.1rem",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:".6rem"}}>
+          <div style={{display:"flex",alignItems:"center",gap:".45rem"}}>
+            {["#f87171","#fbbf24","#4ade80"].map(c=><div key={c} style={{width:9,height:9,borderRadius:"50%",background:c}}/>)}
+            <span style={{marginLeft:".7rem",fontSize:".72rem",color:"var(--muted)",fontWeight:600}}>Selora · Fashion Dashboard</span>
+          </div>
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            background: "var(--gpale)",
+            border: "1px solid var(--border)",
+            color: "var(--g)",
+            padding: ".35rem 1rem",
+            borderRadius: 999,
+            fontSize: ".75rem",
+            fontWeight: 600,
+            letterSpacing: ".05em",
+            fontFamily: "Inter, sans-serif"
+          }}>
+            Demo data
+          </div>
+        </div>
+        <div style={{padding:"1.3rem"}}>
+          <p style={{fontSize:".68rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:".8rem"}}>This Morning's Growth</p>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".7rem",marginBottom:"1.1rem"}}>
+            <SkeletonMetric />
+            <SkeletonMetric />
+            <SkeletonMetric />
+          </div>
+          <p style={{fontSize:".68rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:".8rem"}}>What Selora Did Overnight</p>
+          <SkeletonActivityRow />
+          <SkeletonActivityRow />
+          <SkeletonActivityRow />
+          <SkeletonActivityRow isLast={true} />
+        </div>
+      </div>
+    );
+  }
+
+  // Ensure activity is defined
+  const activityList = data?.activity || FALLBACK_DASHBOARD_DATA.activity;
+
+  // Formatting strings dynamically
+  const revValue = "$" + (data?.revenue ?? FALLBACK_DASHBOARD_DATA.revenue).toLocaleString();
+  const revDeltaVal = data?.revenueDeltaPct ?? FALLBACK_DASHBOARD_DATA.revenueDeltaPct;
+  const revDeltaStr = (revDeltaVal >= 0 ? "↑ " : "↓ ") + Math.abs(revDeltaVal).toFixed(0) + "% today";
+
+  const ordValue = (data?.orders ?? FALLBACK_DASHBOARD_DATA.orders).toLocaleString();
+  const ordDeltaVal = data?.ordersDeltaPct ?? FALLBACK_DASHBOARD_DATA.ordersDeltaPct;
+  const ordDeltaStr = (ordDeltaVal >= 0 ? "↑ " : "↓ ") + Math.abs(ordDeltaVal).toFixed(0) + "% today";
+
+  const convValue = (data?.conversionPct ?? FALLBACK_DASHBOARD_DATA.conversionPct).toFixed(1) + "%";
+  const convDeltaVal = data?.conversionDeltaPts ?? FALLBACK_DASHBOARD_DATA.conversionDeltaPts;
+  const convDeltaStr = (convDeltaVal >= 0 ? "↑ " : "↓ ") + Math.abs(convDeltaVal).toFixed(1) + "% today";
+
+  const metrics = [
+    { v: revValue, l: "Revenue", c: revDeltaStr },
+    { v: ordValue, l: "Orders", c: ordDeltaStr },
+    { v: convValue, l: "Conv.", c: convDeltaStr }
+  ];
 
   return (
     <div className="float" style={{background:"#fff",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)"}}>
-      <div style={{background:"var(--bg2)",borderBottom:"1px solid var(--border)",padding:".8rem 1.1rem",display:"flex",alignItems:"center",gap:".45rem"}}>
-        {["#f87171","#fbbf24","#4ade80"].map(c=><div key={c} style={{width:9,height:9,borderRadius:"50%",background:c}}/>)}
-        <span style={{marginLeft:".7rem",fontSize:".72rem",color:"var(--muted)",fontWeight:600}}>Selora · Fashion Dashboard</span>
+      <div style={{background:"var(--bg2)",borderBottom:"1px solid var(--border)",padding:".8rem 1.1rem",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:".6rem"}}>
+        <div style={{display:"flex",alignItems:"center",gap:".45rem"}}>
+          {["#f87171","#fbbf24","#4ade80"].map(c=><div key={c} style={{width:9,height:9,borderRadius:"50%",background:c}}/>)}
+          <span style={{marginLeft:".7rem",fontSize:".72rem",color:"var(--muted)",fontWeight:600}}>Selora · Fashion Dashboard</span>
+        </div>
+        <div style={{
+          display: "inline-flex",
+          alignItems: "center",
+          background: "var(--gpale)",
+          border: "1px solid var(--border)",
+          color: "var(--g)",
+          padding: ".35rem 1rem",
+          borderRadius: 999,
+          fontSize: ".75rem",
+          fontWeight: 600,
+          letterSpacing: ".05em",
+          fontFamily: "Inter, sans-serif"
+        }}>
+          Demo data
+        </div>
       </div>
       <div style={{padding:"1.3rem"}}>
         <p style={{fontSize:".68rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:".8rem"}}>This Morning's Growth</p>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".7rem",marginBottom:"1.1rem"}}>
-          {[["$4,821","Revenue","↑ 18% today"],["247","Orders","↑ 12% today"],["3.1%","Conv.","↑ 0.4% today"]].map(([v,l,c])=>(
+          {metrics.map(({v,l,c})=>(
             <div key={l} style={{background:"var(--bg2)",borderRadius:9,padding:".85rem",border:"1px solid var(--border)"}}>
               <div style={{fontSize:"1.25rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",letterSpacing:"-.3px"}}>{v}</div>
               <div style={{fontSize:".62rem",color:"var(--muted)",marginTop:".15rem",textTransform:"uppercase",letterSpacing:".05em"}}>{l}</div>
@@ -671,7 +851,9 @@ function Dashboard({ data }) {
         {activityList.slice(0, 4).map((a,i)=>(
           <div key={i} style={{display:"flex",alignItems:"center",gap:".6rem",padding:".55rem .7rem",background:"var(--bg2)",borderRadius:7,fontSize:".72rem",border:"1px solid var(--border)",marginBottom:i<3?".45rem":0}}>
             <div style={{width:5,height:5,borderRadius:"50%",background:"var(--g)",flexShrink:0}}/>
-            <span style={{flex:1,color:"var(--text)"}}>{a.text}</span>
+            <span style={{flex:1,color:"var(--text)"}}>
+              {a.action}{a.product ? ` · ${a.product}` : ""}
+            </span>
             <span style={{color:"var(--muted)",fontSize:".65rem"}}>{a.time}</span>
           </div>
         ))}
@@ -681,7 +863,7 @@ function Dashboard({ data }) {
 }
 
 // ─── How It Works ─────────────────────────────────────────────────────────────
-function HowItWorks({ data }) {
+function HowItWorks() {
   return (
     <div style={{background:"var(--bg2)",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",padding:"5.5rem 0"}}>
       <div className="how-grid mob-pad" style={{maxWidth:1160,margin:"0 auto",padding:"0 4rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5rem",alignItems:"center"}}>
@@ -701,7 +883,7 @@ function HowItWorks({ data }) {
             ))}
           </div>
         </div>
-        <Dashboard data={data}/>
+        <Dashboard />
       </div>
     </div>
   );
@@ -854,7 +1036,7 @@ export default function Selora() {
       <TrustBar/>
       <ListingShowcase />
       <Features/>
-      <HowItWorks data={publicStats}/>
+      <HowItWorks />
       <Pricing/>
       <Testimonials/>
       <CTA/>

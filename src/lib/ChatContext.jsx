@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { supabase } from './supabase'
 
 const ChatContext = createContext(null)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -109,11 +110,23 @@ export function ChatProvider({ children }) {
       // Build history (exclude the initial greeting)
       const history = messages.slice(1).map(m => ({ role: m.role, content: m.content }))
 
+      const headers = { 'Content-Type': 'application/json' }
+      if (!isGuest) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`
+        }
+      }
+
       const res = await fetch(`${API_URL}/api/chat/${storeId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ message: text, session_id: sessionId, history, is_guest: isGuest }),
       })
+
+      if (!res.ok) {
+        throw new Error('API_ERROR')
+      }
 
       const data = await res.json()
       let assistantContent = data.response || "I couldn't process that. Please try again."
@@ -145,11 +158,30 @@ export function ChatProvider({ children }) {
     } catch (e) {
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: "Sorry, I couldn't connect to the server. Please check that the backend is running." },
+        { role: 'assistant', content: "Sorry, something went wrong on my end — please try again in a moment." },
       ])
     } finally {
       setLoading(false)
     }
+  }
+
+  const retryLastMessage = async (storeId, isGuest = false) => {
+    const userMsgs = messages.filter(m => m.role?.toLowerCase() === 'user')
+    if (userMsgs.length === 0) return
+    const lastText = userMsgs[userMsgs.length - 1].content
+
+    setMessages(prev => {
+      const copy = [...prev]
+      if (copy.length > 0 && copy[copy.length - 1].role === 'assistant') {
+        copy.pop()
+      }
+      if (copy.length > 0 && copy[copy.length - 1].role === 'user') {
+        copy.pop()
+      }
+      return copy
+    })
+
+    await sendMessage(lastText, storeId, isGuest)
   }
 
   return (
@@ -168,6 +200,7 @@ export function ChatProvider({ children }) {
         selectSession,
         startNewSession,
         sendMessage,
+        retryLastMessage,
       }}
     >
       {children}
