@@ -290,7 +290,7 @@ export default function Dashboard() {
               {getGreeting()}, {user?.user_metadata?.name || 'Seller'} 👋
             </h1>
             <p style={{fontSize:'.85rem', color:c.muted, marginTop:'.3rem', fontWeight:300}}>
-              {activeStore ? `Connected to ${activeStore.shop_name} (${activeStore.shop_url})` : 'Connect a store to get started'}
+              {activeStore ? (activeStore.shop_url ? `Connected to ${activeStore.shop_name} (${activeStore.shop_url})` : `Hosting native store: ${activeStore.shop_name}`) : 'Set up a store to get started'}
             </p>
           </div>
           <div style={{display:'flex', gap:'.8rem', flexWrap:'wrap'}}>
@@ -304,7 +304,7 @@ export default function Dashboard() {
               </button>
             )}
             <Link to="/connect" style={{...s.btnP, background:'transparent', color:c.green, border:`1px solid ${c.green}`}}>
-              + Connect Store
+              + Set Up Store
             </Link>
           </div>
         </div>
@@ -314,12 +314,12 @@ export default function Dashboard() {
           <div style={{...s.card, ...s.empty}}>
             <div style={{fontSize:'3rem', marginBottom:'1rem'}}>🌱</div>
             <h2 style={{fontFamily:'Fraunces, serif', fontSize:'1.3rem', fontWeight:500, color:c.dark, marginBottom:'.5rem'}}>
-              No stores connected yet
+              No store set up yet
             </h2>
             <p style={{marginBottom:'1.5rem', fontWeight:300}}>
-              Connect your Shopify store and Selora will start growing it tonight.
+              Connect your Shopify store or launch a new native storefront, and Selora will start growing it tonight.
             </p>
-            <Link to="/connect" style={s.btnP}>Connect Your Store →</Link>
+            <Link to="/connect" style={s.btnP}>Set Up Your Store →</Link>
           </div>
         )}
 

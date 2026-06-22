@@ -108,7 +108,7 @@ const FAQS = [
   { q: 'Is there a free trial for paid plans?', a: 'Yes! The Growth and Scale plans come with a 14-day free trial. No credit card is required to start, and you can cancel anytime before your trial ends.' },
   { q: 'Can I change my plan later?', a: 'Absolutely. You can upgrade, downgrade, or cancel your subscription directly from your settings dashboard at any time. If you downgrade, your changes will apply to the next billing cycle.' },
   { q: 'What counts as an "optimization"?', a: 'An optimization is a distinct automated action taken by Selora to improve your store. This includes adjusting a product\'s price based on trends, rewriting a description for better SEO/conversion, or shifting budget for a low-performing ad campaign.' },
-  { q: 'How does store linking work?', a: 'Selora integrates directly with Shopify via a secure API connection. It takes under 2 minutes to authorize Selora. We only ask for the permissions necessary to manage products and analyze ad campaigns, and your store data is encrypted securely.' },
+  { q: 'How does store setup work?', a: 'You can connect an existing Shopify store securely in under 2 minutes, or create a brand-new native storefront directly on Selora. We only ask for the permissions necessary to manage products and analyze campaigns, and all store data is encrypted securely.' },
   { q: 'Are there any setup fees or hidden costs?', a: 'No setup fees, contracts, or hidden transaction charges. You only pay the flat monthly rate indicated for your chosen plan.' },
 ]
 

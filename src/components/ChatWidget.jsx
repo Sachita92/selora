@@ -4,9 +4,9 @@ import { useChat } from '../lib/ChatContext'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const c = {
-  green: '#5A8A67', green2: '#78A885', greenPale: '#EDF3EE',
-  dark: '#1A271C', text: '#2E3D30', muted: '#7B907D',
-  border: '#E4EBE5', bg: '#F8FAF8', card: '#fff',
+  green: 'var(--g)', green2: 'var(--g2)', greenPale: 'var(--gpale)',
+  dark: 'var(--text-primary)', text: 'var(--text-secondary)', muted: 'var(--text-muted)',
+  border: 'var(--border)', bg: 'var(--bg-0)', card: 'var(--bg-1)',
 }
 
 const SUGGESTIONS = [
@@ -245,17 +245,19 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
     <>
       {/* Welcome Bubble */}
       {!open && showWelcomeBubble && (
-        <div style={{
-          position: 'fixed', bottom: bottomOffset + 70, right: 28, zIndex: 1000,
-          background: '#fff', border: `1px solid ${c.border}`,
-          borderRadius: 16, padding: '12px 18px', width: 260,
-          boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-          fontFamily: 'Inter, sans-serif', fontSize: '.84rem',
-          lineHeight: 1.4, color: c.dark,
-          animation: 'chatBubbleFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both',
-          cursor: 'pointer',
-        }}
-        onClick={() => { setOpen(true); setShowWelcomeBubble(false); }}
+        <div 
+          className={`cn-chat-widget${isLandingPage ? ' landing-scoped' : ''}`}
+          style={{
+            position: 'fixed', bottom: bottomOffset + 70, right: 28, zIndex: 1000,
+            background: c.card, border: `1px solid ${c.border}`,
+            borderRadius: 16, padding: '12px 18px', width: 260,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.12)',
+            fontFamily: 'Inter, sans-serif', fontSize: '.84rem',
+            lineHeight: 1.4, color: c.dark,
+            animation: 'chatBubbleFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both',
+            cursor: 'pointer',
+          }}
+          onClick={() => { setOpen(true); setShowWelcomeBubble(false); }}
         >
           <div style={{ fontWeight: 600, color: c.green, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span>Selora Agent</span>
@@ -275,7 +277,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
           {/* Arrow */}
           <div style={{
             position: 'absolute', bottom: -6, right: 24, width: 12, height: 12,
-            background: '#fff', borderRight: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`,
+            background: c.card, borderRight: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`,
             transform: 'rotate(45deg)',
           }} />
         </div>
@@ -310,7 +312,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
       )}
 
       {open && (
-        <div ref={widgetRef} style={{
+        <div ref={widgetRef} className={`cn-chat-widget${isLandingPage ? ' landing-scoped' : ''}`} style={{
           position: 'fixed', bottom: bottomOffset - 4, right: 24, zIndex: 1001,
           width: 400, maxWidth: 'calc(100vw - 32px)', height: 560, maxHeight: 'calc(100vh - 100px)',
           background: c.card, borderRadius: 20,
@@ -324,7 +326,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
 
           {/* Header */}
           <div style={{
-            background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
+            background: 'linear-gradient(135deg, #5A8A67 0%, #78A885 100%)',
             padding: '1rem 1.2rem',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             flexShrink: 0,
@@ -408,17 +410,17 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                         style={{
                           padding: '.35rem .6rem',
                           borderRadius: 8,
-                          border: `1px solid ${c.border}`,
-                          background: c.card,
-                          color: c.green,
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg-2)',
+                          color: 'var(--text-secondary)',
                           fontSize: '.72rem',
                           cursor: 'pointer',
                           fontFamily: 'Inter, sans-serif',
                           fontWeight: 500,
                           transition: 'all 0.15s',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = c.greenPale; e.currentTarget.style.borderColor = c.green; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = c.card; e.currentTarget.style.borderColor = c.border; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--gpale)'; e.currentTarget.style.borderColor = 'var(--g)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-2)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
                       >
                         Try "{item}"
                       </button>
@@ -992,9 +994,9 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                       style={{
                         padding: '.35rem .7rem',
                         borderRadius: 8,
-                        border: `1px solid ${c.border}`,
-                        background: c.card,
-                        color: c.green,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg-2)',
+                        color: 'var(--text-secondary)',
                         fontSize: '.7rem',
                         cursor: 'pointer',
                         fontFamily: 'Inter, sans-serif',
@@ -1002,8 +1004,8 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                         whiteSpace: 'nowrap',
                         transition: 'all .15s',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = c.greenPale; e.currentTarget.style.borderColor = c.green }}
-                      onMouseLeave={e => { e.currentTarget.style.background = c.card; e.currentTarget.style.borderColor = c.border }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--gpale)'; e.currentTarget.style.borderColor = 'var(--g)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-2)'; e.currentTarget.style.borderColor = 'var(--border)' }}
                     >
                       {s}
                     </button>

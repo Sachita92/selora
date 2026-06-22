@@ -65,14 +65,19 @@ const GlobalStyles = () => (
 );
 
 // ─── Snowflake Canvas ─────────────────────────────────────────────────────────
-function SnowCanvas() {
+function SnowCanvas({ color }) {
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
   const lastRef = useRef(null);
   const particlesRef = useRef([]);
+  // colorRef lets the draw loop read the latest colour without restarting the animation
+  const colorRef = useRef(color || 'rgba(90, 138, 103, 0.45)');
   const PHI = 1.6180339887;
   const COUNT = 28;
-  const COLOR = '#5A8A67';
+
+  useEffect(() => {
+    colorRef.current = color || 'rgba(90, 138, 103, 0.45)';
+  }, [color]);
 
   function goldenX(i, w) {
     return (((i * PHI) % 1) * 0.88 + 0.06) * w;
@@ -92,7 +97,7 @@ function SnowCanvas() {
     ctx.translate(x, y);
     ctx.rotate(angle);
     ctx.globalAlpha = opacity;
-    ctx.strokeStyle = COLOR;
+    ctx.strokeStyle = colorRef.current;
     ctx.lineWidth = 1;
     ctx.lineCap = 'round';
     for (let i = 0; i < 6; i++) {
@@ -165,6 +170,7 @@ function SnowCanvas() {
   );
 }
 
+
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const SLIDES = [
   {
@@ -207,7 +213,7 @@ const FEATURES = [
 ];
 
 const STEPS = [
-  { title:"Connect Your Store",     desc:"Link Selora in one click. It reads your collection, orders, and ads — and starts working immediately." },
+  { title:"Set Up Your Store",     desc:"Connect your existing Shopify store in one click, or launch a new storefront on Selora — either way, it starts working immediately." },
   { title:"Set Your Goals",         desc:"More revenue? Better margins? Less wasted ad spend? Selora builds a growth plan around your collection." },
   { title:"Wake Up to Growth",      desc:"Every morning you get a simple report — what grew, what was fixed, and what's next for your collection." },
 ];
@@ -236,13 +242,13 @@ const Tag   = ({children,center,style}) => <p style={{fontSize:".68rem",fontWeig
 const Title = ({children,center,style}) => <h2 style={{fontFamily:"Fraunces,serif",fontSize:"clamp(1.6rem,3vw,2.4rem)",fontWeight:500,lineHeight:1.15,letterSpacing:"-.3px",marginBottom:".7rem",color:"var(--dark)",textAlign:center?"center":undefined,...style}}>{children}</h2>;
 const Sub   = ({children,center,style}) => <p style={{fontSize:".9rem",color:"var(--muted)",lineHeight:1.8,fontWeight:300,textAlign:center?"center":undefined,...style}}>{children}</p>;
 const BtnP  = ({children,style,onClick}) => <button onClick={onClick} style={{background:"var(--g)",color:"#fff",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 18px rgba(90,138,103,.28)",transition:"all .2s",...style}}>{children}</button>;
-const BtnS  = ({children,style,onClick}) => <button onClick={onClick} style={{background:"#fff",color:"var(--dark)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,border:"1px solid var(--border)",cursor:"pointer",fontFamily:"Inter,sans-serif",transition:"all .2s",...style}}>{children}</button>;
+const BtnS  = ({children,style,onClick}) => <button onClick={onClick} style={{background:"var(--bg-1,#fff)",color:"var(--dark)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,border:"1px solid var(--border)",cursor:"pointer",fontFamily:"Inter,sans-serif",transition:"all .2s",...style}}>{children}</button>;
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
-function Navbar({scrolled}) {
+function Navbar({ scrolled, darkMode, onToggleDark }) {
   const { user } = useAppContext();
   return (
-    <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"1rem 3.5rem",background:scrolled?"rgba(248,250,248,.97)":"rgba(248,250,248,.88)",backdropFilter:"blur(14px)",borderBottom:"1px solid var(--border)",transition:"background .3s"}}>
+    <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"1rem 3.5rem",background:scrolled?"var(--nav-bg-scrolled,rgba(248,250,248,.97))":"var(--nav-bg,rgba(248,250,248,.88))",backdropFilter:"blur(14px)",borderBottom:"1px solid var(--border)",transition:"background .3s"}}>
       <div style={{fontFamily:"Inter,sans-serif",fontSize:"1.2rem",fontWeight:700,letterSpacing:"-.3px",color:"var(--dark)"}}>
         Se<span style={{color:"var(--g)"}}>lo</span>ra
       </div>
@@ -257,6 +263,26 @@ function Navbar({scrolled}) {
         <Link to="/demo" style={{fontSize:".82rem",fontWeight:500,color:"var(--g)",textDecoration:"none",marginLeft:"2rem"}}>Book a Demo</Link>
       </div>
       <div style={{display:"flex",gap:".7rem",alignItems:"center"}}>
+        {/* Dark-mode toggle — same icon convention as Connect.jsx */}
+        <button
+          className="cn-theme-toggle"
+          onClick={onToggleDark}
+          title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:".25rem",borderRadius:6}}
+        >
+          {darkMode ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          )}
+        </button>
         {user ? (
           <Link to="/dashboard" style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
             Dashboard
@@ -275,7 +301,7 @@ function Navbar({scrolled}) {
 }
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
-function Hero() {
+function Hero({ snowflakeColor }) {
   const [current, setCurrent] = useState(0);
   const [exiting, setExiting] = useState(false);
   const timerRef = useRef(null);
@@ -309,15 +335,15 @@ function Hero() {
   }, []);
 
   return (
-    <div style={{position:"relative",minHeight:620,overflow:"hidden",background:"linear-gradient(170deg,#EEF4EF 0%,var(--bg) 55%)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      {/* Snowflake canvas */}
-      <SnowCanvas />
+    <div style={{position:"relative",minHeight:620,overflow:"hidden",background:"linear-gradient(170deg,var(--bg2,#EEF4EF) 0%,var(--bg,#F8FAF8) 55%)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      {/* Snowflake canvas — colour read from the scoped .landing-page wrapper ref */}
+      <SnowCanvas color={snowflakeColor} />
 
       {/* Slides */}
       {SLIDES.map((slide, i) => (
         <div key={i} className={`slide${current === i && !exiting ? " active" : ""}`}>
           {/* Badge */}
-          <div className="au" style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"#fff",border:"1px solid var(--border)",color:"var(--g)",padding:".35rem 1rem",borderRadius:999,fontSize:".72rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",marginBottom:"1.8rem",boxShadow:"0 2px 10px rgba(90,138,103,.08)",fontFamily:"Inter,sans-serif"}}>
+          <div className="au" style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"var(--bg-1,#fff)",border:"1px solid var(--border)",color:"var(--g)",padding:".35rem 1rem",borderRadius:999,fontSize:".72rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",marginBottom:"1.8rem",boxShadow:"0 2px 10px rgba(90,138,103,.08)",fontFamily:"Inter,sans-serif"}}>
             <span className="pdot" style={{display:"inline-block",width:6,height:6,borderRadius:"50%",background:"var(--g)"}}/>
             {slide.eyebrow}
           </div>
@@ -376,7 +402,7 @@ function Hero() {
 // ─── Trust ────────────────────────────────────────────────────────────────────
 function TrustBar() {
   return (
-    <div className="au4" style={{background:"#fff",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",padding:"0.6rem 4rem",display:"flex",alignItems:"center",justifyContent:"center",gap:"1.5rem",flexWrap:"wrap"}}>
+    <div className="au4" style={{background:"var(--bg-1,#fff)",borderTop:"1px solid var(--border-strong)",padding:"0.6rem 4rem",display:"flex",alignItems:"center",justifyContent:"center",gap:"1.5rem",flexWrap:"wrap"}}>
       {[["👗","Built for fashion"],["⚡","Ready in 5 minutes"],["🔒","Bank-level security"],["💬","Human support"],["🔄","Cancel anytime"]].map(([icon,text])=>(
         <div key={text} style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".78rem",color:"var(--muted)",fontWeight:400}}>
           <span style={{fontSize:"14px"}}>{icon}</span>{text}
@@ -415,7 +441,8 @@ function ListingShowcase() {
   const example = SHOWCASE_EXAMPLES[currentExample];
 
   return (
-    <div className="mob-pad mob-vpad" style={{ padding: "4rem 2rem 2rem", maxWidth: 1000, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+    <div style={{background:"var(--bg)", borderTop:"1px solid var(--border-strong)"}}>
+      <div className="mob-pad mob-vpad" style={{ padding: "4rem 2rem 2rem", maxWidth: 1000, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
       {/* Badge */}
       <div style={{
         display: "inline-flex",
@@ -499,7 +526,7 @@ function ListingShowcase() {
           bottom: 0,
           width: "0%",
           overflow: "hidden",
-          background: "var(--g-tint)",
+          background: "var(--bg-1,#fff)",
           animation: "sweepW 6s ease-in-out infinite"
         }}>
           <div style={{
@@ -611,28 +638,31 @@ function ListingShowcase() {
         </div>
       </div>
     </div>
+  </div>
   );
 }
 
 // ─── Features ─────────────────────────────────────────────────────────────────
 function Features() {
   return (
-    <section className="mob-pad mob-vpad" style={{padding:"1.8rem 4rem 5.5rem",maxWidth:1160,margin:"0 auto"}}>
-      <div style={{textAlign:"center",maxWidth:540,margin:"0 auto 2rem"}}>
-        <Tag center>What Selora Does</Tag>
-        <Title center>Six ways your collection<br/>grows every day</Title>
-        <Sub center>Each runs automatically — built specifically for the fashion industry.</Sub>
-      </div>
-      <div className="feat-inner" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.2rem"}}>
-        {FEATURES.map(f=>(
-          <div key={f.title} className="feat-card">
-            <div style={{width:40,height:40,background:"var(--gpale)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",marginBottom:"1.1rem"}}>{f.icon}</div>
-            <h3 style={{fontSize:".92rem",fontWeight:600,marginBottom:".45rem",color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{f.title}</h3>
-            <p style={{fontSize:".8rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{f.desc}</p>
-          </div>
-        ))}
-      </div>
-    </section>
+    <div style={{background:"var(--bg2)", borderTop:"1px solid var(--border-strong)"}}>
+      <section className="mob-pad mob-vpad" style={{padding:"1.8rem 4rem 5.5rem",maxWidth:1160,margin:"0 auto"}}>
+        <div style={{textAlign:"center",maxWidth:540,margin:"0 auto 2rem"}}>
+          <Tag center>What Selora Does</Tag>
+          <Title center>Six ways your collection<br/>grows every day</Title>
+          <Sub center>Each runs automatically — built specifically for the fashion industry.</Sub>
+        </div>
+        <div className="feat-inner" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.2rem"}}>
+          {FEATURES.map(f=>(
+            <div key={f.title} className="feat-card">
+              <div style={{width:40,height:40,background:"var(--gpale)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",marginBottom:"1.1rem"}}>{f.icon}</div>
+              <h3 style={{fontSize:".92rem",fontWeight:600,marginBottom:".45rem",color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{f.title}</h3>
+              <p style={{fontSize:".8rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -752,7 +782,7 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <div className="float" style={{background:"#fff",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)"}}>
+      <div className="float" style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)"}}>
         <div style={{background:"var(--bg2)",borderBottom:"1px solid var(--border)",padding:".8rem 1.1rem",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:".6rem"}}>
           <div style={{display:"flex",alignItems:"center",gap:".45rem"}}>
             {["#f87171","#fbbf24","#4ade80"].map(c=><div key={c} style={{width:9,height:9,borderRadius:"50%",background:c}}/>)}
@@ -814,7 +844,7 @@ function Dashboard() {
   ];
 
   return (
-    <div className="float" style={{background:"#fff",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)"}}>
+    <div className="float" style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)"}}>
       <div style={{background:"var(--bg2)",borderBottom:"1px solid var(--border)",padding:".8rem 1.1rem",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:".6rem"}}>
         <div style={{display:"flex",alignItems:"center",gap:".45rem"}}>
           {["#f87171","#fbbf24","#4ade80"].map(c=><div key={c} style={{width:9,height:9,borderRadius:"50%",background:c}}/>)}
@@ -865,7 +895,7 @@ function Dashboard() {
 // ─── How It Works ─────────────────────────────────────────────────────────────
 function HowItWorks() {
   return (
-    <div style={{background:"var(--bg2)",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)",padding:"5.5rem 0"}}>
+    <div style={{background:"var(--bg)",borderTop:"1px solid var(--border-strong)",padding:"5.5rem 0"}}>
       <div className="how-grid mob-pad" style={{maxWidth:1160,margin:"0 auto",padding:"0 4rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5rem",alignItems:"center"}}>
         <div>
           <Tag>How It Works</Tag>
@@ -894,58 +924,60 @@ function Pricing() {
   const { user } = useAppContext();
 
   return (
-    <section className="mob-pad mob-vpad" style={{padding:"5.5rem 4rem",maxWidth:1160,margin:"0 auto",borderTop:"1px solid var(--border)"}}>
-      <div style={{textAlign:"center",maxWidth:500,margin:"0 auto"}}>
-        <Tag center>Pricing</Tag>
-        <Title center>Grow your collection,<br/>pay as you scale</Title>
-        <Sub center>Start free. No contracts, no hidden fees, no surprises.</Sub>
-      </div>
-      <div className="price-inner" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.3rem",marginTop:"3rem"}}>
-        {PLANS.map(plan => {
-          const getLinkTarget = () => {
-            if (user) {
-              return plan.slug === 'free' ? '/dashboard' : `/pricing?plan=${plan.slug}`;
-            } else {
-              return plan.slug === 'free' ? '/signup' : `/signup?plan=${plan.slug}`;
-            }
-          };
+    <div style={{background:"var(--bg2)",borderTop:"1px solid var(--border-strong)"}}>
+      <section className="mob-pad mob-vpad" style={{padding:"5.5rem 4rem",maxWidth:1160,margin:"0 auto"}}>
+        <div style={{textAlign:"center",maxWidth:500,margin:"0 auto"}}>
+          <Tag center>Pricing</Tag>
+          <Title center>Grow your collection,<br/>pay as you scale</Title>
+          <Sub center>Start free. No contracts, no hidden fees, no surprises.</Sub>
+        </div>
+        <div className="price-inner" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.3rem",marginTop:"3rem"}}>
+          {PLANS.map(plan => {
+            const getLinkTarget = () => {
+              if (user) {
+                return plan.slug === 'free' ? '/dashboard' : `/pricing?plan=${plan.slug}`;
+              } else {
+                return plan.slug === 'free' ? '/signup' : `/signup?plan=${plan.slug}`;
+              }
+            };
 
-          return (
-            <div key={plan.name} className={`price-card${plan.feat?" feat":""}`}>
-              <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:plan.feat?"rgba(26,39,28,.5)":"var(--muted)",marginBottom:".8rem",fontFamily:"Inter,sans-serif"}}>{plan.name}</div>
-              {plan.price === "0" ? (
-                <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
-                  Free
-                </div>
-              ) : (
-                <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
-                  <sup style={{fontSize:"1rem",verticalAlign:"super",color:"var(--g)"}}>$</sup>{plan.price}
-                  <span style={{fontSize:".8rem",color:"var(--muted)",fontWeight:400,fontFamily:"Inter,sans-serif"}}>/mo</span>
-                </div>
-              )}
-              <p style={{fontSize:".78rem",color:"var(--muted)",margin:".65rem 0 1.2rem",fontWeight:300,lineHeight:1.6}}>{plan.desc}</p>
-              <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".55rem",marginBottom:"1.6rem"}}>
-                {plan.features.map(f=>(
-                  <li key={f} style={{fontSize:".78rem",color:"var(--text)",display:"flex",alignItems:"center",gap:".5rem",fontWeight:300}}>
-                    <span style={{color:"var(--g)",fontWeight:700}}>✓</span>{f}
-                  </li>
-                ))}
-              </ul>
-              <Link to={getLinkTarget()} style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",textDecoration:"none",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff",border:"1px solid var(--g)",boxShadow:"0 4px 18px rgba(90,138,103,.28)"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"})}}>
-                {plan.cta}
-              </Link>
-            </div>
-          );
-        })}
-      </div>
-    </section>
+            return (
+              <div key={plan.name} className={`price-card${plan.feat?" feat":""}`}>
+                <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:plan.feat?"rgba(26,39,28,.5)":"var(--muted)",marginBottom:".8rem",fontFamily:"Inter,sans-serif"}}>{plan.name}</div>
+                {plan.price === "0" ? (
+                  <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
+                    Free
+                  </div>
+                ) : (
+                  <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
+                    <sup style={{fontSize:"1rem",verticalAlign:"super",color:"var(--g)"}}>$</sup>{plan.price}
+                    <span style={{fontSize:".8rem",color:"var(--muted)",fontWeight:400,fontFamily:"Inter,sans-serif"}}>/mo</span>
+                  </div>
+                )}
+                <p style={{fontSize:".78rem",color:"var(--muted)",margin:".65rem 0 1.2rem",fontWeight:300,lineHeight:1.6}}>{plan.desc}</p>
+                <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".55rem",marginBottom:"1.6rem"}}>
+                  {plan.features.map(f=>(
+                    <li key={f} style={{fontSize:".78rem",color:"var(--text)",display:"flex",alignItems:"center",gap:".5rem",fontWeight:300}}>
+                      <span style={{color:"var(--g)",fontWeight:700}}>✓</span>{f}
+                    </li>
+                  ))}
+                </ul>
+                <Link to={getLinkTarget()} style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",textDecoration:"none",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff",border:"1px solid var(--g)",boxShadow:"0 4px 18px rgba(90,138,103,.28)"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"})}}>
+                  {plan.cta}
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    </div>
   );
 }
 
 // ─── Testimonials ─────────────────────────────────────────────────────────────
 function Testimonials() {
   return (
-    <div style={{background:"var(--bg2)",borderTop:"1px solid var(--border)",padding:"5.5rem 0"}}>
+    <div style={{background:"var(--bg)",borderTop:"1px solid var(--border-strong)",padding:"5.5rem 0"}}>
       <div className="mob-pad" style={{maxWidth:1160,margin:"0 auto",padding:"0 4rem"}}>
         <div style={{textAlign:"center",marginBottom:"3rem"}}>
           <Tag center>From Real Sellers</Tag>
@@ -969,7 +1001,9 @@ function Testimonials() {
 // ─── CTA ──────────────────────────────────────────────────────────────────────
 function CTA() {
   return (
-    <div style={{textAlign:"center",padding:"6rem 4rem",position:"relative",overflow:"hidden",background:"linear-gradient(140deg,var(--dark) 0%,#233329 100%)"}}>
+    <div style={{textAlign:"center",padding:"3.5rem 4rem",position:"relative",overflow:"hidden",background:"linear-gradient(140deg,#1A271C 0%,#233329 100%)",borderTop:"1px solid var(--border-strong)"}}>
+      {/* CTA gradient is intentionally hardcoded dark-forest — it stays dark in both light and dark page modes.
+          Do NOT replace #1A271C with var(--dark): in dark mode that alias resolves to near-white (text-primary). */}
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 70% 60% at 50% 50%,rgba(90,138,103,.12),transparent)",pointerEvents:"none"}}/>
       <div style={{position:"relative"}}>
         <Tag center style={{color:"#86EFAC"}}>Start Growing Today</Tag>
@@ -981,7 +1015,7 @@ function CTA() {
           Join 12,000+ fashion sellers already growing with Selora.<br/>14-day free trial — no credit card needed.
         </p>
         <div style={{display:"flex",gap:"1rem",justifyContent:"center",flexWrap:"wrap"}}>
-          <Link to="/signup" style={{background:"#86EFAC",color:"var(--dark)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>
+          <Link to="/signup" style={{background:"#86EFAC",color:"#1A271C",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>
           Start Growing for Free →
           </Link>
           <Link to="/demo" style={{background:"transparent",color:"rgba(255,255,255,.6)",border:"1px solid rgba(255,255,255,.18)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
@@ -996,7 +1030,7 @@ function CTA() {
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <footer style={{borderTop:"1px solid var(--border)",padding:"2rem 4rem",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#fff",flexWrap:"wrap",gap:"1rem"}}>
+    <footer style={{borderTop:"1px solid var(--border-strong)",padding:"2rem 4rem",display:"flex",justifyContent:"space-between",alignItems:"center",background:"var(--bg-1,#fff)",flexWrap:"wrap",gap:"1rem"}}>
       <div style={{fontFamily:"Inter,sans-serif",fontSize:".95rem",fontWeight:700,color:"var(--dark)"}}>
         Se<span style={{color:"var(--g)"}}>lo</span>ra
       </div>
@@ -1005,7 +1039,7 @@ function Footer() {
           <Link key={item.l} to={item.h} style={{fontSize:".74rem",color:"var(--muted)",textDecoration:"none",marginLeft:"1.8rem"}}>{item.l}</Link>
         ))}
       </div>
-      <div style={{fontSize:".7rem",color:"#c0c8c1"}}>© 2025 Selora. All rights reserved.</div>
+      <div style={{fontSize:".7rem",color:"var(--muted)"}}>© 2025 Selora. All rights reserved.</div>
     </footer>
   );
 }
@@ -1014,12 +1048,43 @@ function Footer() {
 export default function Selora() {
   const [scrolled, setScrolled] = useState(false);
   const [publicStats, setPublicStats] = useState(null);
+  const landingRef = useRef(null);
+
+  // Read initial dark mode from localStorage / system preference — same source as Connect.jsx
+  const [darkMode, setDarkMode] = useState(() => {
+    const t = localStorage.getItem('selora-theme');
+    return t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  });
+
+  // Initialise snowflake colour synchronously so the canvas starts with the right value
+  const [snowflakeColor, setSnowflakeColor] = useState(() => {
+    const t = localStorage.getItem('selora-theme');
+    const isDark = t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    return isDark ? 'rgba(212, 175, 110, 0.10)' : 'rgba(90, 138, 103, 0.45)';
+  });
+
+  const toggleTheme = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    localStorage.setItem('selora-theme', next ? 'dark' : 'light');
+  };
+
+  // Apply / remove dark class on <html>, then re-read --snowflake-color from the
+  // scoped .landing-page wrapper so .landing-page.dark overrides are honoured
+  // (reading from document.documentElement would miss the scoped block).
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    if (landingRef.current) {
+      const color = getComputedStyle(landingRef.current).getPropertyValue('--snowflake-color').trim();
+      if (color) setSnowflakeColor(color);
+    }
+  }, [darkMode]);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", fn);
-    
-    // Fetch stats
+
+    // Fetch public stats
     fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/public/stats')
       .then(r => r.json())
       .then(d => setPublicStats(d))
@@ -1029,10 +1094,10 @@ export default function Selora() {
   }, []);
 
   return (
-    <>
+    <div className="landing-page" ref={landingRef}>
       <GlobalStyles/>
-      <Navbar scrolled={scrolled}/>
-      <Hero/>
+      <Navbar scrolled={scrolled} darkMode={darkMode} onToggleDark={toggleTheme}/>
+      <Hero snowflakeColor={snowflakeColor}/>
       <TrustBar/>
       <ListingShowcase />
       <Features/>
@@ -1041,6 +1106,6 @@ export default function Selora() {
       <Testimonials/>
       <CTA/>
       <Footer/>
-    </>
+    </div>
   );
 }

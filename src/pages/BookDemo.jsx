@@ -147,7 +147,7 @@ export default function BookDemo() {
 
           <div style={{ background: c.greenPale, border: `1px solid #BBF7D0`, borderRadius: 12, padding: '1.5rem', marginBottom: '2.5rem', textAlign: 'left' }}>
             <p style={{ fontSize: '.8rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.8rem' }}>Before the demo</p>
-            {['Check your email for the calendar invite and video call link', 'Have your Shopify store URL ready', 'Think about your biggest growth goal right now'].map((item, i) => (
+            {['Check your email for the calendar invite and video call link', 'Have your Shopify store URL ready (or think of a name for your new storefront)', 'Think about your biggest growth goal right now'].map((item, i) => (
               <div key={i} style={{ display: 'flex', gap: '.6rem', alignItems: 'flex-start', fontSize: '.84rem', color: '#166534', fontWeight: 300, lineHeight: 1.6, marginBottom: '.4rem' }}>
                 <span style={{ fontWeight: 700, marginTop: '.05rem' }}>✓</span> {item}
               </div>
@@ -213,6 +213,7 @@ export default function BookDemo() {
                       <select name="platform" value={formData.platform} onChange={handleChange} style={{ ...inputStyle, color: formData.platform ? c.dark : c.muted }} required>
                         <option value="" disabled>Select your platform</option>
                         <option>Shopify</option>
+                        <option>Selora (Native Storefront)</option>
                         <option>Amazon</option>
                         <option>Both Shopify & Amazon</option>
                         <option>Other</option>

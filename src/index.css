@@ -166,7 +166,90 @@
   --theme-toggle-hover: var(--g);
 }
 
+.landing-page {
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+/* ── Landing Page Scoped Dark Mode ──────────────────────────────── */
+/* These values only apply when .dark is active inside .landing-page. */
+/* Connect.jsx's .dark block above is never touched.                  */
+.dark .landing-page {
+  /* New neutral dark palette */
+  --bg-0: #121314;
+  --bg-1: #1B1D1E;
+  --bg-2: #242627;
+  --bg-3: #2E3031;
+  --border: #2C2F30;
+  --border-strong: #3D4041;
+  --text-primary: #F2F3F1;
+  --text-secondary: #B8BCB8;
+  --text-muted: #8A8D8A;
+  --g: #6FBF8B;
+  --g2: #8FD4A8;
+  --g-tint: rgba(111, 191, 139, 0.14);
+  --warn: #D99868;
+  --danger: #C97168;
+  --snowflake-color: rgba(212, 175, 110, 0.10);
+
+  /* Nav overrides scoped to landing page */
+  --nav-bg: rgba(18, 19, 20, 0.88);
+  --nav-bg-scrolled: rgba(18, 19, 20, 0.97);
+
+  /* Selora.jsx internal alias bridge */
+  /* --dark is ONLY bridged for text-color usages (headings, labels, etc). */
+  /* Background usages of var(--dark) are explicitly replaced in Selora.jsx. */
+  --bg: var(--bg-0);
+  --bg2: var(--bg-2);
+  --dark: var(--text-primary);
+  --muted: var(--text-muted);
+  --gpale: var(--g-tint);
+  --text: var(--text-secondary);
+}
+
+.dark .cn-chat-widget.landing-scoped {
+  --bg-0: #121314;
+  --bg-1: #1B1D1E;
+  --bg-2: #242627;
+  --bg-3: #2E3031;
+  --border: #2C2F30;
+  --text-primary: #F2F3F1;
+  --text-secondary: #B8BCB8;
+  --text-muted: #8A8D8A;
+  --gpale: rgba(111, 191, 139, 0.14);
+}
+
+/* Landing page CSS class component dark overrides */
+/* Higher specificity (0,3,0) beats GlobalStyles .feat-card (0,1,0). */
+.dark .landing-page .feat-card {
+  background: var(--bg-1) !important;
+  border-color: var(--border) !important;
+}
+.dark .landing-page .feat-card:hover {
+  border-color: var(--g) !important;
+  box-shadow: 0 8px 28px rgba(111, 191, 139, 0.12) !important;
+}
+.dark .landing-page .testi-card {
+  background: var(--bg-1) !important;
+  border-color: var(--border) !important;
+}
+.dark .landing-page .testi-card:hover {
+  border-color: var(--g) !important;
+}
+.dark .landing-page .step-line {
+  border-bottom-color: var(--border) !important;
+}
+.dark .landing-page .price-card {
+  background: var(--bg-1) !important;
+  border-color: var(--border) !important;
+}
+.dark .landing-page .price-card.feat {
+  background: linear-gradient(140deg, var(--bg-2), var(--bg-1)) !important;
+  border-color: var(--g) !important;
+}
+
 /* ── Keyframes & Animations ─────────────────────────────────────── */
+
 @keyframes fadeUp    { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:none} }
 @keyframes fadeIn    { from{opacity:0} to{opacity:1} }
 @keyframes growBar   { from{width:0} to{width:100%} }

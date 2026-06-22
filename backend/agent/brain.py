@@ -7,6 +7,8 @@ from agent.tools import get_tools_definition, execute_tool
 
 load_dotenv()
 
+from product_facts import PRODUCT_FACTS_CORE
+
 
 class SeloraBrain:
     """
@@ -26,7 +28,9 @@ class SeloraBrain:
             raise ValueError("Missing GROQ_API_KEY in .env file. Get one free at console.groq.com")
 
     def _build_system_prompt(self) -> str:
-        return """You are Selora, an expert AI growth agent exclusively for fashion e-commerce stores.
+        return f"""You are Selora, an expert AI growth agent exclusively for fashion e-commerce stores.
+
+{PRODUCT_FACTS_CORE}
 
 You deeply understand the fashion industry — trends, seasonality, sizing, styling, buyer psychology, and what makes fashion listings convert. Your job is to analyze a fashion store's data and take smart actions to grow revenue, improve listings, optimize pricing, and protect inventory.
 

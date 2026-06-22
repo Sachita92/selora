@@ -11,9 +11,9 @@ const c = {
 const STEPS = [
   {
     num: '01',
-    title: 'Connect Your Store',
-    desc: 'Link Selora in one click. It reads your collection, orders, and ads — and starts working immediately.',
-    detail: 'Simply enter your Shopify store URL and authorize Selora. We read your product catalog, order history, and ad account data to build a complete picture of your business. Setup takes under 5 minutes — no developer needed.',
+    title: 'Set Up Your Store',
+    desc: 'Connect your existing Shopify store in one click, or launch a new storefront on Selora — either way, it starts working immediately.',
+    detail: 'Simply enter your Shopify store URL to connect, or create a brand-new native storefront directly on Selora. We sync your existing product catalog, orders, and ads, or host your brand-new collection instantly. Setup takes under 5 minutes.',
     icon: '🔗',
   },
   {
@@ -33,7 +33,7 @@ const STEPS = [
 ]
 
 const FAQ = [
-  { q: 'How long does setup take?', a: 'Under 5 minutes. Just connect your Shopify store and set your goals — Selora handles the rest.' },
+  { q: 'How long does setup take?', a: 'Under 5 minutes. Just connect your Shopify store or launch a brand-new native storefront on Selora, set your goals, and Selora handles the rest.' },
   { q: 'Do I need technical skills?', a: 'Not at all. Selora is built for fashion sellers, not developers. Everything is plain English, no code required.' },
   { q: 'Will Selora change things without my approval?', a: 'You\'re always in control. You can set Selora to auto-apply changes, or require approval before any action is taken.' },
   { q: 'What if I want to pause Selora?', a: 'One click. You can pause or resume the agent at any time from your dashboard.' },
@@ -352,7 +352,7 @@ export default function HowItWorksPage() {
                 </div>
                 <p style={{fontSize:'.88rem',color:c.muted,lineHeight:1.85,fontWeight:300,marginBottom:'2rem'}}>{step.detail}</p>
                 <Link to="/signup" style={{background:c.g,color:'#fff',padding:'.7rem 1.6rem',borderRadius:8,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif',boxShadow:'0 4px 18px rgba(90,138,103,.2)'}}>
-                  {i === 0 ? 'Connect Your Store →' : i === 1 ? 'Set Your Goals →' : 'Start Growing →'}
+                  {i === 0 ? 'Set Up Your Store →' : i === 1 ? 'Set Your Goals →' : 'Start Growing →'}
                 </Link>
               </div>
 
@@ -374,7 +374,7 @@ export default function HowItWorksPage() {
               Your first week with Selora
             </h2>
             {[
-              { day: 'Day 1', text: 'Connect your store. Selora scans your catalog and begins analysis.' },
+              { day: 'Day 1', text: 'Set up your store. Selora scans your catalog or hosts your new storefront and begins analysis.' },
               { day: 'Day 2', text: 'First optimizations begin — pricing adjustments and listing rewrites.' },
               { day: 'Day 3-4', text: 'Ad spend reallocation kicks in. You see your first growth report.' },
               { day: 'Day 5-7', text: 'Full optimization running. Revenue trends start climbing.' },
