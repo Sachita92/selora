@@ -585,7 +585,9 @@ export default function Settings() {
               <div style={{ ...s.row, borderBottom: 'none' }}>
                 <div>
                   <div style={s.label}>Disconnect store</div>
-                  <div style={s.hint}>Removes this store from Selora. Your Shopify store is unaffected.</div>
+                  <div style={s.hint}>
+                    Removes this store from Selora. {activeStore?.platform === 'selora' ? 'Your storefront and its data are not recoverable after this.' : 'Your Shopify store is unaffected.'}
+                  </div>
                 </div>
                 <button style={{ ...s.btnS, color: '#DC2626', border: '1px solid #FECACA' }}>
                   Disconnect Store

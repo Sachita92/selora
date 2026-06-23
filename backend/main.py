@@ -695,6 +695,34 @@ def create_demo_booking(body: DemoBookingRequest):
         raise HTTPException(status_code=500, detail=f"Failed to book demo: {e}")
 
 
+# ─── Newsletter Endpoint ──────────────────────────────────────────────────────
+
+class NewsletterSubscribeRequest(BaseModel):
+    email: str
+
+@app.post("/api/newsletter/subscribe")
+def newsletter_subscribe(body: NewsletterSubscribeRequest):
+    """Save a newsletter subscriber email to Supabase.
+    
+    Requires a newsletter_subscribers table in Supabase:
+      CREATE TABLE newsletter_subscribers (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        email text UNIQUE NOT NULL,
+        subscribed_at timestamptz DEFAULT now()
+      );
+    """
+    from database import save_newsletter_subscriber
+    import re
+    # Basic email validation
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', body.email.strip()):
+        raise HTTPException(status_code=422, detail="Invalid email address")
+    try:
+        result = save_newsletter_subscriber(body.email.strip().lower())
+        return {"success": True, "message": "Subscribed successfully", "data": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to subscribe: {e}")
+
+
 # ─── Stripe Billing Endpoints ────────────────────────────────────────────────
 
 import stripe
@@ -1168,7 +1196,8 @@ def get_featured_stores():
     enriched = []
     for store in stores:
         prod_result = _db().table('selora_products').select('id,title,price,images').eq('store_id', store['id']).eq('is_active', True).limit(4).execute()
-        enriched.append({**store, 'products': prod_result.data or []})
+        products_list = [{**p, "platform": "selora"} for p in prod_result.data or []]
+        enriched.append({**store, 'products': products_list})
     return {'stores': enriched}
 
 
@@ -1181,7 +1210,8 @@ def get_public_store(handle: str):
         raise HTTPException(status_code=404, detail='Store not found')
     store = store_result.data[0]
     products_result = _db().table('selora_products').select('*').eq('store_id', store['id']).eq('is_active', True).order('created_at', desc=False).execute()
-    return {'store': store, 'products': products_result.data or []}
+    products_list = [{**p, "platform": "selora"} for p in products_result.data or []]
+    return {'store': store, 'products': products_list}
 
 
 @app.put('/selora-stores/{store_id}')
@@ -1232,7 +1262,9 @@ async def add_product_to_store(store_id: str, request: Request):
         'tags': body_json.get('tags', []),
         'is_active': body_json.get('is_active', True),
     }).execute()
-    return result.data[0]
+    res_data = result.data[0]
+    res_data["platform"] = "selora"
+    return res_data
 
 
 @app.get('/selora-stores/{store_id}/products')
@@ -1246,7 +1278,8 @@ def list_store_products(store_id: str, request: Request):
     if existing.data[0]['user_id'] != user_id:
         raise HTTPException(status_code=403, detail='Forbidden')
     result = _db().table('selora_products').select('*').eq('store_id', store_id).order('created_at', desc=False).execute()
-    return {'products': result.data or []}
+    products_list = [{**p, "platform": "selora"} for p in result.data or []]
+    return {'products': products_list}
 
 
 @app.put('/selora-stores/{store_id}/products/{product_id}')
@@ -1267,7 +1300,9 @@ async def update_product(store_id: str, product_id: str, request: Request):
     result = _db().table('selora_products').update(update_data).eq('id', product_id).eq('store_id', store_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail='Product not found')
-    return result.data[0]
+    res_data = result.data[0]
+    res_data["platform"] = "selora"
+    return res_data
 
 
 @app.delete('/selora-stores/{store_id}/products/{product_id}')

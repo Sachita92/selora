@@ -82,7 +82,22 @@
   --existing-store-badge-svg-sec: var(--text-primary);
   --muted-text: var(--text-muted);
   --theme-toggle-hover: var(--text-primary);
+
+  /* Global alias bridges for landing/marketing pages */
+  --bg: var(--bg-0);
+  --bg2: var(--bg-2);
+  --dark: var(--text-primary);
+  --muted: var(--text-muted);
+  --gpale: var(--g-tint);
+  --text: var(--text-secondary);
+
+  /* Morning Report Mockup */
+  --mr-undo-border: #FCA5A5;
+  --mr-undo-bg: #FEF2F2;
+  --mr-undo-color: #EF4444;
+  --mr-approve-bg: #F3F4F6;
 }
+
 
 .dark {
   /* Elevation staircase - Dark Mode */
@@ -134,7 +149,7 @@
   --sub-text: var(--text-secondary);
   --body-text: var(--text-secondary);
   --divider-color: var(--border);
-  --input-bg: rgba(0, 0, 0, 0.2);
+  --input-bg: var(--bg-2);
   --input-border: var(--border);
   --input-prefix-bg: rgba(0, 0, 0, 0.1);
   --input-prefix-text: var(--text-muted);
@@ -164,7 +179,22 @@
   --existing-store-badge-svg-sec: var(--text-primary);
   --muted-text: var(--text-muted);
   --theme-toggle-hover: var(--g);
+
+  /* Global alias bridges for landing/marketing pages */
+  --bg: var(--bg-0);
+  --bg2: var(--bg-2);
+  --dark: var(--text-primary);
+  --muted: var(--text-muted);
+  --gpale: var(--g-tint);
+  --text: var(--text-secondary);
+
+  /* Morning Report Mockup */
+  --mr-undo-border: #C97168;
+  --mr-undo-bg: rgba(201, 113, 104, 0.15);
+  --mr-undo-color: #F28B82;
+  --mr-approve-bg: var(--bg-2);
 }
+
 
 .landing-page {
   background: var(--bg);
@@ -195,6 +225,7 @@
   /* Nav overrides scoped to landing page */
   --nav-bg: rgba(18, 19, 20, 0.88);
   --nav-bg-scrolled: rgba(18, 19, 20, 0.97);
+  --nav-link: var(--text-secondary);
 
   /* Selora.jsx internal alias bridge */
   /* --dark is ONLY bridged for text-color usages (headings, labels, etc). */
@@ -205,6 +236,7 @@
   --muted: var(--text-muted);
   --gpale: var(--g-tint);
   --text: var(--text-secondary);
+  --trust-color: var(--text-muted);
 }
 
 .dark .cn-chat-widget.landing-scoped {
@@ -220,21 +252,14 @@
 }
 
 /* Landing page CSS class component dark overrides */
-/* Higher specificity (0,3,0) beats GlobalStyles .feat-card (0,1,0). */
-.dark .landing-page .feat-card {
+.dark .landing-page .feat-card,
+.dark .landing-page .interactive-feat-card {
   background: var(--bg-1) !important;
   border-color: var(--border) !important;
-}
-.dark .landing-page .feat-card:hover {
-  border-color: var(--g) !important;
-  box-shadow: 0 8px 28px rgba(111, 191, 139, 0.12) !important;
 }
 .dark .landing-page .testi-card {
   background: var(--bg-1) !important;
   border-color: var(--border) !important;
-}
-.dark .landing-page .testi-card:hover {
-  border-color: var(--g) !important;
 }
 .dark .landing-page .step-line {
   border-bottom-color: var(--border) !important;
@@ -246,6 +271,43 @@
 .dark .landing-page .price-card.feat {
   background: linear-gradient(140deg, var(--bg-2), var(--bg-1)) !important;
   border-color: var(--g) !important;
+}
+.dark .landing-page .feat-card:hover,
+.dark .landing-page .interactive-feat-card:hover,
+.dark .landing-page .testi-card:hover,
+.dark .landing-page .price-card:hover,
+.dark .landing-page .price-card.feat:hover {
+  border-color: var(--border-strong) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: none !important;
+}
+
+/* FAQ accordion card */
+.dark .landing-page .faq-item {
+  border-color: var(--border) !important;
+}
+
+/* Slide dots */
+.dark .landing-page .hero-slide-dot {
+  background: var(--border-strong) !important;
+}
+
+/* Stats bar */
+.dark .landing-page .stats-bar-wrap {
+  background: var(--bg-1) !important;
+  border-color: var(--border) !important;
+}
+
+/* Footer */
+.dark .landing-page footer {
+  background: var(--bg-0) !important;
+  border-color: var(--border) !important;
+}
+
+/* Hero AI-rewrite card + Dashboard card (float cards) */
+.dark .landing-page .float {
+  background: var(--bg-1) !important;
+  border-color: var(--border) !important;
 }
 
 /* ── Keyframes & Animations ─────────────────────────────────────── */

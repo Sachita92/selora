@@ -164,7 +164,7 @@ export default function ProductDetail() {
                 {inStock ? `${product.inventory} In Stock` : 'Out of Stock'}
               </span>
               <span style={s.badge('#F1F4F2', c.muted)}>
-                {product.platform || 'Shopify'}
+                {product.platform ? (product.platform === 'shopify' ? 'Shopify' : (product.platform === 'selora' ? 'Selora Native' : product.platform)) : 'Selora Native'}
               </span>
             </div>
 

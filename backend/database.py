@@ -384,6 +384,34 @@ def save_demo_booking(booking_data: dict) -> dict:
     return result.data[0] if result.data else {}
 
 
+# ─── Newsletter Subscribers ───────────────────────────────────────────────────
+
+def save_newsletter_subscriber(email: str) -> dict:
+    """Insert an email into the newsletter_subscribers table.
+    
+    The table is created on first use via Supabase's auto-create behaviour,
+    or can be created manually with:
+      CREATE TABLE newsletter_subscribers (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        email text UNIQUE NOT NULL,
+        subscribed_at timestamptz DEFAULT now()
+      );
+    Returns the row on success. If the email already exists, returns the
+    existing row gracefully rather than raising.
+    """
+    client = db()
+    try:
+        # upsert so duplicate emails don't raise — just silently succeed
+        result = client.table("newsletter_subscribers").upsert(
+            {"email": email},
+            on_conflict="email"
+        ).execute()
+        return result.data[0] if result.data else {"email": email}
+    except Exception as e:
+        print(f"Newsletter subscriber insert error: {e}")
+        raise
+
+
 # ─── Public Data ─────────────────────────────────────────────────────────────
 
 def get_public_stats() -> dict:

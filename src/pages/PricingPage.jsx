@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { loadStripe } from '@stripe/stripe-js'
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
+import { useDarkMode } from '../hooks/useDarkMode'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
@@ -19,8 +20,8 @@ const overlayStyle = {
 }
 
 const modalStyle = {
-  background: '#fff',
-  border: '1px solid #E4EBE5',
+  background: 'var(--card-bg)',
+  border: '1px solid var(--border)',
   borderRadius: 16,
   width: '100%',
   maxWidth: 1000,
@@ -40,16 +41,17 @@ const closeBtnStyle = {
   border: 'none',
   fontSize: '1.8rem',
   cursor: 'pointer',
-  color: '#7B907D',
+  color: 'var(--text-muted)',
   fontWeight: 300,
   zIndex: 10,
   lineHeight: 1,
 }
 
 const c = {
-  g: '#5A8A67', g2: '#78A885', gpale: '#EDF3EE',
-  bg: '#F8FAF8', bg2: '#F1F5F1',
-  border: '#E4EBE5', dark: '#1A271C', text: '#2E3D30', muted: '#7B907D',
+  g: 'var(--g)', g2: 'var(--g2)', gpale: 'var(--gpale)',
+  bg: 'var(--bg)', bg2: 'var(--bg2)',
+  border: 'var(--border)', dark: 'var(--dark)', text: 'var(--text)', muted: 'var(--muted)',
+  card: 'var(--card-bg)'
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -114,26 +116,47 @@ const FAQS = [
 
 function PageNav() {
   const { user } = useAppContext()
+  const [darkMode, toggleTheme] = useDarkMode()
   return (
-    <nav style={{position:'fixed',top:0,left:0,right:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'1rem 3.5rem',background:'rgba(248,250,248,.97)',backdropFilter:'blur(14px)',borderBottom:`1px solid ${c.border}`,fontFamily:'Inter,sans-serif'}}>
-      <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'1.2rem',fontWeight:700,letterSpacing:'-.3px',color:c.dark,textDecoration:'none'}}>
-        Se<span style={{color:c.g}}>lo</span>ra
+    <nav style={{position:'fixed',top:0,left:0,right:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'1rem 3.5rem',background:'var(--nav-bg)',backdropFilter:'blur(14px)',borderBottom:`1px solid var(--border)`,fontFamily:'Inter,sans-serif'}}>
+      <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'1.2rem',fontWeight:700,letterSpacing:'-.3px',color:'var(--dark)',textDecoration:'none'}}>
+        Se<span style={{color:'var(--g)'}}>lo</span>ra
       </Link>
       <div style={{display:'flex',gap:'2rem',alignItems:'center',fontSize:'.82rem'}}>
-        <Link to="/features" style={{color:c.muted,textDecoration:'none',fontWeight:500}}>Features</Link>
-        <Link to="/how-it-works" style={{color:c.muted,textDecoration:'none',fontWeight:500}}>How It Works</Link>
-        <Link to="/pricing" style={{fontWeight:600,color:c.dark,textDecoration:'none',borderBottom:`2px solid ${c.g}`,paddingBottom:'.15rem'}}>Pricing</Link>
-        <Link to="/demo" style={{color:c.g,textDecoration:'none',fontWeight:500}}>Book a Demo</Link>
+        <Link to="/features" className="cn-nav-link" style={{color:'var(--nav-link)',textDecoration:'none',fontWeight:500}}>Features</Link>
+        <Link to="/how-it-works" className="cn-nav-link" style={{color:'var(--nav-link)',textDecoration:'none',fontWeight:500}}>How It Works</Link>
+        <Link to="/pricing" style={{fontWeight:600,color:'var(--dark)',textDecoration:'none',borderBottom:`2px solid var(--g)`,paddingBottom:'.15rem'}}>Pricing</Link>
+        <Link to="/demo" style={{color:'var(--g)',textDecoration:'none',fontWeight:500}}>Book a Demo</Link>
       </div>
       <div style={{display:'flex',gap:'.7rem',alignItems:'center'}}>
+        {/* Dark-mode toggle */}
+        <button
+          className="cn-theme-toggle"
+          onClick={toggleTheme}
+          title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:".25rem",borderRadius:6}}
+        >
+          {darkMode ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          )}
+        </button>
         {user ? (
-          <Link to="/dashboard" style={{background:c.g,color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
+          <Link to="/dashboard" style={{background:'var(--g)',color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
             Dashboard
           </Link>
         ) : (
           <>
-            <Link to="/login" style={{fontSize:'.82rem',fontWeight:500,color:c.muted,textDecoration:'none'}}>Sign In</Link>
-            <Link to="/signup" style={{background:c.g,color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
+            <Link to="/login" className="cn-nav-link" style={{fontSize:'.82rem',fontWeight:500,color:'var(--nav-link)',textDecoration:'none'}}>Sign In</Link>
+            <Link to="/signup" style={{background:'var(--g)',color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
               Get Started Free
             </Link>
           </>
@@ -190,7 +213,7 @@ export default function PricingPage() {
   }, [user, navigate, checkoutPlan])
 
   return (
-    <>
+    <div className="landing-page" style={{fontFamily:'Inter, sans-serif', background:c.bg, minHeight:'100vh', color:c.text}}>
       <style>{`
         @keyframes pricingSlideUp {
           from { opacity: 0; transform: translateY(15px); }
@@ -203,10 +226,10 @@ export default function PricingPage() {
         }
       `}</style>
       <PageNav />
-      <div style={{fontFamily:'Inter, sans-serif', background:c.bg, minHeight:'100vh', color:c.text}}>
+
 
         {/* HERO & PRICING CARDS SECTION */}
-        <div style={{background:'linear-gradient(170deg,#EEF4EF 0%,#F8FAF8 70%)', paddingTop:'6rem', paddingBottom:'4rem'}}>
+        <div style={{background:'linear-gradient(170deg,var(--bg-2) 0%,var(--bg) 70%)', paddingTop:'6rem', paddingBottom:'4rem'}}>
           <div style={{textAlign:'center'}}>
             <h1 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.6rem,3.2vw,2.5rem)',fontWeight:500,lineHeight:1.15,letterSpacing:'-.3px',color:c.dark,maxWidth:650,margin:'0 auto .8rem'}}>
               Grow your collection, <em style={{fontStyle:'italic',color:c.g}}>pay as you scale</em>
@@ -220,7 +243,7 @@ export default function PricingPage() {
               <button 
                 onClick={() => setBillingPeriod('monthly')}
                 style={{
-                  background: billingPeriod === 'monthly' ? '#fff' : 'transparent',
+                  background: billingPeriod === 'monthly' ? 'var(--card-bg)' : 'transparent',
                   color: billingPeriod === 'monthly' ? c.dark : c.muted,
                   border: 'none', borderRadius: 16, padding: '.4rem 1.2rem', fontSize: '.78rem',
                   fontWeight: 600, cursor: 'pointer', transition: 'all .25s', fontFamily: 'Inter,sans-serif'
@@ -231,7 +254,7 @@ export default function PricingPage() {
               <button 
                 onClick={() => setBillingPeriod('annual')}
                 style={{
-                  background: billingPeriod === 'annual' ? '#fff' : 'transparent',
+                  background: billingPeriod === 'annual' ? 'var(--card-bg)' : 'transparent',
                   color: billingPeriod === 'annual' ? c.dark : c.muted,
                   border: 'none', borderRadius: 16, padding: '.4rem 1.2rem', fontSize: '.78rem',
                   fontWeight: 600, cursor: 'pointer', transition: 'all .25s', fontFamily: 'Inter,sans-serif',
@@ -254,12 +277,13 @@ export default function PricingPage() {
 
               return (
                 <div 
-                  key={plan.name} 
+                  key={plan.name}
+                  className={plan.feat ? "price-card feat" : "price-card"}
                   style={{
-                    background: '#fff', border: plan.feat ? `2px solid ${c.g}` : `1px solid ${c.border}`,
+                    background: 'var(--card-bg)', border: plan.feat ? `2px solid ${c.g}` : `1px solid ${c.border}`,
                     borderRadius: 16, padding: '2.5rem 2rem', position: 'relative', display: 'flex',
-                    flexDirection: 'column', transition: 'all .2s',
-                    boxShadow: plan.feat ? '0 12px 40px rgba(90,138,103,.12)' : '0 4px 20px rgba(0,0,0,.02)'
+                    flexDirection: 'column', transition: 'all .25s ease-in-out',
+                    boxShadow: plan.feat ? '0 12px 40px rgba(90,138,103,.12)' : 'none'
                   }}
                 >
                   {plan.feat && (
@@ -349,11 +373,11 @@ export default function PricingPage() {
           {showComparison && (
             <div style={{
               marginTop: '3.5rem',
-              background: '#fff',
+              background: 'var(--card-bg)',
               border: `1px solid ${c.border}`,
               borderRadius: 16,
               padding: '3.5rem 3rem',
-              boxShadow: '0 8px 30px rgba(0,0,0,.03)',
+              boxShadow: 'none',
               animation: 'pricingSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both'
             }}>
               <div style={{maxWidth: 900, margin: '0 auto'}}>
@@ -414,7 +438,7 @@ export default function PricingPage() {
                   <div 
                     key={i} 
                     style={{
-                      background: '#fff', 
+                      background: 'var(--card-bg)', 
                       border: `1px solid ${c.border}`, 
                       borderRadius: 12, 
                       overflow: 'hidden',
@@ -478,7 +502,7 @@ export default function PricingPage() {
         </div>
 
         {/* CTA */}
-        <div style={{textAlign:'center',padding:'6rem 4rem',background:'linear-gradient(140deg,#1A271C 0%,#233329 100%)',position:'relative',overflow:'hidden'}}>
+        <div style={{textAlign:'center',padding:'4rem 4rem',background:'linear-gradient(140deg,#1A271C 0%,#233329 100%)',position:'relative',overflow:'hidden'}}>
           <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 70% 60% at 50% 50%,rgba(90,138,103,.12),transparent)',pointerEvents:'none'}} />
           <div style={{position:'relative'}}>
             <p style={{fontSize:'.68rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'.14em',color:'#86EFAC',marginBottom:'.7rem'}}>Ready to start?</p>
@@ -500,7 +524,7 @@ export default function PricingPage() {
         </div>
 
         {/* Footer */}
-        <footer style={{borderTop:`1px solid ${c.border}`,padding:'2rem 4rem',display:'flex',justifyContent:'space-between',alignItems:'center',background:'#fff',flexWrap:'wrap',gap:'1rem'}}>
+        <footer style={{borderTop:`1px solid ${c.border}`,padding:'2rem 4rem',display:'flex',justifyContent:'space-between',alignItems:'center',background:c.card,flexWrap:'wrap',gap:'1rem'}}>
           <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'.95rem',fontWeight:700,color:c.dark,textDecoration:'none'}}>
             Se<span style={{color:c.g}}>lo</span>ra
           </Link>
@@ -511,17 +535,15 @@ export default function PricingPage() {
           </div>
           <div style={{fontSize:'.7rem',color:'#c0c8c1'}}>© 2025 Selora. All rights reserved.</div>
         </footer>
+        {checkoutPlan && (
+          <CheckoutModal 
+            planSlug={checkoutPlan.slug} 
+            billingPeriod={checkoutPlan.period} 
+            onClose={() => setCheckoutPlan(null)} 
+            user={user}
+          />
+        )}
       </div>
-
-      {checkoutPlan && (
-        <CheckoutModal 
-          planSlug={checkoutPlan.slug} 
-          billingPeriod={checkoutPlan.period} 
-          onClose={() => setCheckoutPlan(null)} 
-          user={user}
-        />
-      )}
-    </>
   )
 }
 
@@ -531,6 +553,7 @@ function CheckoutModal({ planSlug, billingPeriod, onClose, user }) {
   const [error, setError] = useState('')
 
   const planInfo = PLANS.find(p => p.slug === planSlug)
+  const isDark = document.documentElement.classList.contains('dark') || localStorage.getItem('selora-theme') === 'dark';
 
   useEffect(() => {
     if (!planSlug || !planInfo) {
@@ -582,37 +605,37 @@ function CheckoutModal({ planSlug, billingPeriod, onClose, user }) {
         
         <div className="checkout-split" style={{ display: 'grid', gridTemplateColumns: '4.2fr 5.8fr', minHeight: '500px' }}>
           {/* LEFT SIDEBAR */}
-          <div style={{ padding: '2.5rem', background: '#F8FAF8', borderRight: '1px solid #E4EBE5', display: 'flex', flexDirection: 'column', gap: '1.8rem' }}>
+          <div style={{ padding: '2.5rem', background: 'var(--bg-0)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1.8rem' }}>
             <div>
-              <span style={{ fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.12em', color: '#5A8A67', display: 'block', marginBottom: '.4rem' }}>Your Subscription</span>
-              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.8rem', fontWeight: 500, color: '#1A271C', letterSpacing: '-.5px' }}>{planInfo.name}</h2>
-              <p style={{ fontSize: '.78rem', color: '#7B907D', marginTop: '.3rem', fontWeight: 300, lineHeight: 1.5 }}>Native checkouts are fully secured and encrypted by Stripe.</p>
+              <span style={{ fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.12em', color: 'var(--g)', display: 'block', marginBottom: '.4rem' }}>Your Subscription</span>
+              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.8rem', fontWeight: 500, color: 'var(--dark)', letterSpacing: '-.5px' }}>{planInfo.name}</h2>
+              <p style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginTop: '.3rem', fontWeight: 300, lineHeight: 1.5 }}>Native checkouts are fully secured and encrypted by Stripe.</p>
             </div>
 
-            <div style={{ background: '#fff', border: '1px solid #E4EBE5', borderRadius: 12, padding: '1.2rem' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 600, color: '#1A271C', fontFamily: 'Fraunces, serif' }}>{priceLabel}</div>
-              <div style={{ fontSize: '.72rem', color: '#7B907D', marginTop: '.2rem' }}>{periodLabel}</div>
+            <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.2rem' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--dark)', fontFamily: 'Fraunces, serif' }}>{priceLabel}</div>
+              <div style={{ fontSize: '.72rem', color: 'var(--text-muted)', marginTop: '.2rem' }}>{periodLabel}</div>
               {billingPeriod === 'annual' && (
-                <div style={{ fontSize: '.68rem', color: '#5A8A67', fontWeight: 600, marginTop: '.4rem', background: '#EDF3EE', padding: '.2rem .5rem', borderRadius: 4, display: 'inline-block' }}>
+                <div style={{ fontSize: '.68rem', color: 'var(--g)', fontWeight: 600, marginTop: '.4rem', background: 'var(--gpale)', padding: '.2rem .5rem', borderRadius: 4, display: 'inline-block' }}>
                   Save 20% with annual billing
                 </div>
               )}
             </div>
 
             <div>
-              <h4 style={{ fontSize: '.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: '#1A271C', marginBottom: '.6rem' }}>Features Included:</h4>
+              <h4 style={{ fontSize: '.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--dark)', marginBottom: '.6rem' }}>Features Included:</h4>
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                 {planInfo.features.map(f => (
-                  <li key={f} style={{ fontSize: '.78rem', color: '#2E3D30', display: 'flex', gap: '.4rem', alignItems: 'center', fontWeight: 300 }}>
-                    <span style={{ color: '#5A8A67', fontWeight: 700 }}>✓</span>{f}
+                  <li key={f} style={{ fontSize: '.78rem', color: 'var(--text)', display: 'flex', gap: '.4rem', alignItems: 'center', fontWeight: 300 }}>
+                    <span style={{ color: 'var(--g)', fontWeight: 700 }}>✓</span>{f}
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div style={{ display: 'flex', gap: '.5rem', marginTop: 'auto', borderTop: '1px solid #E4EBE5', paddingTop: '1.2rem' }}>
+            <div style={{ display: 'flex', gap: '.5rem', marginTop: 'auto', borderTop: '1px solid var(--border)', paddingTop: '1.2rem' }}>
               <span style={{ fontSize: '1rem' }}>🔒</span>
-              <span style={{ fontSize: '.68rem', color: '#7B907D', lineHeight: 1.4, fontWeight: 300 }}>
+              <span style={{ fontSize: '.68rem', color: 'var(--text-muted)', lineHeight: 1.4, fontWeight: 300 }}>
                 PCI-DSS Compliant. We never store or handle your credit card data.
               </span>
             </div>
@@ -622,19 +645,19 @@ function CheckoutModal({ planSlug, billingPeriod, onClose, user }) {
           <div style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             {loading ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-                <div style={{ width: 32, height: 32, border: '2.5px solid #EDF3EE', borderTopColor: '#5A8A67', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                <p style={{ marginTop: '1rem', color: '#7B907D', fontSize: '.8rem' }}>Initializing Stripe secure frame...</p>
+                <div style={{ width: 32, height: 32, border: '2.5px solid var(--bg-2)', borderTopColor: 'var(--g)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '.8rem' }}>Initializing Stripe secure frame...</p>
               </div>
             ) : error ? (
               <div style={{ textAlign: 'center', padding: '1rem' }}>
                 <span style={{ fontSize: '2rem' }}>⚠️</span>
                 <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.2rem', margin: '.5rem 0' }}>Failed to load checkout</h3>
-                <p style={{ fontSize: '.8rem', color: '#7B907D', marginBottom: '1.5rem' }}>{error}</p>
-                <button onClick={onClose} style={{ background: '#5A8A67', color: '#fff', border: 'none', padding: '.5rem 1.2rem', borderRadius: 6, fontSize: '.8rem', fontWeight: 600, cursor: 'pointer' }}>Close Modal</button>
+                <p style={{ fontSize: '.8rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>{error}</p>
+                <button onClick={onClose} style={{ background: 'var(--g)', color: '#fff', border: 'none', padding: '.5rem 1.2rem', borderRadius: 6, fontSize: '.8rem', fontWeight: 600, cursor: 'pointer' }}>Close Modal</button>
               </div>
             ) : (
               clientSecret && (
-                <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
+                <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret, appearance: { theme: isDark ? 'night' : 'stripe' } }}>
                   <EmbeddedCheckout />
                 </EmbeddedCheckoutProvider>
               )

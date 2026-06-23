@@ -92,7 +92,7 @@ export default function Products() {
           <div>
             <h1 style={s.h1}>{activeStore ? `${activeStore.shop_name} · Products` : 'Products'}</h1>
             <p style={{ fontSize: '.84rem', color: c.muted, marginTop: '.3rem', fontWeight: 300 }}>
-              {fetching ? 'Syncing live from Shopify...' : `${products.length} products`}
+              {fetching ? (activeStore?.platform === 'selora' ? 'Syncing your products...' : 'Syncing live from Shopify...') : `${products.length} products`}
             </p>
           </div>
           <div style={{ display: 'flex', gap: '.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -156,7 +156,7 @@ export default function Products() {
         {fetching ? (
           <div style={{ ...s.card, ...s.empty }}>
             <div style={{ fontSize: '2rem', marginBottom: '.8rem' }}>⏳</div>
-            <p>Fetching live product data from Shopify...</p>
+            <p>{activeStore?.platform === 'selora' ? 'Fetching your product data...' : 'Fetching live product data from Shopify...'}</p>
           </div>
         ) : activeStore && products.length === 0 ? (
           <div style={{ ...s.card, ...s.empty }}>

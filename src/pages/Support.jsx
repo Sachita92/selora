@@ -1,41 +1,43 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useDarkMode } from '../hooks/useDarkMode'
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const c = {
-  green: '#5A8A67', dark: '#1A271C', muted: '#7B907D',
-  border: '#E4EBE5', bg: '#F8FAF8', bg2: '#F1F5F1', card: '#fff',
+  green: 'var(--g)', dark: 'var(--dark)', muted: 'var(--muted)',
+  border: 'var(--border)', bg: 'var(--bg)', bg2: 'var(--bg2)', card: 'var(--card-bg)',
 }
 
 const s = {
-  page:    { minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif', color: '#2E3D30' },
-  nav:     { background: c.card, borderBottom: `1px solid ${c.border}`, padding: '1rem 3.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  logo:    { fontSize: '1.2rem', fontWeight: 700, color: c.dark, textDecoration: 'none', fontFamily: 'Inter, sans-serif' },
+  page:    { minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif', color: 'var(--text)' },
+  nav:     { background: 'var(--nav-bg)', borderBottom: `1px solid var(--border)`, padding: '1rem 3.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(14px)' },
+  logo:    { fontSize: '1.2rem', fontWeight: 700, color: 'var(--dark)', textDecoration: 'none', fontFamily: 'Inter, sans-serif' },
   container: { maxWidth: 960, margin: '0 auto', padding: '4rem 2rem 6rem' },
   header:  { textAlign: 'center', marginBottom: '4rem' },
   tag:     { fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', color: c.green, marginBottom: '.6rem' },
-  title:   { fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: c.dark, letterSpacing: '-.4px', marginBottom: '1rem' },
-  sub:     { fontSize: '1rem', color: c.muted, fontWeight: 300, maxWidth: 540, margin: '0 auto', lineHeight: 1.6 },
+  title:   { fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: 'var(--dark)', letterSpacing: '-.4px', marginBottom: '1rem' },
+  sub:     { fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 300, maxWidth: 540, margin: '0 auto', lineHeight: 1.6 },
   grid:    { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem', alignItems: 'start' },
-  card:    { background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: '2.5rem', boxShadow: '0 4px 20px rgba(90, 138, 103, 0.02)' },
-  cardTitle: { fontFamily: 'Fraunces, serif', fontSize: '1.4rem', fontWeight: 500, color: c.dark, marginBottom: '1.5rem' },
+  card:    { background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: '2.5rem', boxShadow: 'none' },
+  cardTitle: { fontFamily: 'Fraunces, serif', fontSize: '1.4rem', fontWeight: 500, color: 'var(--dark)', marginBottom: '1.5rem' },
   formGroup: { marginBottom: '1.2rem' },
-  label:   { display: 'block', fontSize: '.75rem', fontWeight: 600, color: '#2E3D30', marginBottom: '.4rem', letterSpacing: '.04em', textTransform: 'uppercase' },
-  input:   { width: '100%', padding: '.8rem 1rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.9rem', color: c.dark, fontFamily: 'Inter, sans-serif', outline: 'none', background: '#FAFAF8', boxSizing: 'border-box', transition: 'all .2s' },
-  textarea: { width: '100%', padding: '.8rem 1rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.9rem', color: c.dark, fontFamily: 'Inter, sans-serif', outline: 'none', background: '#FAFAF8', boxSizing: 'border-box', height: 120, resize: 'vertical', transition: 'all .2s' },
+  label:   { display: 'block', fontSize: '.75rem', fontWeight: 600, color: 'var(--text)', marginBottom: '.4rem', letterSpacing: '.04em', textTransform: 'uppercase' },
+  input:   { width: '100%', padding: '.8rem 1rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--input-bg)', boxSizing: 'border-box', transition: 'all .2s' },
+  textarea: { width: '100%', padding: '.8rem 1rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--input-bg)', boxSizing: 'border-box', height: 120, resize: 'vertical', transition: 'all .2s' },
   btn:     { width: '100%', padding: '.85rem', background: c.green, color: '#fff', border: 'none', borderRadius: 8, fontSize: '.9rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .2s', marginTop: '.5rem' },
   channels: { display: 'flex', flexDirection: 'column', gap: '1.2rem', marginBottom: '2.5rem' },
   channelItem: { display: 'flex', gap: '1rem', background: c.bg2, border: `1px solid ${c.border}`, borderRadius: 12, padding: '1.2rem' },
   channelIcon: { fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  channelText: { fontSize: '.85rem', lineHeight: 1.6, fontWeight: 300, color: '#5A6B5C' },
+  channelText: { fontSize: '.85rem', lineHeight: 1.6, fontWeight: 300, color: 'var(--text-secondary)' },
   faqItem: { borderBottom: `1px solid ${c.border}`, padding: '1.2rem 0' },
   faqHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' },
-  faqTitle: { fontSize: '.95rem', fontWeight: 500, color: c.dark },
-  faqBody: { fontSize: '.86rem', color: '#5A6B5C', lineHeight: 1.8, fontWeight: 300, marginTop: '.8rem', transition: 'all .2s' },
-  successBox: { background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 12, padding: '2rem', textAlign: 'center', color: '#166534' },
+  faqTitle: { fontSize: '.95rem', fontWeight: 500, color: 'var(--dark)' },
+  faqBody: { fontSize: '.86rem', color: 'var(--text-secondary)', lineHeight: 1.8, fontWeight: 300, marginTop: '.8rem', transition: 'all .2s' },
+  successBox: { background: 'var(--gpale)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '2rem', textAlign: 'center', color: 'var(--g)' },
 }
 
 export default function Support() {
+  const [darkMode, toggleTheme] = useDarkMode()
   const [formData, setFormData] = useState({ name: '', email: '', storeUrl: '', subject: '', message: '' })
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -85,7 +87,7 @@ export default function Support() {
     },
     {
       q: "Can I run the agent in test mode?",
-      a: "Absolutely. By default, you can run the agent in 'Dry Run' mode. The AI will analyze your store and generate growth reports containing wins and concerns, but it will not push any changes to your live Shopify store until you turn live actions on."
+      a: "Absolutely. By default, you can run the agent in 'Dry Run' mode. The AI will analyze your store and generate growth reports containing wins and concerns, but it will not push any live changes until you turn live actions on."
     },
     {
       q: "Which e-commerce platforms are supported?",
@@ -94,16 +96,38 @@ export default function Support() {
   ]
 
   return (
-    <div style={s.page}>
+    <div className="landing-page" style={s.page}>
       
       {/* NAV */}
       <nav style={s.nav}>
         <Link to="/" style={s.logo}>
-          Se<span style={{ color: c.green }}>lo</span>ra
+          Se<span style={{ color: 'var(--g)' }}>lo</span>ra
         </Link>
-        <Link to="/dashboard" style={{ fontSize: '.82rem', color: c.muted, textDecoration: 'none' }}>
-          ← Go to Dashboard
-        </Link>
+        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+          {/* Dark-mode toggle */}
+          <button
+            className="cn-theme-toggle"
+            onClick={toggleTheme}
+            title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+            style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:".25rem",borderRadius:6}}
+          >
+            {darkMode ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            )}
+          </button>
+          <Link to="/dashboard" className="cn-nav-link" style={{ fontSize: '.82rem', color: 'var(--nav-link)', textDecoration: 'none' }}>
+            ← Go to Dashboard
+          </Link>
+        </div>
       </nav>
 
       {/* CONTENT */}
@@ -210,7 +234,7 @@ export default function Support() {
                   <input
                     style={s.input}
                     type="text"
-                    placeholder="my-fashion-store.myshopify.com"
+                    placeholder="your-store-name"
                     name="storeUrl"
                     value={formData.storeUrl}
                     onChange={handleInputChange}
@@ -253,7 +277,7 @@ export default function Support() {
 
       {/* FOOTER */}
       <footer style={{ borderTop: `1px solid ${c.border}`, padding: '1.8rem 4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: c.card, flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ fontSize: '.95rem', fontWeight: 700, color: c.dark }}>Se<span style={{ color: c.green }}>lo</span>ra</div>
+        <div style={{ fontSize: '.95rem', fontWeight: 700, color: 'var(--dark)' }}>Se<span style={{ color: 'var(--g)' }}>lo</span>ra</div>
         <div style={{ display: 'flex', gap: '1.8rem', flexWrap: 'wrap' }}>
           {[
             { label: 'Privacy Policy', href: '/privacy' },

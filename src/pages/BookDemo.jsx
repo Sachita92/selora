@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useDarkMode } from '../hooks/useDarkMode'
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Shared ───────────────────────────────────────────────────────────────────
 const c = {
-  green: '#5A8A67', green2: '#78A885', greenPale: '#EDF3EE',
-  dark: '#1A271C', text: '#2E3D30', muted: '#7B907D',
-  border: '#E4EBE5', bg: '#F8FAF8', bg2: '#F1F5F1', card: '#fff',
+  green: 'var(--g)', green2: 'var(--g2)', greenPale: 'var(--gpale)',
+  dark: 'var(--dark)', text: 'var(--text)', muted: 'var(--muted)',
+  border: 'var(--border)', bg: 'var(--bg)', bg2: 'var(--bg2)', card: 'var(--card-bg)',
 }
 
 const TIME_SLOTS = [
@@ -32,6 +33,7 @@ const TESTIMONIALS = [
 ]
 
 export default function BookDemo() {
+  const [darkMode, toggleTheme] = useDarkMode()
   const [step, setStep] = useState(1) // 1 = form, 2 = time slot, 3 = confirmed
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', storeUrl: '',
@@ -106,16 +108,36 @@ export default function BookDemo() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif', color: c.text }}>
+    <div className="landing-page" style={{ minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif', color: c.text }}>
 
       {/* NAV */}
-      <nav style={{ background: c.card, borderBottom: `1px solid ${c.border}`, padding: '1rem 3.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 }}>
-        <Link to="/" style={{ fontSize: '1.2rem', fontWeight: 700, color: c.dark, textDecoration: 'none' }}>
-          Se<span style={{ color: c.green }}>lo</span>ra
+      <nav style={{ background: 'var(--nav-bg)', borderBottom: `1px solid var(--border)`, padding: '1rem 3.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(14px)' }}>
+        <Link to="/" style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--dark)', textDecoration: 'none' }}>
+          Se<span style={{ color: 'var(--g)' }}>lo</span>ra
         </Link>
         <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-          <Link to="/support" style={{ fontSize: '.82rem', color: c.muted, textDecoration: 'none' }}>Support</Link>
-          <Link to="/login" style={{ fontSize: '.82rem', background: c.green, color: '#fff', padding: '.45rem 1.1rem', borderRadius: 7, textDecoration: 'none', fontWeight: 600 }}>Sign In</Link>
+          {/* Dark-mode toggle */}
+          <button
+            className="cn-theme-toggle"
+            onClick={toggleTheme}
+            title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+            style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:".25rem",borderRadius:6}}
+          >
+            {darkMode ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            )}
+          </button>
+          <Link to="/support" className="cn-nav-link" style={{ fontSize: '.82rem', color: 'var(--nav-link)', textDecoration: 'none' }}>Support</Link>
+          <Link to="/login" style={{ fontSize: '.82rem', background: 'var(--g)', color: '#fff', padding: '.45rem 1.1rem', borderRadius: 7, textDecoration: 'none', fontWeight: 600 }}>Sign In</Link>
         </div>
       </nav>
 
@@ -275,7 +297,7 @@ export default function BookDemo() {
                   <div>
                     <p style={{ fontSize: '.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', color: c.muted, marginBottom: '1rem' }}>From previous demos</p>
                     {TESTIMONIALS.map((t, i) => (
-                      <div key={i} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: '1.2rem', marginBottom: '.8rem' }}>
+                      <div key={i} className="testi-card" style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: '1.2rem', marginBottom: '.8rem' }}>
                         <div style={{ color: c.green, fontSize: '.7rem', letterSpacing: 2, marginBottom: '.5rem' }}>★★★★★</div>
                         <p style={{ fontSize: '.8rem', color: c.muted, lineHeight: 1.75, fontStyle: 'italic', fontFamily: 'Fraunces, serif', marginBottom: '.7rem' }}>"{t.q}"</p>
                         <div style={{ fontSize: '.75rem', fontWeight: 600, color: c.dark }}>{t.name}</div>
@@ -373,7 +395,7 @@ export default function BookDemo() {
         <div style={{ fontSize: '.95rem', fontWeight: 700, color: c.dark }}>Se<span style={{ color: c.green }}>lo</span>ra</div>
         <div style={{ display: 'flex', gap: '1.8rem', flexWrap: 'wrap' }}>
           {[{ label: 'Privacy Policy', href: '/privacy' }, { label: 'Terms of Service', href: '/terms' }, { label: 'Support', href: '/support' }].map(l => (
-            <Link key={l.label} to={l.href} style={{ fontSize: '.74rem', color: c.muted, textDecoration: 'none' }}>{l.label}</Link>
+            <Link key={l.label} to={l.href} style={{ fontSize: '.74rem', color: c.muted, textDecoration: 'none', marginLeft: '1.8rem' }}>{l.label}</Link>
           ))}
         </div>
         <div style={{ fontSize: '.7rem', color: '#c0c8c1' }}>© 2025 Selora. All rights reserved.</div>
@@ -386,12 +408,12 @@ export default function BookDemo() {
 // ─── Field helper ────────────────────────────────────────────────────────────
 const labelStyle = {
   display: 'block', fontSize: '.72rem', fontWeight: 600,
-  color: '#2E3D30', marginBottom: '.4rem', letterSpacing: '.04em', textTransform: 'uppercase',
+  color: 'var(--text)', marginBottom: '.4rem', letterSpacing: '.04em', textTransform: 'uppercase',
 }
 const inputStyle = {
-  width: '100%', padding: '.78rem 1rem', border: '1px solid #E4EBE5',
-  borderRadius: 8, fontSize: '.88rem', color: '#1A271C',
-  fontFamily: 'Inter, sans-serif', outline: 'none', background: '#FAFAF8',
+  width: '100%', padding: '.78rem 1rem', border: '1px solid var(--border)',
+  borderRadius: 8, fontSize: '.88rem', color: 'var(--text-primary)',
+  fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--input-bg)',
   boxSizing: 'border-box', transition: 'border .2s',
 }
 function Field({ label, name, type = 'text', value, onChange, placeholder, required, style }) {

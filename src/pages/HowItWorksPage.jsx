@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { useAppContext } from '../lib/AppContext'
+import { useDarkMode } from '../hooks/useDarkMode'
 
 const c = {
-  g: '#5A8A67', g2: '#78A885', gpale: '#EDF3EE',
-  bg: '#F8FAF8', bg2: '#F1F5F1',
-  border: '#E4EBE5', dark: '#1A271C', text: '#2E3D30', muted: '#7B907D',
+  g: 'var(--g)', g2: 'var(--g2)', gpale: 'var(--gpale)',
+  bg: 'var(--bg)', bg2: 'var(--bg2)',
+  border: 'var(--border)', dark: 'var(--dark)', text: 'var(--text)', muted: 'var(--muted)',
+  card: 'var(--card-bg)',
 }
 
 const STEPS = [
@@ -42,26 +44,47 @@ const FAQ = [
 
 function PageNav() {
   const { user } = useAppContext()
+  const [darkMode, toggleTheme] = useDarkMode()
   return (
-    <nav style={{position:'fixed',top:0,left:0,right:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'1rem 3.5rem',background:'rgba(248,250,248,.97)',backdropFilter:'blur(14px)',borderBottom:`1px solid ${c.border}`,fontFamily:'Inter,sans-serif'}}>
-      <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'1.2rem',fontWeight:700,letterSpacing:'-.3px',color:c.dark,textDecoration:'none'}}>
-        Se<span style={{color:c.g}}>lo</span>ra
+    <nav style={{position:'fixed',top:0,left:0,right:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'1rem 3.5rem',background:'var(--nav-bg)',backdropFilter:'blur(14px)',borderBottom:`1px solid var(--border)`,fontFamily:'Inter,sans-serif'}}>
+      <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'1.2rem',fontWeight:700,letterSpacing:'-.3px',color:'var(--dark)',textDecoration:'none'}}>
+        Se<span style={{color:'var(--g)'}}>lo</span>ra
       </Link>
       <div style={{display:'flex',gap:'2rem',alignItems:'center',fontSize:'.82rem'}}>
-        <Link to="/features" style={{color:c.muted,textDecoration:'none',fontWeight:500}}>Features</Link>
-        <Link to="/how-it-works" style={{fontWeight:600,color:c.dark,textDecoration:'none',borderBottom:`2px solid ${c.g}`,paddingBottom:'.15rem'}}>How It Works</Link>
-        <Link to="/pricing" style={{color:c.muted,textDecoration:'none',fontWeight:500}}>Pricing</Link>
-        <Link to="/demo" style={{color:c.g,textDecoration:'none',fontWeight:500}}>Book a Demo</Link>
+        <Link to="/features" className="cn-nav-link" style={{color:'var(--nav-link)',textDecoration:'none',fontWeight:500}}>Features</Link>
+        <Link to="/how-it-works" style={{fontWeight:600,color:'var(--dark)',textDecoration:'none',borderBottom:`2px solid var(--g)`,paddingBottom:'.15rem'}}>How It Works</Link>
+        <Link to="/pricing" className="cn-nav-link" style={{color:'var(--nav-link)',textDecoration:'none',fontWeight:500}}>Pricing</Link>
+        <Link to="/demo" style={{color:'var(--g)',textDecoration:'none',fontWeight:500}}>Book a Demo</Link>
       </div>
       <div style={{display:'flex',gap:'.7rem',alignItems:'center'}}>
+        {/* Dark-mode toggle */}
+        <button
+          className="cn-theme-toggle"
+          onClick={toggleTheme}
+          title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:".25rem",borderRadius:6}}
+        >
+          {darkMode ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          )}
+        </button>
         {user ? (
-          <Link to="/dashboard" style={{background:c.g,color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
+          <Link to="/dashboard" style={{background:'var(--g)',color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
             Dashboard
           </Link>
         ) : (
           <>
-            <Link to="/login" style={{fontSize:'.82rem',fontWeight:500,color:c.muted,textDecoration:'none'}}>Sign In</Link>
-            <Link to="/signup" style={{background:c.g,color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
+            <Link to="/login" className="cn-nav-link" style={{fontSize:'.82rem',fontWeight:500,color:'var(--nav-link)',textDecoration:'none'}}>Sign In</Link>
+            <Link to="/signup" style={{background:'var(--g)',color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
               Get Started Free
             </Link>
           </>
@@ -91,7 +114,7 @@ function ShopifyConnectDemo({ c }) {
   }
 
   return (
-    <div style={{ background: '#fff', border: `1px solid ${c.border}`, borderRadius: 16, padding: '1.8rem', boxShadow: '0 8px 30px rgba(90,138,103,.04)' }}>
+    <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: '1.8rem', boxShadow: 'none' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '1.2rem' }}>
         <span style={{ fontSize: '1.8rem' }}>🛍️</span>
         <div style={{ textAlign: 'left' }}>
@@ -109,7 +132,7 @@ function ShopifyConnectDemo({ c }) {
             onChange={(e) => setUrl(e.target.value)}
             style={{
               width: '100%', padding: '.7rem .9rem', borderRadius: 8, border: `1px solid ${c.border}`,
-              fontSize: '.82rem', fontFamily: 'Inter,sans-serif', outline: 'none', background: '#FAFAF8',
+              fontSize: '.82rem', fontFamily: 'Inter,sans-serif', outline: 'none', background: 'var(--input-bg)',
               color: c.dark, boxSizing: 'border-box'
             }}
             required
@@ -139,7 +162,7 @@ function ShopifyConnectDemo({ c }) {
 
       {status === 'connected' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'fadeUp 0.4s ease both' }}>
-          <div style={{ background: c.gpale, border: `1px solid #BBF7D0`, borderRadius: 8, padding: '.8rem 1rem', display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+          <div style={{ background: c.gpale, border: `1px solid var(--border-strong)`, borderRadius: 8, padding: '.8rem 1rem', display: 'flex', alignItems: 'center', gap: '.6rem' }}>
             <span style={{ color: c.g, fontSize: '1.1rem', fontWeight: 'bold' }}>✓</span>
             <div style={{ fontSize: '.78rem', color: c.dark, fontWeight: 500, textAlign: 'left' }}>
               Connected to <span style={{ fontWeight: 600 }}>{url}</span>
@@ -188,7 +211,7 @@ function GoalsSetupDemo({ c }) {
   }
 
   return (
-    <div style={{ background: '#fff', border: `1px solid ${c.border}`, borderRadius: 16, padding: '1.6rem', boxShadow: '0 8px 30px rgba(90,138,103,.04)' }}>
+    <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: '1.6rem', boxShadow: 'none' }}>
       <div style={{ fontSize: '.88rem', fontWeight: 600, color: c.dark, marginBottom: '.3rem', textAlign: 'left' }}>Tailor Agent Objectives</div>
       <div style={{ fontSize: '.72rem', color: c.muted, marginBottom: '1rem', textAlign: 'left' }}>Toggle goals to customize Selora's nightly algorithms</div>
 
@@ -202,7 +225,7 @@ function GoalsSetupDemo({ c }) {
               style={{
                 display: 'flex', alignItems: 'center', gap: '.7rem', padding: '.7rem 1rem',
                 borderRadius: 10, border: `1px solid ${isActive ? c.g : c.border}`,
-                background: isActive ? c.gpale : '#FAFAF8', cursor: 'pointer',
+                background: isActive ? c.gpale : c.bg2, cursor: 'pointer',
                 transition: 'all .2s ease-in-out'
               }}
             >
@@ -214,7 +237,7 @@ function GoalsSetupDemo({ c }) {
               <div style={{
                 width: 16, height: 16, borderRadius: 4, border: `1px solid ${isActive ? c.g : c.border}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: isActive ? c.g : '#fff', color: '#fff', fontSize: '.6rem', fontWeight: 'bold'
+                background: isActive ? c.g : c.card, color: '#fff', fontSize: '.6rem', fontWeight: 'bold'
               }}>
                 {isActive && '✓'}
               </div>
@@ -250,7 +273,7 @@ function MorningReportDemo({ c }) {
   const activeCount = actions.filter(a => a.active).length
 
   return (
-    <div style={{ background: '#fff', border: `1px solid ${c.border}`, borderRadius: 16, padding: '1.6rem', boxShadow: '0 8px 30px rgba(90,138,103,.04)' }}>
+    <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: '1.6rem', boxShadow: 'none' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
         <div style={{ textAlign: 'left' }}>
           <div style={{ fontSize: '.88rem', fontWeight: 600, color: c.dark }}>Overnight Growth Log</div>
@@ -267,7 +290,7 @@ function MorningReportDemo({ c }) {
             key={act.id}
             style={{
               padding: '.7rem .9rem', borderRadius: 10, border: `1px solid ${c.border}`,
-              background: act.active ? '#fff' : '#FAFAF8',
+              background: act.active ? c.card : c.bg2,
               opacity: act.active ? 1 : 0.65,
               transition: 'all .25s ease',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.5rem'
@@ -284,9 +307,9 @@ function MorningReportDemo({ c }) {
             <button
               onClick={() => toggleAction(act.id)}
               style={{
-                border: `1px solid ${act.active ? '#FCA5A5' : c.border}`,
-                background: act.active ? '#FEF2F2' : '#F3F4F6',
-                color: act.active ? '#EF4444' : c.dark,
+                border: `1px solid ${act.active ? 'var(--mr-undo-border)' : 'var(--border)'}`,
+                background: act.active ? 'var(--mr-undo-bg)' : 'var(--mr-approve-bg)',
+                color: act.active ? 'var(--mr-undo-color)' : c.dark,
                 borderRadius: 6, padding: '.3rem .6rem', fontSize: '.68rem',
                 fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif',
                 transition: 'all .2s'
@@ -316,7 +339,7 @@ function MorningReportDemo({ c }) {
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function HowItWorksPage() {
   return (
-    <>
+    <div className="landing-page" style={{fontFamily:'Inter, sans-serif', background:c.bg, minHeight:'100vh'}}>
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
@@ -327,10 +350,10 @@ export default function HowItWorksPage() {
         }
       `}</style>
       <PageNav />
-      <div style={{fontFamily:'Inter, sans-serif', background:c.bg, minHeight:'100vh'}}>
+
 
         {/* HERO */}
-        <div style={{paddingTop:'6rem',paddingBottom:'2.5rem',textAlign:'center',background:'linear-gradient(170deg,#EEF4EF 0%,#F8FAF8 55%)'}}>
+        <div style={{paddingTop:'6rem',paddingBottom:'2.5rem',textAlign:'center',background:'linear-gradient(170deg,var(--bg-2) 0%,var(--bg) 55%)'}}>
           <h1 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.6rem,3.2vw,2.5rem)',fontWeight:500,lineHeight:1.15,letterSpacing:'-.3px',color:c.dark,maxWidth:650,margin:'0 auto .8rem'}}>
             Three steps to a <em style={{fontStyle:'italic',color:c.g}}>self-growing collection</em>
           </h1>
@@ -341,7 +364,7 @@ export default function HowItWorksPage() {
 
         {/* STEPS — detailed */}
         {STEPS.map((step, i) => (
-          <div key={step.num} style={{borderTop: i === 0 ? 'none' : `1px solid ${c.border}`, background: i % 2 === 0 ? '#fff' : c.bg2}}>
+          <div key={step.num} style={{borderTop: i === 0 ? 'none' : `1px solid ${c.border}`, background: i % 2 === 0 ? c.card : c.bg2}}>
             <div className="hiw-grid" style={{maxWidth:1160,margin:'0 auto',padding: i === 0 ? '1rem 4rem 3.5rem 4rem' : '3.5rem 4rem',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'5rem',alignItems:'center',direction: i % 2 === 0 ? 'ltr' : 'rtl'}}>
               
               {/* Text side */}
@@ -367,7 +390,7 @@ export default function HowItWorksPage() {
         ))}
 
         {/* TIMELINE */}
-        <div style={{background:'#fff',borderTop:`1px solid ${c.border}`,padding:'5.5rem 4rem'}}>
+        <div style={{background:c.card,borderTop:`1px solid ${c.border}`,padding:'5.5rem 4rem'}}>
           <div style={{maxWidth:800,margin:'0 auto',textAlign:'center'}}>
             <p style={{fontSize:'.68rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'.14em',color:c.g,marginBottom:'.7rem'}}>What Happens Next</p>
             <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.6rem,3vw,2.2rem)',fontWeight:500,color:c.dark,marginBottom:'3rem',letterSpacing:'-.3px'}}>
@@ -395,7 +418,7 @@ export default function HowItWorksPage() {
               <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.6rem,3vw,2.2rem)',fontWeight:500,color:c.dark,letterSpacing:'-.3px'}}>Common questions</h2>
             </div>
             {FAQ.map((item, i) => (
-              <div key={i} style={{background:'#fff',border:`1px solid ${c.border}`,borderRadius:12,padding:'1.4rem 1.6rem',marginBottom:'1rem'}}>
+              <div key={i} style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:'1.4rem 1.6rem',marginBottom:'1rem'}}>
                 <div style={{fontSize:'.9rem',fontWeight:600,color:c.dark,marginBottom:'.5rem'}}>{item.q}</div>
                 <p style={{fontSize:'.82rem',color:c.muted,lineHeight:1.7,fontWeight:300}}>{item.a}</p>
               </div>
@@ -404,7 +427,7 @@ export default function HowItWorksPage() {
         </div>
 
         {/* CTA */}
-        <div style={{textAlign:'center',padding:'6rem 4rem',background:'linear-gradient(140deg,#1A271C 0%,#233329 100%)',position:'relative',overflow:'hidden'}}>
+        <div style={{textAlign:'center',padding:'4rem 4rem',background:'linear-gradient(140deg,#1A271C 0%,#233329 100%)',position:'relative',overflow:'hidden'}}>
           <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 70% 60% at 50% 50%,rgba(90,138,103,.12),transparent)',pointerEvents:'none'}} />
           <div style={{position:'relative'}}>
             <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.8rem,3.5vw,2.8rem)',fontWeight:500,color:'#fff',marginBottom:'1rem',lineHeight:1.15,letterSpacing:'-.3px'}}>
@@ -419,7 +442,7 @@ export default function HowItWorksPage() {
           </div>
         </div>
 
-        <footer style={{borderTop:`1px solid ${c.border}`,padding:'2rem 4rem',display:'flex',justifyContent:'space-between',alignItems:'center',background:'#fff',flexWrap:'wrap',gap:'1rem'}}>
+        <footer style={{borderTop:`1px solid ${c.border}`,padding:'2rem 4rem',display:'flex',justifyContent:'space-between',alignItems:'center',background:c.card,flexWrap:'wrap',gap:'1rem'}}>
           <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'.95rem',fontWeight:700,color:c.dark,textDecoration:'none'}}>
             Se<span style={{color:c.g}}>lo</span>ra
           </Link>
@@ -431,6 +454,5 @@ export default function HowItWorksPage() {
           <div style={{fontSize:'.7rem',color:'#c0c8c1'}}>© 2025 Selora. All rights reserved.</div>
         </footer>
       </div>
-    </>
   )
 }

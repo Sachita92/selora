@@ -1,11 +1,13 @@
 import { Link } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
+import { useDarkMode } from '../hooks/useDarkMode'
 
 // ─── Shared ──────────────────────────────────────────────────────────────────
 const c = {
-  g: '#5A8A67', g2: '#78A885', gpale: '#EDF3EE',
-  bg: '#F8FAF8', bg2: '#F1F5F1',
-  border: '#E4EBE5', dark: '#1A271C', text: '#2E3D30', muted: '#7B907D',
+  g: 'var(--g)', g2: 'var(--g2)', gpale: 'var(--gpale)',
+  bg: 'var(--bg)', bg2: 'var(--bg2)',
+  border: 'var(--border)', dark: 'var(--dark)', text: 'var(--text)', muted: 'var(--muted)',
+  card: 'var(--card-bg)',
 }
 
 const FEATURES = [
@@ -50,26 +52,47 @@ const FEATURES = [
 // ─── Navbar (shared with landing page) ───────────────────────────────────────
 function PageNav() {
   const { user } = useAppContext()
+  const [darkMode, toggleTheme] = useDarkMode()
   return (
-    <nav style={{position:'fixed',top:0,left:0,right:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'1rem 3.5rem',background:'rgba(248,250,248,.97)',backdropFilter:'blur(14px)',borderBottom:`1px solid ${c.border}`,fontFamily:'Inter,sans-serif'}}>
-      <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'1.2rem',fontWeight:700,letterSpacing:'-.3px',color:c.dark,textDecoration:'none'}}>
-        Se<span style={{color:c.g}}>lo</span>ra
+    <nav style={{position:'fixed',top:0,left:0,right:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'1rem 3.5rem',background:'var(--nav-bg)',backdropFilter:'blur(14px)',borderBottom:`1px solid var(--border)`,fontFamily:'Inter,sans-serif'}}>
+      <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'1.2rem',fontWeight:700,letterSpacing:'-.3px',color:'var(--dark)',textDecoration:'none'}}>
+        Se<span style={{color:'var(--g)'}}>lo</span>ra
       </Link>
       <div style={{display:'flex',gap:'2rem',alignItems:'center',fontSize:'.82rem'}}>
-        <Link to="/features" style={{fontWeight:600,color:c.dark,textDecoration:'none',borderBottom:`2px solid ${c.g}`,paddingBottom:'.15rem'}}>Features</Link>
-        <Link to="/how-it-works" style={{color:c.muted,textDecoration:'none',fontWeight:500}}>How It Works</Link>
-        <Link to="/pricing" style={{color:c.muted,textDecoration:'none',fontWeight:500}}>Pricing</Link>
-        <Link to="/demo" style={{color:c.g,textDecoration:'none',fontWeight:500}}>Book a Demo</Link>
+        <Link to="/features" style={{fontWeight:600,color:'var(--dark)',textDecoration:'none',borderBottom:`2px solid var(--g)`,paddingBottom:'.15rem'}}>Features</Link>
+        <Link to="/how-it-works" className="cn-nav-link" style={{color:'var(--nav-link)',textDecoration:'none',fontWeight:500}}>How It Works</Link>
+        <Link to="/pricing" className="cn-nav-link" style={{color:'var(--nav-link)',textDecoration:'none',fontWeight:500}}>Pricing</Link>
+        <Link to="/demo" style={{color:'var(--g)',textDecoration:'none',fontWeight:500}}>Book a Demo</Link>
       </div>
       <div style={{display:'flex',gap:'.7rem',alignItems:'center'}}>
+        {/* Dark-mode toggle */}
+        <button
+          className="cn-theme-toggle"
+          onClick={toggleTheme}
+          title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:".25rem",borderRadius:6}}
+        >
+          {darkMode ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          )}
+        </button>
         {user ? (
-          <Link to="/dashboard" style={{background:c.g,color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
+          <Link to="/dashboard" style={{background:'var(--g)',color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
             Dashboard
           </Link>
         ) : (
           <>
-            <Link to="/login" style={{fontSize:'.82rem',fontWeight:500,color:c.muted,textDecoration:'none'}}>Sign In</Link>
-            <Link to="/signup" style={{background:c.g,color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
+            <Link to="/login" className="cn-nav-link" style={{fontSize:'.82rem',fontWeight:500,color:'var(--nav-link)',textDecoration:'none'}}>Sign In</Link>
+            <Link to="/signup" style={{background:'var(--g)',color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
               Get Started Free
             </Link>
           </>
@@ -89,11 +112,11 @@ export default function FeaturesPage() {
   }
 
   return (
-    <>
+    <div className="landing-page" style={{fontFamily:'Inter, sans-serif', background:c.bg, minHeight:'100vh'}}>
       <style>{`
         .interactive-feat-card {
-          background: #fff;
-          border: 1px solid ${c.border};
+          background: var(--card-bg);
+          border: 1px solid var(--border);
           border-radius: 14px;
           padding: 1.8rem;
           cursor: pointer;
@@ -102,16 +125,16 @@ export default function FeaturesPage() {
           overflow: hidden;
         }
         .interactive-feat-card:hover {
-          border-color: ${c.g};
+          border-color: var(--border-strong);
           transform: translateY(-4px);
-          box-shadow: 0 10px 24px rgba(90, 138, 103, 0.08);
+          box-shadow: none;
         }
         .interactive-feat-card::before {
           content: '';
           position: absolute;
           top: 0; left: 0; right: 0;
           height: 2px;
-          background: linear-gradient(90deg, ${c.g}, ${c.g2});
+          background: linear-gradient(90deg, var(--g), var(--g2));
           opacity: 0;
           transition: opacity 0.3s;
         }
@@ -124,10 +147,10 @@ export default function FeaturesPage() {
         }
       `}</style>
       <PageNav />
-      <div style={{fontFamily:'Inter, sans-serif', background:c.bg, minHeight:'100vh'}}>
+
 
         {/* HERO & OVERVIEW CARDS SECTION */}
-        <div style={{background:'linear-gradient(170deg,#EEF4EF 0%,#F8FAF8 70%)', paddingTop:'6rem', paddingBottom:'4rem'}}>
+        <div style={{background:'linear-gradient(170deg,var(--bg-2) 0%,var(--bg) 70%)', paddingTop:'6rem', paddingBottom:'4rem'}}>
           <div style={{textAlign:'center'}}>
             <h1 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.6rem,3.2vw,2.5rem)',fontWeight:500,lineHeight:1.15,letterSpacing:'-.3px',color:c.dark,marginBottom:'.8rem',maxWidth:650,margin:'0 auto .8rem'}}>
               Everything your fashion store needs to <em style={{fontStyle:'italic',color:c.g}}>grow automatically</em>
@@ -187,7 +210,7 @@ export default function FeaturesPage() {
                 </div>
 
                 {/* Visual side */}
-                <div style={{direction:'ltr',background:'#fff',border:`1px solid ${c.border}`,borderRadius:16,padding:'2rem',boxShadow:'0 8px 30px rgba(90,138,103,.06)'}}>
+                <div style={{direction:'ltr',background:c.card,border:`1px solid ${c.border}`,borderRadius:16,padding:'2rem',boxShadow:'0 8px 30px rgba(90,138,103,.06)'}}>
                   <div style={{background:c.bg2,borderRadius:10,padding:'1.5rem',border:`1px solid ${c.border}`}}>
                     <div style={{display:'flex',alignItems:'center',gap:'.5rem',marginBottom:'1rem'}}>
                       <div style={{width:8,height:8,borderRadius:'50%',background:c.g}} />
@@ -207,7 +230,7 @@ export default function FeaturesPage() {
         })}
 
         {/* CTA */}
-        <div style={{textAlign:'center',padding:'6rem 4rem',background:'linear-gradient(140deg,#1A271C 0%,#233329 100%)',position:'relative',overflow:'hidden'}}>
+        <div style={{textAlign:'center',padding:'4rem 4rem',background:'linear-gradient(140deg,#1A271C 0%,#233329 100%)',position:'relative',overflow:'hidden'}}>
           <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 70% 60% at 50% 50%,rgba(90,138,103,.12),transparent)',pointerEvents:'none'}} />
           <div style={{position:'relative'}}>
             <p style={{fontSize:'.68rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'.14em',color:'#86EFAC',marginBottom:'.7rem'}}>Ready to grow?</p>
@@ -229,7 +252,7 @@ export default function FeaturesPage() {
         </div>
 
         {/* Footer */}
-        <footer style={{borderTop:`1px solid ${c.border}`,padding:'2rem 4rem',display:'flex',justifyContent:'space-between',alignItems:'center',background:'#fff',flexWrap:'wrap',gap:'1rem'}}>
+        <footer style={{borderTop:`1px solid ${c.border}`,padding:'2rem 4rem',display:'flex',justifyContent:'space-between',alignItems:'center',background:c.card,flexWrap:'wrap',gap:'1rem'}}>
           <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'.95rem',fontWeight:700,color:c.dark,textDecoration:'none'}}>
             Se<span style={{color:c.g}}>lo</span>ra
           </Link>
@@ -241,6 +264,5 @@ export default function FeaturesPage() {
           <div style={{fontSize:'.7rem',color:'#c0c8c1'}}>© 2025 Selora. All rights reserved.</div>
         </footer>
       </div>
-    </>
   )
 }

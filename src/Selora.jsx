@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "./lib/AppContext";
+import { useDarkMode } from "./hooks/useDarkMode";
 
 // ─── Global Styles ────────────────────────────────────────────────────────────
 const GlobalStyles = () => (
@@ -8,7 +9,8 @@ const GlobalStyles = () => (
     :root {
       --g: #5A8A67; --g2: #78A885; --gpale: #EDF3EE;
       --bg: #F8FAF8; --bg2: #F1F5F1;
-      --border: #E4EBE5; --dark: #1A271C; --text: #2E3D30; --muted: #7B907D;
+      --border: #E4EBE5; --border-strong: #C7DACB; --dark: #1A271C; --text: #2E3D30; --muted: #7B907D;
+      --trust-color: var(--text-secondary, #3B5A44);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow-x: hidden; font-size: 15px; }
@@ -17,6 +19,9 @@ const GlobalStyles = () => (
     @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
     @keyframes pulse  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(1.7)} }
     @keyframes float  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+    @keyframes spin   { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    @keyframes growBar { from{width:0} to{width:100%} }
+    @keyframes shimmer { 0%{transform:translateX(-100%) skewX(-15deg)} 100%{transform:translateX(260%) skewX(-15deg)} }
 
     .au  { animation: fadeUp .65s ease both; }
     .au1 { animation: fadeUp .65s .08s ease both; }
@@ -26,33 +31,41 @@ const GlobalStyles = () => (
     .pdot  { animation: pulse 2.2s infinite; }
     .float { animation: float 4.5s ease-in-out infinite; }
 
-    .slide { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:4.5rem 2rem 3rem; opacity:0; transform:translateY(16px); transition:opacity 0.45s ease, transform 0.45s ease; pointer-events:none; z-index:2; }
-    .slide.active { opacity:1; transform:translateY(0); pointer-events:all; }
-    // .slide-dot { width:20px; height:2px; background:rgba(90,138,103,.25); border:none; cursor:pointer; transition:all .35s; padding:0; }
-    // .slide-dot.active { background:var(--g); width:36px; }
-
-    .feat-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:1.8rem; transition:all .22s; position:relative; overflow:hidden; }
+    .feat-card { background:var(--bg-1,#fff); border:1px solid var(--border); border-radius:14px; padding:1.8rem; transition:border-color 0.2s ease, transform 0.2s ease; position:relative; overflow:hidden; }
     .feat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--g),var(--g2)); opacity:0; transition:opacity .3s; }
-    .feat-card:hover { border-color:var(--g); transform:translateY(-3px); box-shadow:0 8px 28px rgba(90,138,103,.09); }
+    .feat-card:hover { border-color:var(--border-strong); transform:translateY(-2px); }
     .feat-card:hover::before { opacity:1; }
 
     .step-line { display:flex; gap:1.1rem; padding:1.5rem 0; border-bottom:1px solid var(--border); }
     .step-line:last-child { border-bottom:none; }
 
-    .price-card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:2rem; position:relative; transition:all .2s; }
-    .price-card:hover { transform:translateY(-3px); box-shadow:0 10px 36px rgba(90,138,103,.1); }
-    .price-card.feat { border-color:var(--g); background:linear-gradient(140deg,#fff,#F3F8F4); }
+    .price-card { background:var(--bg-1,#fff); border:1px solid var(--border); border-radius:16px; padding:2rem; position:relative; transition:border-color 0.2s ease, transform 0.2s ease; }
+    .price-card:hover { border-color:var(--border-strong); transform:translateY(-2px); }
+    .price-card.feat { border-color:var(--g); background:linear-gradient(140deg,var(--bg-1,#fff),#F3F8F4); }
     .price-card.feat::before { content:'Most popular'; position:absolute; top:-11px; left:50%; transform:translateX(-50%); background:var(--g); color:#fff; font-size:.6rem; font-weight:700; letter-spacing:.08em; padding:.28rem .9rem; border-radius:999px; text-transform:uppercase; font-family:'Inter',sans-serif; }
 
-    .testi-card { background:#fff; border:1px solid var(--border); border-radius:13px; padding:1.6rem; transition:all .2s; }
-    .testi-card:hover { border-color:var(--g); box-shadow:0 5px 20px rgba(90,138,103,.07); }
+    .testi-card { background:var(--bg-1,#fff); border:1px solid var(--border); border-radius:13px; padding:1.6rem; transition:border-color 0.2s ease, transform 0.2s ease; }
+    .testi-card:hover { border-color:var(--border-strong); transform:translateY(-2px); }
+
+    .faq-item { border-bottom:1px solid var(--border); }
+    .faq-item:last-child { border-bottom:none; }
+    .faq-btn { width:100%; background:none; border:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding:1.3rem 0; text-align:left; gap:1rem; }
+    .faq-chevron { width:18px; height:18px; transition:transform .25s ease; color:var(--muted); flex-shrink:0; }
+    .faq-chevron.open { transform:rotate(180deg); }
+    .faq-body { overflow:hidden; transition:max-height .3s ease, opacity .25s ease; }
 
     @media (max-width: 900px) {
       .nav-links { display:none !important; }
       .two-col, .how-grid, .feat-inner, .price-inner, .testi-inner { grid-template-columns:1fr !important; }
-      .slide { padding:6rem 1.2rem 3rem; }
+      .hero-grid { grid-template-columns:1fr !important; }
+      .hero-visual { display:none !important; }
+      .footer-grid { grid-template-columns:1fr 1fr !important; }
       .mob-pad { padding-left:1.2rem !important; padding-right:1.2rem !important; }
       .mob-vpad { padding-top:3.5rem !important; padding-bottom:3.5rem !important; }
+    }
+    @media (max-width: 600px) {
+      .footer-grid { grid-template-columns:1fr !important; }
+      .stats-bar { gap:1.5rem !important; }
     }
     @keyframes skeleton-pulse {
       0%, 100% { opacity: 0.6; }
@@ -70,18 +83,15 @@ function SnowCanvas({ color }) {
   const rafRef = useRef(null);
   const lastRef = useRef(null);
   const particlesRef = useRef([]);
-  // colorRef lets the draw loop read the latest colour without restarting the animation
   const colorRef = useRef(color || 'rgba(90, 138, 103, 0.45)');
   const PHI = 1.6180339887;
-  const COUNT = 28;
+  const COUNT = 20;
 
   useEffect(() => {
     colorRef.current = color || 'rgba(90, 138, 103, 0.45)';
   }, [color]);
 
-  function goldenX(i, w) {
-    return (((i * PHI) % 1) * 0.88 + 0.06) * w;
-  }
+  function goldenX(i, w) { return (((i * PHI) % 1) * 0.88 + 0.06) * w; }
 
   function drawArm(ctx, len) {
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -len); ctx.stroke();
@@ -93,18 +103,11 @@ function SnowCanvas({ color }) {
   }
 
   function drawSnowflake(ctx, x, y, size, angle, opacity) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-    ctx.globalAlpha = opacity;
-    ctx.strokeStyle = colorRef.current;
-    ctx.lineWidth = 1;
-    ctx.lineCap = 'round';
+    ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+    ctx.globalAlpha = opacity; ctx.strokeStyle = colorRef.current;
+    ctx.lineWidth = 1; ctx.lineCap = 'round';
     for (let i = 0; i < 6; i++) {
-      ctx.save();
-      ctx.rotate((Math.PI / 3) * i);
-      drawArm(ctx, size);
-      ctx.restore();
+      ctx.save(); ctx.rotate((Math.PI / 3) * i); drawArm(ctx, size); ctx.restore();
     }
     ctx.restore();
   }
@@ -113,30 +116,17 @@ function SnowCanvas({ color }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-
-    function resize() {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
-    }
+    function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
     resize();
     window.addEventListener('resize', resize);
-
-    const w = canvas.width || 1200;
-    const h = canvas.height || 800;
+    const w = canvas.width || 800; const h = canvas.height || 600;
     particlesRef.current = Array.from({ length: COUNT }, (_, i) => ({
-      baseX: goldenX(i, w),
-      x: goldenX(i, w),
-      y: Math.random() * h,
-      size: 5+ Math.random() * 9,
-      speed: 3 + Math.random() * 3,
-      swayAmp: 4 + Math.random() * 6,
-      swayFreq: 0.25 + Math.random() * 0.35,
-      spinSpeed: (Math.random() - 0.5) * 0.4,
-      angle: Math.random() * Math.PI * 2,
-      opacity: 0.22 + Math.random() * 0.22,
-      phase: Math.random() * Math.PI * 2,
+      baseX: goldenX(i, w), x: goldenX(i, w), y: Math.random() * h,
+      size: 5 + Math.random() * 9, speed: 3 + Math.random() * 3,
+      swayAmp: 4 + Math.random() * 6, swayFreq: 0.25 + Math.random() * 0.35,
+      spinSpeed: (Math.random() - 0.5) * 0.4, angle: Math.random() * Math.PI * 2,
+      opacity: 0.18 + Math.random() * 0.18, phase: Math.random() * Math.PI * 2,
     }));
-
     function animate(ts) {
       if (!lastRef.current) lastRef.current = ts;
       const dt = Math.min((ts - lastRef.current) / 1000, 0.05);
@@ -144,32 +134,19 @@ function SnowCanvas({ color }) {
       const W = canvas.width, H = canvas.height;
       ctx.clearRect(0, 0, W, H);
       particlesRef.current.forEach(p => {
-        p.y += p.speed * dt;
-        p.angle += p.spinSpeed * dt;
+        p.y += p.speed * dt; p.angle += p.spinSpeed * dt;
         p.x = p.baseX + Math.sin(ts / 1000 * p.swayFreq * Math.PI * 2 + p.phase) * p.swayAmp;
-        if (p.y - p.size > H) {
-          p.y = -p.size * 2;
-          p.baseX = goldenX(Math.random() * COUNT | 0, W);
-        }
+        if (p.y - p.size > H) { p.y = -p.size * 2; p.baseX = goldenX(Math.random() * COUNT | 0, W); }
         drawSnowflake(ctx, p.x, p.y, p.size, p.angle, p.opacity);
       });
       rafRef.current = requestAnimationFrame(animate);
     }
     rafRef.current = requestAnimationFrame(animate);
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      window.removeEventListener('resize', resize);
-    };
+    return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener('resize', resize); };
   }, []);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none", zIndex:1 }}
-    />
-  );
+  return <canvas ref={canvasRef} style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none", zIndex:1 }} />;
 }
-
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const SLIDES = [
@@ -181,7 +158,7 @@ const SLIDES = [
     cta: "Start Growing for Free →", cta2: "See How It Works",
   },
   {
-  eyebrow: "Listing Intelligence",
+    eyebrow: "Listing Intelligence",
     h1: ["Fashion listings that turn", "browsers into buyers"],
     italic: 1,
     p: "Selora rewrites your titles and descriptions with styling tips, fit guidance, and occasion copy — the kind of copy that actually converts.",
@@ -218,6 +195,28 @@ const STEPS = [
   { title:"Wake Up to Growth",      desc:"Every morning you get a simple report — what grew, what was fixed, and what's next for your collection." },
 ];
 
+const SHOWCASE_EXAMPLES = [
+  { before: "Floral wrap dress. 100% rayon. S, M, L. Machine washable.",   after: "Effortless floral wrap dress — flowy, flattering, brunch-to-backyard.",         bgImage: "/hero-dress.png",  bgPos: "center 30%" },
+  { before: "Linen blazer. White color. Slim fit. Dry clean only.",         after: "Classic white linen blazer — breathable, crisp, sunset-dinner ready.",         bgImage: "/hero-blazer.png", bgPos: "center 40%" },
+  { before: "Leather boots. Black. Size 6-10. rubber sole. round toe.",     after: "Handcrafted black leather boots — weather-resistant, all-day cushioned walk.", bgImage: "/hero-boots.png",  bgPos: "center 45%" },
+];
+
+const PLANS = [
+  { name:"Free",   price:"0",     slug:"free",   desc:"Get started at no cost. Perfect for exploring what Selora can do.",                   features:["1 Store","Up to 50 Products","3 Optimizations / mo","Basic Reports","Community Support"],                                    feat:false, cta:"Get Started Free" },
+  { name:"Growth", price:"9.99",  slug:"growth", desc:"For fashion sellers ready to accelerate with AI-powered growth.",                     features:["1 Store","Unlimited Products","30 Optimizations / mo","Full Growth Agent","Auto Pricing","Listing Rewriter","Email Support"], feat:true,  cta:"Start Free Trial" },
+  { name:"Scale",  price:"29.99", slug:"scale",  desc:"For established brands scaling across multiple stores.",                              features:["3 Stores","Unlimited Products","Unlimited Optimizations","Priority Support","Ad Optimization","Early pay.sh Access"],          feat:false, cta:"Upgrade to Scale" },
+];
+
+const FAQS = [
+  { q: "How long does setup take?", a: "Under 5 minutes. Connect your Shopify store or launch a new native storefront on Selora, set your goals, and Selora handles the rest." },
+  { q: "Do I need technical skills?", a: "Not at all. Selora is built for fashion sellers, not developers. Everything is plain English — no code required." },
+  { q: "Will Selora change things without my approval?", a: "You're always in control. You can set Selora to auto-apply changes, or require your approval before any action is taken." },
+  { q: "Is my customer data safe?", a: "Yes. Selora never stores or accesses individual customer personal data. We only load order metrics and product data — no names, emails, or payment information." },
+  { q: "What if I want to pause Selora?", a: "One click. You can pause or resume the agent at any time from your dashboard." },
+  { q: "How quickly will I see results?", a: "Most sellers see their first improvements within 48 hours. Significant growth typically happens within the first 2 weeks." },
+  { q: "Which platforms are supported?", a: "Shopify is fully supported today. You can also launch a native Selora storefront directly — no third-party platform required." },
+];
+
 const ACTIVITY = [
   { text:"Repriced Floral Wrap Dress — peak season", time:"2am" },
   { text:"Rewrote Linen Blazer listing — CTR up",    time:"3am" },
@@ -225,24 +224,35 @@ const ACTIVITY = [
   { text:"Restock alert: Cargo Pants — 3 units left", time:"6am" },
 ];
 
-const PLANS = [
-  { name:"Free",       price:"0",    slug:"free",   desc:"Get started at no cost. Perfect for exploring what Selora can do.",              features:["1 Store","Up to 50 Products","3 Optimizations / mo","Basic Reports","Community Support"],                                    feat:false, cta:"Get Started Free" },
-  { name:"Growth",     price:"9.99", slug:"growth", desc:"For fashion sellers ready to accelerate with AI-powered growth.",                features:["1 Store","Unlimited Products","30 Optimizations / mo","Full Growth Agent","Auto Pricing","Listing Rewriter","Email Support"], feat:true,  cta:"Start Free Trial" },
-  { name:"Scale",      price:"29.99", slug:"scale",  desc:"For established brands scaling across multiple stores.",                         features:["3 Stores","Unlimited Products","Unlimited Optimizations","Priority Support","Ad Optimization","Early pay.sh Access"],          feat:false, cta:"Upgrade to Scale" },
-];
-
-const TESTIMONIALS = [
-  { q:"I run a small fashion boutique and was manually updating prices every week. Selora handles it automatically and my revenue went up 40% in the first month.", name:"Priya M.",  role:"Boutique owner" },
-  { q:"The listing rewriter is incredible. It turned my boring product descriptions into actual fashion copy that sells. My conversion rate doubled.",               name:"Sarah R.", role:"Fashion brand founder" },
-  { q:"Selora warned me I was about to sell out of my bestselling dress before I even noticed. Restocked in time and didn't lose a single sale.",                   name:"Aisha K.", role:"Womenswear seller" },
-];
-
 // ─── Shared primitives ────────────────────────────────────────────────────────
-const Tag   = ({children,center,style}) => <p style={{fontSize:".68rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".14em",color:"var(--g)",marginBottom:".7rem",fontFamily:"Inter,sans-serif",textAlign:center?"center":undefined,...style}}>{children}</p>;
-const Title = ({children,center,style}) => <h2 style={{fontFamily:"Fraunces,serif",fontSize:"clamp(1.6rem,3vw,2.4rem)",fontWeight:500,lineHeight:1.15,letterSpacing:"-.3px",marginBottom:".7rem",color:"var(--dark)",textAlign:center?"center":undefined,...style}}>{children}</h2>;
-const Sub   = ({children,center,style}) => <p style={{fontSize:".9rem",color:"var(--muted)",lineHeight:1.8,fontWeight:300,textAlign:center?"center":undefined,...style}}>{children}</p>;
-const BtnP  = ({children,style,onClick}) => <button onClick={onClick} style={{background:"var(--g)",color:"#fff",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 18px rgba(90,138,103,.28)",transition:"all .2s",...style}}>{children}</button>;
-const BtnS  = ({children,style,onClick}) => <button onClick={onClick} style={{background:"var(--bg-1,#fff)",color:"var(--dark)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,border:"1px solid var(--border)",cursor:"pointer",fontFamily:"Inter,sans-serif",transition:"all .2s",...style}}>{children}</button>;
+const Tag   = ({children, center, style}) => <p style={{fontSize:".68rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".14em",color:"var(--g)",marginBottom:".7rem",fontFamily:"Inter,sans-serif",textAlign:center?"center":undefined,...style}}>{children}</p>;
+const Title = ({children, center, style}) => <h2 style={{fontFamily:"Fraunces,serif",fontSize:"clamp(1.6rem,3vw,2.4rem)",fontWeight:500,lineHeight:1.15,letterSpacing:"-.3px",marginBottom:".7rem",color:"var(--dark)",textAlign:center?"center":undefined,...style}}>{children}</h2>;
+const Sub   = ({children, center, style}) => <p style={{fontSize:".9rem",color:"var(--muted)",lineHeight:1.8,fontWeight:300,textAlign:center?"center":undefined,...style}}>{children}</p>;
+const BtnP  = ({children, style, onClick}) => <button onClick={onClick} style={{background:"var(--g)",color:"#fff",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 18px rgba(90,138,103,.28)",transition:"all .2s",...style}}>{children}</button>;
+const BtnS  = ({children, style, onClick}) => <button onClick={onClick} style={{background:"var(--bg-1,#fff)",color:"var(--dark)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,border:"1px solid var(--border)",cursor:"pointer",fontFamily:"Inter,sans-serif",transition:"all .2s",...style}}>{children}</button>;
+
+function Reveal({ children, delay = 0, duration = 600, offset = 16, style = {} }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) { setIsVisible(true); return; }
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setIsVisible(true); observer.disconnect(); } },
+      { threshold: 0.05 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <div ref={ref} style={{
+      opacity: isVisible ? 1 : 0,
+      transform: isVisible ? 'translateY(0)' : `translateY(${offset}px)`,
+      transition: `opacity ${duration}ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, transform ${duration}ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
+      willChange: 'transform, opacity', ...style
+    }}>{children}</div>
+  );
+}
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 function Navbar({ scrolled, darkMode, onToggleDark }) {
@@ -263,13 +273,8 @@ function Navbar({ scrolled, darkMode, onToggleDark }) {
         <Link to="/demo" style={{fontSize:".82rem",fontWeight:500,color:"var(--g)",textDecoration:"none",marginLeft:"2rem"}}>Book a Demo</Link>
       </div>
       <div style={{display:"flex",gap:".7rem",alignItems:"center"}}>
-        {/* Dark-mode toggle — same icon convention as Connect.jsx */}
-        <button
-          className="cn-theme-toggle"
-          onClick={onToggleDark}
-          title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-          style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:".25rem",borderRadius:6}}
-        >
+        <button className="cn-theme-toggle" onClick={onToggleDark} title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:".25rem",borderRadius:6}}>
           {darkMode ? (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
@@ -300,365 +305,251 @@ function Navbar({ scrolled, darkMode, onToggleDark }) {
   );
 }
 
-// ─── Hero ─────────────────────────────────────────────────────────────────────
-function Hero({ snowflakeColor }) {
-  const [current, setCurrent] = useState(0);
-  const [exiting, setExiting] = useState(false);
+// ─── Three-stage AI Card (Hero right column) ──────────────────────────────────
+const CHECKLIST = ["Material & Fabric", "Style & Silhouette", "Fit & Sizing", "Occasion & Styling", "SEO Keywords"];
+
+function AIRewriteCard({ exampleIdx, onCycle }) {
+  const [stage, setStage] = useState(0); // 0=before, 1=analyzing, 2=after
+  const [progress, setProgress] = useState(0);
+  const [checkedItems, setCheckedItems] = useState([]);
+  const stageRef = useRef(0);
   const timerRef = useRef(null);
-  const exitTimerRef = useRef(null);
-  const total = SLIDES.length;
 
-  const EXIT_MS = 450;
+  const example = SHOWCASE_EXAMPLES[exampleIdx];
 
-  const advance = (next) => {
-    setExiting(true);
-    clearTimeout(exitTimerRef.current);
-    exitTimerRef.current = setTimeout(() => {
-      setCurrent(next);
-      setExiting(false);
-    }, EXIT_MS);
-  };
+  const runCycle = () => {
+    stageRef.current = 0;
+    setStage(0);
+    setProgress(0);
+    setCheckedItems([]);
 
-  const goTo = (n) => advance(((n % total) + total) % total);
+    // Show "before" for 2.2s, then analyze
+    timerRef.current = setTimeout(() => {
+      stageRef.current = 1;
+      setStage(1);
+      let p = 0;
+      let itemIdx = 0;
+      const interval = setInterval(() => {
+        p += 2;
+        setProgress(p);
+        if (p === 20 || p === 40 || p === 58 || p === 76 || p === 90) {
+          setCheckedItems(prev => {
+            const next = [...prev, CHECKLIST[itemIdx]];
+            itemIdx++;
+            return next;
+          });
+        }
+        if (p >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            stageRef.current = 2;
+            setStage(2);
+          }, 180);
+        }
+      }, 40);
 
-  const startAuto = () => {
-    clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => advance(c => (c + 1) % total), 6500);
+      // After showing result for 2.8s, cycle to next example
+      timerRef.current = setTimeout(() => {
+        onCycle((exampleIdx + 1) % SHOWCASE_EXAMPLES.length);
+      }, 2200 + 40 * 55 + 2800);
+    }, 2200);
   };
 
   useEffect(() => {
-    startAuto();
-    return () => {
-      clearInterval(timerRef.current);
-      clearTimeout(exitTimerRef.current);
-    };
-  }, []);
+    runCycle();
+    return () => clearTimeout(timerRef.current);
+  }, [exampleIdx]);
 
   return (
-    <div style={{position:"relative",minHeight:620,overflow:"hidden",background:"linear-gradient(170deg,var(--bg2,#EEF4EF) 0%,var(--bg,#F8FAF8) 55%)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      {/* Snowflake canvas — colour read from the scoped .landing-page wrapper ref */}
-      <SnowCanvas color={snowflakeColor} />
-
-      {/* Slides */}
-      {SLIDES.map((slide, i) => (
-        <div key={i} className={`slide${current === i && !exiting ? " active" : ""}`}>
-          {/* Badge */}
-          <div className="au" style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"var(--bg-1,#fff)",border:"1px solid var(--border)",color:"var(--g)",padding:".35rem 1rem",borderRadius:999,fontSize:".72rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",marginBottom:"1.8rem",boxShadow:"0 2px 10px rgba(90,138,103,.08)",fontFamily:"Inter,sans-serif"}}>
-            <span className="pdot" style={{display:"inline-block",width:6,height:6,borderRadius:"50%",background:"var(--g)"}}/>
-            {slide.eyebrow}
-          </div>
-
-          {/* Headline */}
-          <h1 className="au1" style={{fontFamily:"Cormorant Garamond,serif",fontSize:"clamp(2rem,8vw,4rem)",fontWeight:500,lineHeight:1.08,letterSpacing:"-.5px",maxWidth:750,marginBottom:"1.3rem",color:"var(--dark)"}}>
-            {slide.h1.map((line, li) => (
-              <span key={li}>
-                {li === slide.italic
-                  ? <em style={{fontStyle:"italic",color:"var(--g)"}}>{line}</em>
-                  : line}
-                {li < slide.h1.length - 1 && <br/>}
-              </span>
-            ))}
-          </h1>
-
-          {/* Sub */}
-          <p className="au2" style={{fontSize:"1.55rem",color:"var(--muted)",maxWidth:480,lineHeight:1.8,marginBottom:"2.2rem",fontWeight:100}}>
-            {slide.p}
-          </p>
-
-          {/* Buttons */}
-          <div className="au3" style={{display:"flex",gap:".9rem",flexWrap:"wrap",justifyContent:"center"}}>
-            <Link 
-              to={slide.cta === "See It in Action" ? "/demo" : "/signup"} 
-              style={{ textDecoration: "none" }}
-            >
-              <BtnP>{slide.cta}</BtnP>
-            </Link>
-            <Link 
-              to={
-                slide.cta2 === "See How It Works" 
-                  ? "/how-it-works" 
-                  : slide.cta2 === "Learn More" 
-                    ? "/features" 
-                    : "/demo"
-              } 
-              style={{ textDecoration: "none" }}
-            >
-              <BtnS>{slide.cta2}</BtnS>
-            </Link>
-          </div>
+    <div className="float" style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)",fontFamily:"Inter,sans-serif",minHeight:320}}>
+      {/* Header bar */}
+      <div style={{background:"var(--bg2,#F1F5F1)",borderBottom:"1px solid var(--border)",padding:".75rem 1.1rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",alignItems:"center",gap:".45rem"}}>
+          {["#f87171","#fbbf24","#4ade80"].map(c => <div key={c} style={{width:9,height:9,borderRadius:"50%",background:c}}/>)}
+          <span style={{marginLeft:".7rem",fontSize:".72rem",color:"var(--muted)",fontWeight:600}}>Selora · Listing Intelligence</span>
         </div>
+        <div style={{display:"inline-flex",alignItems:"center",background:"var(--gpale,#EDF3EE)",border:"1px solid var(--border)",color:"var(--g)",padding:".28rem .8rem",borderRadius:999,fontSize:".68rem",fontWeight:600,letterSpacing:".04em",fontFamily:"Inter,sans-serif"}}>
+          Live demo
+        </div>
+      </div>
+
+      {/* Stage content */}
+      <div style={{padding:"1.3rem"}}>
+        {/* Stage label */}
+        <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:"1rem"}}>
+          <div style={{width:7,height:7,borderRadius:"50%",background:stage===0?"var(--muted)":stage===1?"#f59e0b":"var(--g)",transition:"background .3s"}}/>
+          <span style={{fontSize:".68rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:stage===0?"var(--muted)":stage===1?"#f59e0b":"var(--g)",transition:"color .3s"}}>
+            {stage===0?"Original listing":stage===1?"AI is analyzing...":"AI-optimized result"}
+          </span>
+        </div>
+
+        {/* Before */}
+        {stage === 0 && (
+          <div style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border)",minHeight:72,transition:"opacity .3s"}}>
+            <p style={{fontSize:".85rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{example.before}</p>
+          </div>
+        )}
+
+        {/* Analyzing */}
+        {stage === 1 && (
+          <div>
+            <div style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border)",marginBottom:"1rem"}}>
+              <p style={{fontSize:".85rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300,opacity:.5}}>{example.before}</p>
+            </div>
+            {/* Progress bar */}
+            <div style={{height:3,background:"var(--border)",borderRadius:999,marginBottom:"1rem",overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${progress}%`,background:"linear-gradient(90deg,var(--g),var(--g2))",borderRadius:999,transition:"width .04s linear"}}/>
+            </div>
+            {/* Checklist */}
+            <div style={{display:"flex",flexDirection:"column",gap:".4rem"}}>
+              {CHECKLIST.map(item => {
+                const done = checkedItems.includes(item);
+                return (
+                  <div key={item} style={{display:"flex",alignItems:"center",gap:".55rem",fontSize:".75rem",color:done?"var(--g)":"var(--muted)",fontWeight:done?600:300,transition:"color .2s"}}>
+                    <span style={{width:14,height:14,borderRadius:3,border:`1px solid ${done?"var(--g)":"var(--border)"}`,background:done?"var(--g)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s"}}>
+                      {done && <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </span>
+                    {item}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* After */}
+        {stage === 2 && (
+          <div style={{background:"var(--gpale,#EDF3EE)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border-strong,#C7DACB)",animation:"fadeUp .35s ease both",minHeight:72}}>
+            <p style={{fontSize:".88rem",color:"var(--g)",lineHeight:1.7,fontWeight:500}}>{example.after}</p>
+            <div style={{marginTop:".7rem",display:"flex",alignItems:"center",gap:".35rem",fontSize:".65rem",color:"var(--g)",fontWeight:600,opacity:.8}}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Optimized — ready to publish
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Hero ─────────────────────────────────────────────────────────────────────
+function Hero({ darkMode }) {
+  const [exampleIdx, setExampleIdx] = useState(0);
+
+  const TRUST_ITEMS = [
+    { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M12 7a2 2 0 1 0-2-2m2 2l8 5c.6.4.7 1.2.3 1.8-.2.3-.5.5-.8.5H4c-.7 0-1.2-.5-1.2-1.2 0-.3.1-.7.4-.9l8.8-5.2z"/></svg>, text: "Built for fashion" },
+    { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 13"/></svg>, text: "Ready in 5 minutes" },
+    { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>, text: "Bank-level security" },
+    { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, text: "Human support" },
+    { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>, text: "Cancel anytime" },
+  ];
+
+  return (
+    <div style={{position:"relative",overflow:"hidden",paddingTop:"5.5rem",paddingBottom:"4rem"}}>
+
+      {/* Per-product background images — cross-fade with card cycle */}
+      {SHOWCASE_EXAMPLES.map((ex, i) => (
+        <img
+          key={ex.bgImage}
+          src={ex.bgImage}
+          alt=""
+          aria-hidden="true"
+          style={{
+            position:"absolute", inset:0,
+            width:"100%", height:"100%",
+            objectFit:"cover", objectPosition: ex.bgPos,
+            display:"block",
+            opacity: i === exampleIdx ? (darkMode ? 0.28 : 0.38) : 0,
+            transition:"opacity 0.45s ease",
+            zIndex: 0,
+          }}
+        />
       ))}
 
-      {/* Slide dots only — no arrows, no progress bar */}
-      <div style={{position:"absolute",bottom:"2.5rem",left:"50%",transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:"1rem",zIndex:10}}>
-        {SLIDES.map((_,i) => (
-          <button key={i} className={`slide-dot${current===i?" active":""}`} onClick={()=>{goTo(i);startAuto();}}/>
+      {/* Scrim — CSS vars auto-adapt to light & dark */}
+      <div style={{
+        position:"absolute", inset:0, zIndex:1, pointerEvents:"none",
+        background:"linear-gradient(170deg, var(--bg2,#EEF4EF) 0%, var(--bg,#F8FAF8) 100%)",
+        opacity: 0.76,
+      }}/>
+
+      <div className="hero-grid" style={{position:"relative",zIndex:2,maxWidth:1160,margin:"0 auto",padding:"0 3.5rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4rem",alignItems:"center"}}>
+
+        {/* Left: single static headline */}
+        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",justifyContent:"center"}}>
+          {/* Eyebrow badge */}
+          <div className="au" style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"var(--bg-1,#fff)",border:"1px solid var(--border)",color:"var(--g)",padding:".35rem 1rem",borderRadius:999,fontSize:".72rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",marginBottom:"1.5rem",boxShadow:"0 2px 10px rgba(90,138,103,.08)",fontFamily:"Inter,sans-serif"}}>
+            <span style={{display:"inline-block",width:6,height:6,borderRadius:"50%",background:"var(--g)"}}/>
+            AI Growth Agent for Fashion
+          </div>
+          {/* Headline */}
+          <h1 className="au1" style={{fontFamily:"Cormorant Garamond,serif",fontSize:"clamp(2rem,5vw,3.5rem)",fontWeight:500,lineHeight:1.1,letterSpacing:"-.5px",maxWidth:560,marginBottom:"1.1rem",color:"var(--dark)"}}>
+            Your Fashion Store Grows<br/><em style={{fontStyle:"italic",color:"var(--g)"}}>While You Sleep</em>
+          </h1>
+          {/* Sub */}
+          <p className="au2" style={{fontSize:"1rem",color:"var(--muted)",maxWidth:440,lineHeight:1.8,marginBottom:"1.8rem",fontWeight:300}}>
+            Selora is built exclusively for fashion sellers. It handles pricing, listings, ads, and inventory — automatically, every night.
+          </p>
+          {/* CTAs */}
+          <div className="au3" style={{display:"flex",gap:".9rem",flexWrap:"wrap",marginBottom:"1.5rem"}}>
+            <Link to="/signup" style={{textDecoration:"none"}}><BtnP>Start Growing for Free →</BtnP></Link>
+            <Link to="/how-it-works" style={{textDecoration:"none"}}><BtnS>See How It Works</BtnS></Link>
+          </div>
+          {/* Trust strip */}
+          <div className="au4" style={{display:"flex",alignItems:"center",gap:"1.2rem",flexWrap:"wrap"}}>
+            {TRUST_ITEMS.map(({icon,text}) => (
+              <div key={text} style={{display:"flex",alignItems:"center",gap:".35rem",fontSize:".73rem",color:"var(--trust-color,var(--muted))",fontWeight:400}}>
+                {icon}{text}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: AI Rewrite Card */}
+        <div className="hero-visual" style={{width:"100%",maxWidth:440,margin:"0 auto"}}>
+          <AIRewriteCard exampleIdx={exampleIdx} onCycle={setExampleIdx} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── Stats Bar ────────────────────────────────────────────────────────────────
+function StatsBar() {
+  return (
+    <div style={{background:"var(--bg-1,#fff)",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)"}}>
+      <div className="stats-bar" style={{maxWidth:1000,margin:"0 auto",padding:".9rem 3.5rem",display:"flex",alignItems:"center",justifyContent:"space-around",gap:"2rem",flexWrap:"wrap"}}>
+        {STATS.map(({num,label}) => (
+          <div key={label} style={{textAlign:"center",display:"flex",alignItems:"center",gap:".55rem"}}>
+            <span style={{fontFamily:"Fraunces,serif",fontSize:"1.35rem",fontWeight:500,color:"var(--dark)",lineHeight:1}}>{num}</span>
+            <span style={{fontSize:".75rem",color:"var(--muted)",fontFamily:"Inter,sans-serif"}}>{label}</span>
+          </div>
         ))}
       </div>
     </div>
   );
 }
 
-// ─── Trust ────────────────────────────────────────────────────────────────────
-function TrustBar() {
-  return (
-    <div className="au4" style={{background:"var(--bg-1,#fff)",borderTop:"1px solid var(--border-strong)",padding:"0.6rem 4rem",display:"flex",alignItems:"center",justifyContent:"center",gap:"1.5rem",flexWrap:"wrap"}}>
-      {[["👗","Built for fashion"],["⚡","Ready in 5 minutes"],["🔒","Bank-level security"],["💬","Human support"],["🔄","Cancel anytime"]].map(([icon,text])=>(
-        <div key={text} style={{display:"flex",alignItems:"center",gap:".4rem",fontSize:".78rem",color:"var(--muted)",fontWeight:400}}>
-          <span style={{fontSize:"14px"}}>{icon}</span>{text}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Listing Showcase ─────────────────────────────────────────────────────────
-const SHOWCASE_EXAMPLES = [
-  {
-    before: "Floral wrap dress. 100% rayon. S, M, L. Machine washable.",
-    after: "Effortless floral wrap dress — flowy, flattering, brunch-to-backyard."
-  },
-  {
-    before: "Linen blazer. White color. Slim fit. Dry clean only.",
-    after: "Classic white linen blazer — breathable, crisp, sunset-dinner ready."
-  },
-  {
-    before: "Leather boots. Black. Size 6-10. rubber sole. round toe.",
-    after: "Handcrafted black leather boots — weather-resistant, all-day cushioned walk."
-  }
-];
-
-function ListingShowcase() {
-  const [currentExample, setCurrentExample] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentExample((prev) => (prev + 1) % SHOWCASE_EXAMPLES.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const example = SHOWCASE_EXAMPLES[currentExample];
-
-  return (
-    <div style={{background:"var(--bg)", borderTop:"1px solid var(--border-strong)"}}>
-      <div className="mob-pad mob-vpad" style={{ padding: "4rem 2rem 2rem", maxWidth: 1000, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-      {/* Badge */}
-      <div style={{
-        display: "inline-flex",
-        alignItems: "center",
-        background: "var(--gpale)",
-        border: "1px solid var(--border)",
-        color: "var(--g)",
-        padding: ".35rem 1rem",
-        borderRadius: 999,
-        fontSize: ".75rem",
-        fontWeight: 600,
-        letterSpacing: ".05em",
-        marginBottom: "1rem",
-        fontFamily: "Inter, sans-serif"
-      }}>
-        Demo data
-      </div>
-
-      {/* Labels "before" and "after" */}
-      <div style={{
-        display: "flex",
-        justifyContent: "space-between",
-        width: "100%",
-        maxWidth: 936,
-        marginBottom: ".25rem",
-        padding: "0 .25rem",
-        fontFamily: "Inter, sans-serif"
-      }}>
-        <span style={{
-          fontSize: ".75rem",
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: ".08em",
-          color: "var(--muted)"
-        }}>
-          before
-        </span>
-        <span style={{
-          fontSize: ".75rem",
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: ".08em",
-          color: "var(--g)"
-        }}>
-          after (AI Optimized)
-        </span>
-      </div>
-
-      {/* Sweep Strip Container */}
-      <div key={currentExample} style={{
-        position: "relative",
-        width: "100%",
-        maxWidth: 936,
-        height: 80,
-        border: "1px solid var(--border)",
-        borderRadius: 12,
-        background: "var(--bg)",
-        overflow: "hidden",
-        display: "flex",
-        alignItems: "center",
-        marginBottom: "0.8rem"
-      }}>
-        {/* Base Layer: Before Text */}
-        <div style={{
-          padding: "0 2rem",
-          fontSize: ".9rem",
-          color: "var(--muted)",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          width: "100%",
-          fontFamily: "Inter, sans-serif"
-        }}>
-          {example.before}
-        </div>
-
-        {/* Mask Layer: After Text */}
-        <div style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          bottom: 0,
-          width: "0%",
-          overflow: "hidden",
-          background: "var(--bg-1,#fff)",
-          animation: "sweepW 6s ease-in-out infinite"
-        }}>
-          <div style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: 0,
-            width: 936,
-            padding: "0 2rem",
-            fontSize: ".9rem",
-            fontWeight: 500,
-            color: "var(--g)",
-            whiteSpace: "nowrap",
-            display: "flex",
-            alignItems: "center",
-            fontFamily: "Inter, sans-serif"
-          }}>
-            {example.after}
-          </div>
-        </div>
-
-        {/* Divider Line */}
-        <div style={{
-          position: "absolute",
-          top: 0,
-          bottom: 0,
-          left: "0%",
-          width: 2,
-          background: "var(--g)",
-          animation: "sweepL 6s ease-in-out infinite",
-          zIndex: 10,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
-        }}>
-          {/* Circular Handle */}
-          <div style={{
-            width: 22,
-            height: 22,
-            borderRadius: "50%",
-            background: "var(--g-tint)",
-            border: "1px solid var(--g)",
-            boxShadow: "0 2px 8px rgba(90, 138, 103, 0.15)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "8px",
-            color: "var(--g)",
-            cursor: "ew-resize",
-            userSelect: "none"
-          }}>
-            <span style={{ fontSize: "8px", fontWeight: "bold", display: "flex", gap: "2px" }}>
-              <span>◀</span>
-              <span>▶</span>
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats chips in their own row with top border */}
-      <div style={{
-        width: "100%",
-        maxWidth: 936,
-        borderTop: "1px solid var(--border)",
-        paddingTop: "0.8rem",
-        display: "flex",
-        justifyContent: "space-around",
-        gap: "2rem",
-        flexWrap: "wrap"
-      }}>
-        <div style={{ textAlign: "center", minWidth: 120 }}>
-          <div style={{
-            fontSize: "2.4rem",
-            fontWeight: 500,
-            color: "var(--dark)",
-            fontFamily: "'Cormorant Garamond', serif",
-            lineHeight: 1
-          }}>
-            3.8x
-          </div>
-          <div style={{
-            fontSize: ".75rem",
-            color: "var(--muted)",
-            marginTop: ".35rem",
-            fontFamily: "Inter, sans-serif"
-          }}>
-            avg growth rate
-          </div>
-        </div>
-
-        <div style={{ textAlign: "center", minWidth: 120 }}>
-          <div style={{
-            fontSize: "2.4rem",
-            fontWeight: 500,
-            color: "var(--dark)",
-            fontFamily: "'Cormorant Garamond', serif",
-            lineHeight: 1
-          }}>
-            99%
-          </div>
-          <div style={{
-            fontSize: ".75rem",
-            color: "var(--muted)",
-            marginTop: ".35rem",
-            fontFamily: "Inter, sans-serif"
-          }}>
-            uptime
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  );
-}
-
 // ─── Features ─────────────────────────────────────────────────────────────────
 function Features() {
   return (
-    <div style={{background:"var(--bg2)", borderTop:"1px solid var(--border-strong)"}}>
-      <section className="mob-pad mob-vpad" style={{padding:"1.8rem 4rem 5.5rem",maxWidth:1160,margin:"0 auto"}}>
-        <div style={{textAlign:"center",maxWidth:540,margin:"0 auto 2rem"}}>
+    <div style={{background:"var(--bg2,#F1F5F1)",borderTop:"1px solid var(--border-strong)"}}>
+      <section className="mob-pad mob-vpad" style={{padding:"4.5rem 3.5rem",maxWidth:1160,margin:"0 auto"}}>
+        <div style={{textAlign:"center",maxWidth:540,margin:"0 auto 2.5rem"}}>
           <Tag center>What Selora Does</Tag>
           <Title center>Six ways your collection<br/>grows every day</Title>
           <Sub center>Each runs automatically — built specifically for the fashion industry.</Sub>
         </div>
-        <div className="feat-inner" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.2rem"}}>
-          {FEATURES.map(f=>(
-            <div key={f.title} className="feat-card">
-              <div style={{width:40,height:40,background:"var(--gpale)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",marginBottom:"1.1rem"}}>{f.icon}</div>
-              <h3 style={{fontSize:".92rem",fontWeight:600,marginBottom:".45rem",color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{f.title}</h3>
-              <p style={{fontSize:".8rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{f.desc}</p>
-            </div>
+        <div className="feat-inner" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.1rem"}}>
+          {FEATURES.map((f, idx) => (
+            <Reveal key={f.title} delay={idx * 70} style={{height:"100%"}}>
+              <div className="feat-card" style={{height:"100%"}}>
+                <div style={{width:38,height:38,background:"var(--gpale,#EDF3EE)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",marginBottom:"1rem"}}>{f.icon}</div>
+                <h3 style={{fontSize:".9rem",fontWeight:600,marginBottom:".4rem",color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{f.title}</h3>
+                <p style={{fontSize:".79rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{f.desc}</p>
+              </div>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -666,72 +557,35 @@ function Features() {
   );
 }
 
-// ─── Dashboard ────────────────────────────────────────────────────────────────
-// Helper functions for date-seeded PRNG fallback
+// ─── Dashboard (Dashboard preview — business logic untouched) ─────────────────
 function getUTCDateString(offsetDays = 0) {
   const d = new Date();
-  if (offsetDays !== 0) {
-    d.setUTCDate(d.getUTCDate() + offsetDays);
-  }
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(d.getUTCDate()).padStart(2, '0');
+  if (offsetDays !== 0) d.setUTCDate(d.getUTCDate() + offsetDays);
+  const yyyy = d.getUTCFullYear(), mm = String(d.getUTCMonth() + 1).padStart(2, '0'), dd = String(d.getUTCDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
 }
-
 function cyrb128(str) {
   let h1 = 1779033703, h2 = 302473470, h3 = 3362450863, h4 = 50249225;
   for (let i = 0, k; i < str.length; i++) {
     k = str.charCodeAt(i);
-    h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
-    h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
-    h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
-    h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+    h1 = h2 ^ Math.imul(h1 ^ k, 597399067); h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+    h3 = h4 ^ Math.imul(h3 ^ k, 951274213); h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
   }
-  h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
-  h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
-  h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
-  h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+  h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067); h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+  h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213); h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
   return [(h1^h2^h3^h4)>>>0, (h2^h1)>>>0, (h3^h1)>>>0, (h4^h1)>>>0];
 }
-
-function mulberry32(a) {
-  return function() {
-    let t = a += 0x6D2B79F5;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  }
-}
-
+function mulberry32(a) { return function() { let t = a += 0x6D2B79F5; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function getFallbackDashboardData() {
-  const todayStr = getUTCDateString(0);
-  const yesterdayStr = getUTCDateString(-1);
-
-  const seedToday = cyrb128(todayStr)[0];
-  const seedYesterday = cyrb128(yesterdayStr)[0];
-
-  const rngToday = mulberry32(seedToday);
-  const revToday = Math.round(3000 + rngToday() * 3000);
-  const ordersToday = Math.round(150 + rngToday() * 150);
-  const convToday = Math.round((2.5 + rngToday() * 1.5) * 100) / 100;
-
-  const rngYesterday = mulberry32(seedYesterday);
-  const revYesterday = Math.round(3000 + rngYesterday() * 3000);
-  const ordersYesterday = Math.round(150 + rngYesterday() * 150);
-  const convYesterday = Math.round((2.5 + rngYesterday() * 1.5) * 100) / 100;
-
-  const revenueDelta = ((revToday - revYesterday) / revYesterday) * 100;
-  const ordersDelta = ((ordersToday - ordersYesterday) / ordersYesterday) * 100;
-  const conversionDelta = convToday - convYesterday;
-
+  const todayStr = getUTCDateString(0), yesterdayStr = getUTCDateString(-1);
+  const rngToday = mulberry32(cyrb128(todayStr)[0]);
+  const revToday = Math.round(3000 + rngToday() * 3000), ordersToday = Math.round(150 + rngToday() * 150), convToday = Math.round((2.5 + rngToday() * 1.5) * 100) / 100;
+  const rngYesterday = mulberry32(cyrb128(yesterdayStr)[0]);
+  const revYesterday = Math.round(3000 + rngYesterday() * 3000), ordersYesterday = Math.round(150 + rngYesterday() * 150), convYesterday = Math.round((2.5 + rngYesterday() * 1.5) * 100) / 100;
   return {
-    revenue: revToday,
-    revenueDeltaPct: Math.round(revenueDelta * 10) / 10,
-    orders: ordersToday,
-    ordersDeltaPct: Math.round(ordersDelta * 10) / 10,
-    conversionPct: convToday,
-    conversionDeltaPts: Math.round(conversionDelta * 100) / 100,
+    revenue: revToday, revenueDeltaPct: Math.round(((revToday-revYesterday)/revYesterday)*1000)/10,
+    orders: ordersToday, ordersDeltaPct: Math.round(((ordersToday-ordersYesterday)/ordersYesterday)*1000)/10,
+    conversionPct: convToday, conversionDeltaPts: Math.round((convToday-convYesterday)*100)/100,
     activity: [
       { action: "Optimized listing", product: "Floral wrap dress", time: "2:00 AM" },
       { action: "Adjusted price", product: "Leather boots", time: "3:15 AM" },
@@ -740,9 +594,7 @@ function getFallbackDashboardData() {
     ]
   };
 }
-
 const FALLBACK_DASHBOARD_DATA = getFallbackDashboardData();
-
 const SkeletonMetric = () => (
   <div style={{background:"var(--bg2)",borderRadius:9,padding:".85rem",border:"1px solid var(--border)",display:"flex",flexDirection:"column",gap:".35rem"}}>
     <div className="skeleton-pulse" style={{width:"60%",height:"1.25rem",background:"var(--border)",borderRadius:4}}/>
@@ -750,9 +602,8 @@ const SkeletonMetric = () => (
     <div className="skeleton-pulse" style={{width:"50%",height:".65rem",background:"var(--border)",borderRadius:3}}/>
   </div>
 );
-
 const SkeletonActivityRow = ({ isLast }) => (
-  <div className="skeleton-pulse" style={{display:"flex",alignItems:"center",gap:".6rem",padding:".55rem .7rem",background:"var(--bg2)",borderRadius:7,border:"1px solid var(--border)",marginBottom:isLast ? 0 : ".45rem"}}>
+  <div className="skeleton-pulse" style={{display:"flex",alignItems:"center",gap:".6rem",padding:".55rem .7rem",background:"var(--bg2)",borderRadius:7,border:"1px solid var(--border)",marginBottom:isLast?0:".45rem"}}>
     <div style={{width:5,height:5,borderRadius:"50%",background:"var(--border)",flexShrink:0}}/>
     <div style={{flex:1,height:".72rem",background:"var(--border)",borderRadius:3}}/>
     <div style={{width:30,height:".65rem",background:"var(--border)",borderRadius:3}}/>
@@ -762,132 +613,72 @@ const SkeletonActivityRow = ({ isLast }) => (
 function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/landing/demo-dashboard')
-      .then(r => {
-        if (!r.ok) throw new Error("API responded with an error");
-        return r.json();
-      })
-      .then(d => {
-        setData(d);
-        setLoading(false);
-      })
-      .catch(e => {
-        console.error("Error fetching demo dashboard data, loading fallback:", e);
-        setData(getFallbackDashboardData());
-        setLoading(false);
-      });
+      .then(r => { if (!r.ok) throw new Error("API error"); return r.json(); })
+      .then(d => { setData(d); setLoading(false); })
+      .catch(e => { console.error("Fallback:", e); setData(getFallbackDashboardData()); setLoading(false); });
   }, []);
 
-  if (loading) {
-    return (
-      <div className="float" style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)"}}>
-        <div style={{background:"var(--bg2)",borderBottom:"1px solid var(--border)",padding:".8rem 1.1rem",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:".6rem"}}>
-          <div style={{display:"flex",alignItems:"center",gap:".45rem"}}>
-            {["#f87171","#fbbf24","#4ade80"].map(c=><div key={c} style={{width:9,height:9,borderRadius:"50%",background:c}}/>)}
-            <span style={{marginLeft:".7rem",fontSize:".72rem",color:"var(--muted)",fontWeight:600}}>Selora · Fashion Dashboard</span>
-          </div>
-          <div style={{
-            display: "inline-flex",
-            alignItems: "center",
-            background: "var(--gpale)",
-            border: "1px solid var(--border)",
-            color: "var(--g)",
-            padding: ".35rem 1rem",
-            borderRadius: 999,
-            fontSize: ".75rem",
-            fontWeight: 600,
-            letterSpacing: ".05em",
-            fontFamily: "Inter, sans-serif"
-          }}>
-            Demo data
-          </div>
-        </div>
-        <div style={{padding:"1.3rem"}}>
-          <p style={{fontSize:".68rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:".8rem"}}>This Morning's Growth</p>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".7rem",marginBottom:"1.1rem"}}>
-            <SkeletonMetric />
-            <SkeletonMetric />
-            <SkeletonMetric />
-          </div>
-          <p style={{fontSize:".68rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:".8rem"}}>What Selora Did Overnight</p>
-          <SkeletonActivityRow />
-          <SkeletonActivityRow />
-          <SkeletonActivityRow />
-          <SkeletonActivityRow isLast={true} />
-        </div>
-      </div>
-    );
-  }
-
-  // Ensure activity is defined
   const activityList = data?.activity || FALLBACK_DASHBOARD_DATA.activity;
-
-  // Formatting strings dynamically
   const revValue = "$" + (data?.revenue ?? FALLBACK_DASHBOARD_DATA.revenue).toLocaleString();
   const revDeltaVal = data?.revenueDeltaPct ?? FALLBACK_DASHBOARD_DATA.revenueDeltaPct;
   const revDeltaStr = (revDeltaVal >= 0 ? "↑ " : "↓ ") + Math.abs(revDeltaVal).toFixed(0) + "% today";
-
   const ordValue = (data?.orders ?? FALLBACK_DASHBOARD_DATA.orders).toLocaleString();
   const ordDeltaVal = data?.ordersDeltaPct ?? FALLBACK_DASHBOARD_DATA.ordersDeltaPct;
   const ordDeltaStr = (ordDeltaVal >= 0 ? "↑ " : "↓ ") + Math.abs(ordDeltaVal).toFixed(0) + "% today";
-
   const convValue = (data?.conversionPct ?? FALLBACK_DASHBOARD_DATA.conversionPct).toFixed(1) + "%";
   const convDeltaVal = data?.conversionDeltaPts ?? FALLBACK_DASHBOARD_DATA.conversionDeltaPts;
   const convDeltaStr = (convDeltaVal >= 0 ? "↑ " : "↓ ") + Math.abs(convDeltaVal).toFixed(1) + "% today";
-
   const metrics = [
     { v: revValue, l: "Revenue", c: revDeltaStr },
     { v: ordValue, l: "Orders", c: ordDeltaStr },
     { v: convValue, l: "Conv.", c: convDeltaStr }
   ];
-
-  return (
-    <div className="float" style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)"}}>
+  const cardContent = (
+    <>
       <div style={{background:"var(--bg2)",borderBottom:"1px solid var(--border)",padding:".8rem 1.1rem",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:".6rem"}}>
         <div style={{display:"flex",alignItems:"center",gap:".45rem"}}>
-          {["#f87171","#fbbf24","#4ade80"].map(c=><div key={c} style={{width:9,height:9,borderRadius:"50%",background:c}}/>)}
+          {["#f87171","#fbbf24","#4ade80"].map(c => <div key={c} style={{width:9,height:9,borderRadius:"50%",background:c}}/>)}
           <span style={{marginLeft:".7rem",fontSize:".72rem",color:"var(--muted)",fontWeight:600}}>Selora · Fashion Dashboard</span>
         </div>
-        <div style={{
-          display: "inline-flex",
-          alignItems: "center",
-          background: "var(--gpale)",
-          border: "1px solid var(--border)",
-          color: "var(--g)",
-          padding: ".35rem 1rem",
-          borderRadius: 999,
-          fontSize: ".75rem",
-          fontWeight: 600,
-          letterSpacing: ".05em",
-          fontFamily: "Inter, sans-serif"
-        }}>
+        <div style={{display:"inline-flex",alignItems:"center",background:"var(--gpale)",border:"1px solid var(--border)",color:"var(--g)",padding:".35rem 1rem",borderRadius:999,fontSize:".75rem",fontWeight:600,letterSpacing:".05em",fontFamily:"Inter,sans-serif"}}>
           Demo data
         </div>
       </div>
       <div style={{padding:"1.3rem"}}>
         <p style={{fontSize:".68rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:".8rem"}}>This Morning's Growth</p>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".7rem",marginBottom:"1.1rem"}}>
-          {metrics.map(({v,l,c})=>(
-            <div key={l} style={{background:"var(--bg2)",borderRadius:9,padding:".85rem",border:"1px solid var(--border)"}}>
-              <div style={{fontSize:"1.25rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",letterSpacing:"-.3px"}}>{v}</div>
-              <div style={{fontSize:".62rem",color:"var(--muted)",marginTop:".15rem",textTransform:"uppercase",letterSpacing:".05em"}}>{l}</div>
-              <div style={{fontSize:".65rem",color:"var(--g)",fontWeight:600,marginTop:".25rem"}}>{c}</div>
-            </div>
-          ))}
-        </div>
+        {loading ? (
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".7rem",marginBottom:"1.1rem"}}>
+            <SkeletonMetric/><SkeletonMetric/><SkeletonMetric/>
+          </div>
+        ) : (
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".7rem",marginBottom:"1.1rem"}}>
+            {metrics.map(({v,l,c}) => (
+              <div key={l} style={{background:"var(--bg2)",borderRadius:9,padding:".85rem",border:"1px solid var(--border)"}}>
+                <div style={{fontSize:"1.25rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",letterSpacing:"-.3px"}}>{v}</div>
+                <div style={{fontSize:".62rem",color:"var(--muted)",marginTop:".15rem",textTransform:"uppercase",letterSpacing:".05em"}}>{l}</div>
+                <div style={{fontSize:".65rem",color:"var(--g)",fontWeight:600,marginTop:".25rem"}}>{c}</div>
+              </div>
+            ))}
+          </div>
+        )}
         <p style={{fontSize:".68rem",fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:".8rem"}}>What Selora Did Overnight</p>
-        {activityList.slice(0, 4).map((a,i)=>(
+        {loading ? (
+          <><SkeletonActivityRow/><SkeletonActivityRow/><SkeletonActivityRow/><SkeletonActivityRow isLast={true}/></>
+        ) : activityList.slice(0,4).map((a,i) => (
           <div key={i} style={{display:"flex",alignItems:"center",gap:".6rem",padding:".55rem .7rem",background:"var(--bg2)",borderRadius:7,fontSize:".72rem",border:"1px solid var(--border)",marginBottom:i<3?".45rem":0}}>
             <div style={{width:5,height:5,borderRadius:"50%",background:"var(--g)",flexShrink:0}}/>
-            <span style={{flex:1,color:"var(--text)"}}>
-              {a.action}{a.product ? ` · ${a.product}` : ""}
-            </span>
+            <span style={{flex:1,color:"var(--text)"}}>{a.action}{a.product ? ` · ${a.product}` : ""}</span>
             <span style={{color:"var(--muted)",fontSize:".65rem"}}>{a.time}</span>
           </div>
         ))}
       </div>
+    </>
+  );
+  return (
+    <div className="float" style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)"}}>
+      {cardContent}
     </div>
   );
 }
@@ -895,21 +686,23 @@ function Dashboard() {
 // ─── How It Works ─────────────────────────────────────────────────────────────
 function HowItWorks() {
   return (
-    <div style={{background:"var(--bg)",borderTop:"1px solid var(--border-strong)",padding:"5.5rem 0"}}>
-      <div className="how-grid mob-pad" style={{maxWidth:1160,margin:"0 auto",padding:"0 4rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5rem",alignItems:"center"}}>
+    <div style={{background:"var(--bg,#F8FAF8)",borderTop:"1px solid var(--border-strong)"}}>
+      <div className="how-grid mob-pad" style={{maxWidth:1160,margin:"0 auto",padding:"4.5rem 3.5rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5rem",alignItems:"center"}}>
         <div>
           <Tag>How It Works</Tag>
           <Title>Three steps to a<br/>self-growing collection</Title>
           <Sub style={{marginBottom:"2.5rem"}}>No technical setup. Built for fashion sellers, not developers.</Sub>
           <div>
-            {STEPS.map((step,i)=>(
-              <div key={i} className="step-line">
-                <div style={{width:30,height:30,minWidth:30,background:"var(--g)",color:"#fff",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".72rem",fontWeight:700}}>{i+1}</div>
-                <div>
-                  <h4 style={{fontSize:".88rem",fontWeight:600,marginBottom:".3rem",color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{step.title}</h4>
-                  <p style={{fontSize:".79rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{step.desc}</p>
+            {STEPS.map((step, i) => (
+              <Reveal key={i} delay={i * 80}>
+                <div className="step-line">
+                  <div style={{width:30,height:30,minWidth:30,background:"var(--g)",color:"#fff",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".72rem",fontWeight:700}}>{i+1}</div>
+                  <div>
+                    <h4 style={{fontSize:".88rem",fontWeight:600,marginBottom:".3rem",color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{step.title}</h4>
+                    <p style={{fontSize:".79rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{step.desc}</p>
+                  </div>
                 </div>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -922,50 +715,46 @@ function HowItWorks() {
 // ─── Pricing ──────────────────────────────────────────────────────────────────
 function Pricing() {
   const { user } = useAppContext();
-
   return (
-    <div style={{background:"var(--bg2)",borderTop:"1px solid var(--border-strong)"}}>
-      <section className="mob-pad mob-vpad" style={{padding:"5.5rem 4rem",maxWidth:1160,margin:"0 auto"}}>
-        <div style={{textAlign:"center",maxWidth:500,margin:"0 auto"}}>
+    <div style={{background:"var(--bg2,#F1F5F1)",borderTop:"1px solid var(--border-strong)"}}>
+      <section className="mob-pad mob-vpad" style={{padding:"4.5rem 3.5rem",maxWidth:1160,margin:"0 auto"}}>
+        <div style={{textAlign:"center",maxWidth:500,margin:"0 auto 2.8rem"}}>
           <Tag center>Pricing</Tag>
           <Title center>Grow your collection,<br/>pay as you scale</Title>
           <Sub center>Start free. No contracts, no hidden fees, no surprises.</Sub>
         </div>
-        <div className="price-inner" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.3rem",marginTop:"3rem"}}>
-          {PLANS.map(plan => {
-            const getLinkTarget = () => {
-              if (user) {
-                return plan.slug === 'free' ? '/dashboard' : `/pricing?plan=${plan.slug}`;
-              } else {
-                return plan.slug === 'free' ? '/signup' : `/signup?plan=${plan.slug}`;
-              }
-            };
-
+        <div className="price-inner" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.3rem"}}>
+          {PLANS.map((plan, idx) => {
+            const getLinkTarget = () => user
+              ? (plan.slug === 'free' ? '/dashboard' : `/pricing?plan=${plan.slug}`)
+              : (plan.slug === 'free' ? '/signup' : `/signup?plan=${plan.slug}`);
             return (
-              <div key={plan.name} className={`price-card${plan.feat?" feat":""}`}>
-                <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:plan.feat?"rgba(26,39,28,.5)":"var(--muted)",marginBottom:".8rem",fontFamily:"Inter,sans-serif"}}>{plan.name}</div>
-                {plan.price === "0" ? (
-                  <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
-                    Free
+              <Reveal key={plan.name} delay={idx * 80} style={{height:"100%"}}>
+                <div className={`price-card${plan.feat?" feat":""}`} style={{height:"100%",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+                  <div>
+                    <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:plan.feat?"rgba(26,39,28,.5)":"var(--muted)",marginBottom:".8rem",fontFamily:"Inter,sans-serif"}}>{plan.name}</div>
+                    {plan.price === "0" ? (
+                      <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>Free</div>
+                    ) : (
+                      <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
+                        <sup style={{fontSize:"1rem",verticalAlign:"super",color:"var(--g)"}}>$</sup>{plan.price}
+                        <span style={{fontSize:".8rem",color:"var(--muted)",fontWeight:400,fontFamily:"Inter,sans-serif"}}>/mo</span>
+                      </div>
+                    )}
+                    <p style={{fontSize:".78rem",color:"var(--muted)",margin:".65rem 0 1.2rem",fontWeight:300,lineHeight:1.6}}>{plan.desc}</p>
+                    <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".55rem",marginBottom:"1.6rem"}}>
+                      {plan.features.map(f => (
+                        <li key={f} style={{fontSize:".78rem",color:"var(--text)",display:"flex",alignItems:"center",gap:".5rem",fontWeight:300}}>
+                          <span style={{color:"var(--g)",fontWeight:700}}>✓</span>{f}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                ) : (
-                  <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
-                    <sup style={{fontSize:"1rem",verticalAlign:"super",color:"var(--g)"}}>$</sup>{plan.price}
-                    <span style={{fontSize:".8rem",color:"var(--muted)",fontWeight:400,fontFamily:"Inter,sans-serif"}}>/mo</span>
-                  </div>
-                )}
-                <p style={{fontSize:".78rem",color:"var(--muted)",margin:".65rem 0 1.2rem",fontWeight:300,lineHeight:1.6}}>{plan.desc}</p>
-                <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".55rem",marginBottom:"1.6rem"}}>
-                  {plan.features.map(f=>(
-                    <li key={f} style={{fontSize:".78rem",color:"var(--text)",display:"flex",alignItems:"center",gap:".5rem",fontWeight:300}}>
-                      <span style={{color:"var(--g)",fontWeight:700}}>✓</span>{f}
-                    </li>
-                  ))}
-                </ul>
-                <Link to={getLinkTarget()} style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",textDecoration:"none",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff",border:"1px solid var(--g)",boxShadow:"0 4px 18px rgba(90,138,103,.28)"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"})}}>
-                  {plan.cta}
-                </Link>
-              </div>
+                  <Link to={getLinkTarget()} style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",textDecoration:"none",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff",border:"1px solid var(--g)"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"})}}>
+                    {plan.cta}
+                  </Link>
+                </div>
+              </Reveal>
             );
           })}
         </div>
@@ -974,24 +763,138 @@ function Pricing() {
   );
 }
 
-// ─── Testimonials ─────────────────────────────────────────────────────────────
-function Testimonials() {
+// ─── Testimonial — two-column: text left, image right, auto-fade carousel ──────
+const TESTIMONIALS = [
+  {
+    quote:  "Selora found the words I never could for my collection. My listings finally sound like the pieces themselves.",
+    author: "Founder, independent fashion label",
+    image:  "/sweater.png",
+    pos:    "center 40%",
+  },
+  {
+    quote:  "I stopped dreading Monday mornings. Selora's overnight report tells me exactly what happened and what to do next — in plain English.",
+    author: "Owner, womenswear boutique",
+    image:  "/silk-dress.png",
+    pos:    "center top",
+  },
+  {
+    quote:  "My bestseller sold out before I even noticed the trend. Selora caught it first and flagged a restock in time. That alone paid for a year.",
+    author: "Designer, sustainable fashion brand",
+    image:  "/leather-jacket.png",
+    pos:    "center 35%",
+  },
+];
+
+function Testimonial() {
+  const [current, setCurrent] = useState(0);
+  const [fading, setFading]   = useState(false);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    timerRef.current = setInterval(() => {
+      setFading(true);
+      setTimeout(() => {
+        setCurrent(c => (c + 1) % TESTIMONIALS.length);
+        setFading(false);
+      }, 380);
+    }, 5000);
+    return () => clearInterval(timerRef.current);
+  }, []);
+
+  const t = TESTIMONIALS[current];
+
   return (
-    <div style={{background:"var(--bg)",borderTop:"1px solid var(--border-strong)",padding:"5.5rem 0"}}>
-      <div className="mob-pad" style={{maxWidth:1160,margin:"0 auto",padding:"0 4rem"}}>
-        <div style={{textAlign:"center",marginBottom:"3rem"}}>
-          <Tag center>From Real Sellers</Tag>
-          <Title center>Collections that bloom with Selora</Title>
+    <div style={{
+      background:"#111814",
+      borderTop:"1px solid rgba(255,255,255,.07)",
+      borderBottom:"1px solid rgba(255,255,255,.07)",
+    }}>
+      <div className="two-col" style={{
+        maxWidth:1100, margin:"0 auto",
+        display:"grid", gridTemplateColumns:"1fr 1fr",
+        minHeight:280,
+      }}>
+        {/* LEFT — quote panel */}
+        <div
+          style={{
+            padding:"3rem 3.5rem",
+            display:"flex", flexDirection:"column", justifyContent:"center",
+            opacity: fading ? 0 : 1,
+            transform: fading ? "translateX(-10px)" : "translateX(0)",
+            transition:"opacity 0.38s ease, transform 0.38s ease",
+          }}
+        >
+          <div style={{color:"#86EFAC",fontSize:".85rem",marginBottom:".9rem",letterSpacing:3}}>★★★★★</div>
+          <blockquote style={{
+            fontFamily:"Fraunces,serif",
+            fontSize:"clamp(1rem,1.8vw,1.4rem)",
+            fontWeight:400, fontStyle:"italic",
+            lineHeight:1.55, letterSpacing:"-.15px",
+            color:"#fff", marginBottom:"1.3rem",
+            borderLeft:"none", padding:0,
+          }}>
+            "{t.quote}"
+          </blockquote>
+          <div style={{fontSize:".72rem",color:"rgba(255,255,255,.4)",fontFamily:"Inter,sans-serif",fontWeight:300,letterSpacing:".04em"}}>
+            — {t.author}
+          </div>
         </div>
-        <div className="testi-inner" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"1.2rem"}}>
-          {TESTIMONIALS.map(t=>(
-            <div key={t.name} className="testi-card">
-              <div style={{color:"var(--g)",fontSize:".82rem",marginBottom:".7rem",letterSpacing:2}}>★★★★★</div>
-              <p style={{fontSize:".81rem",color:"var(--muted)",lineHeight:1.8,fontWeight:300,marginBottom:"1.2rem",fontStyle:"italic",fontFamily:"Fraunces,serif"}}>"{t.q}"</p>
-              <div style={{fontSize:".78rem",fontWeight:600,color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{t.name}</div>
-              <div style={{fontSize:".68rem",color:"var(--muted)"}}>{t.role}</div>
-            </div>
+
+        {/* RIGHT — image cross-fades */}
+        <div style={{position:"relative",overflow:"hidden",minHeight:240}}>
+          {TESTIMONIALS.map((slide, i) => (
+            <img
+              key={slide.image}
+              src={slide.image}
+              alt=""
+              aria-hidden="true"
+              style={{
+                position:"absolute", inset:0,
+                width:"100%", height:"100%",
+                objectFit:"cover", objectPosition: slide.pos,
+                display:"block",
+                opacity: i === current ? 1 : 0,
+                transition:"opacity 0.65s ease",
+                zIndex: i === current ? 1 : 0,
+              }}
+            />
           ))}
+          {/* left-edge gradient blending into dark panel */}
+          <div style={{position:"absolute",inset:0,background:"linear-gradient(to right,rgba(17,24,20,0.4) 0%,transparent 28%)",zIndex:2,pointerEvents:"none"}}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── FAQ ─────────────────────────────────────────────────────────────────────
+
+function FAQ() {
+  const [open, setOpen] = useState(null);
+  return (
+    <div style={{background:"var(--bg2,#F1F5F1)",borderTop:"1px solid var(--border-strong)"}}>
+      <div className="mob-pad mob-vpad" style={{maxWidth:740,margin:"0 auto",padding:"4.5rem 3.5rem"}}>
+        <div style={{textAlign:"center",marginBottom:"3rem"}}>
+          <Tag center>FAQ</Tag>
+          <Title center>Common questions</Title>
+        </div>
+        <div style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:16,overflow:"hidden"}}>
+          {FAQS.map((item, i) => {
+            const isOpen = open === i;
+            return (
+              <div key={i} className="faq-item" style={{borderBottom: i < FAQS.length-1 ? "1px solid var(--border)" : "none"}}>
+                <button className="faq-btn" onClick={() => setOpen(isOpen ? null : i)}>
+                  <span style={{fontSize:".9rem",fontWeight:500,color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{item.q}</span>
+                  <svg className={`faq-chevron${isOpen?" open":""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+                <div className="faq-body" style={{maxHeight: isOpen ? 300 : 0, opacity: isOpen ? 1 : 0}}>
+                  <p style={{fontSize:".84rem",color:"var(--muted)",lineHeight:1.75,fontWeight:300,padding:"0 0 1.3rem"}}>{item.a}</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -1016,7 +919,7 @@ function CTA() {
         </p>
         <div style={{display:"flex",gap:"1rem",justifyContent:"center",flexWrap:"wrap"}}>
           <Link to="/signup" style={{background:"#86EFAC",color:"#1A271C",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>
-          Start Growing for Free →
+            Start Growing for Free →
           </Link>
           <Link to="/demo" style={{background:"transparent",color:"rgba(255,255,255,.6)",border:"1px solid rgba(255,255,255,.18)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
             Book a Demo
@@ -1029,17 +932,128 @@ function CTA() {
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer() {
+  const [email, setEmail] = useState('');
+  const [subState, setSubState] = useState('idle'); // idle | loading | success | error
+
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSubState('loading');
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${API_URL}/api/newsletter/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (res.ok) {
+        setSubState('success');
+      } else {
+        setSubState('error');
+      }
+    } catch {
+      setSubState('error');
+    }
+  };
+
+  const FOOTER_COLS = [
+    {
+      heading: "Product",
+      links: [
+        { label: "Features", path: "/features" },
+        { label: "How It Works", path: "/how-it-works" },
+        { label: "Pricing", path: "/pricing" },
+        { label: "Book a Demo", path: "/demo" },
+      ]
+    },
+    {
+      heading: "Company",
+      links: [
+        { label: "About", path: "#" },
+        { label: "Blog", path: "#" },
+        { label: "Careers", path: "#" },
+        { label: "Press", path: "#" },
+      ]
+    },
+    {
+      heading: "Resources",
+      links: [
+        { label: "Docs", path: "#" },
+        { label: "Support", path: "/support" },
+        { label: "Privacy Policy", path: "/privacy" },
+        { label: "Terms of Service", path: "/terms" },
+      ]
+    },
+  ];
+
   return (
-    <footer style={{borderTop:"1px solid var(--border-strong)",padding:"2rem 4rem",display:"flex",justifyContent:"space-between",alignItems:"center",background:"var(--bg-1,#fff)",flexWrap:"wrap",gap:"1rem"}}>
-      <div style={{fontFamily:"Inter,sans-serif",fontSize:".95rem",fontWeight:700,color:"var(--dark)"}}>
-        Se<span style={{color:"var(--g)"}}>lo</span>ra
+    <footer style={{borderTop:"1px solid var(--border-strong)",background:"var(--bg-1,#fff)"}}>
+      <div className="mob-pad" style={{maxWidth:1160,margin:"0 auto",padding:"3.5rem 3.5rem 2rem"}}>
+        {/* Top row: logo + cols + newsletter */}
+        <div className="footer-grid" style={{display:"grid",gridTemplateColumns:"1.5fr 1fr 1fr 1fr 1.8fr",gap:"2.5rem",marginBottom:"2.5rem"}}>
+          {/* Brand */}
+          <div>
+            <div style={{fontFamily:"Inter,sans-serif",fontSize:"1.1rem",fontWeight:700,letterSpacing:"-.3px",color:"var(--dark)",marginBottom:".7rem"}}>
+              Se<span style={{color:"var(--g)"}}>lo</span>ra
+            </div>
+            <p style={{fontSize:".78rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300,maxWidth:200}}>
+              AI-powered growth for fashion sellers. Works while you sleep.
+            </p>
+          </div>
+          {/* Nav columns */}
+          {FOOTER_COLS.map(col => (
+            <div key={col.heading}>
+              <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".12em",color:"var(--text)",marginBottom:".9rem",fontFamily:"Inter,sans-serif"}}>{col.heading}</div>
+              <ul style={{listStyle:"none",display:"flex",flexDirection:"column",gap:".55rem"}}>
+                {col.links.map(lk => (
+                  <li key={lk.label}>
+                    <Link to={lk.path} style={{fontSize:".78rem",color:"var(--muted)",textDecoration:"none",fontWeight:300,transition:"color .2s"}}
+                      onMouseEnter={e => e.target.style.color="var(--dark)"}
+                      onMouseLeave={e => e.target.style.color="var(--muted)"}
+                    >{lk.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          {/* Newsletter */}
+          <div>
+            <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".12em",color:"var(--text)",marginBottom:".9rem",fontFamily:"Inter,sans-serif"}}>Stay Updated</div>
+            <p style={{fontSize:".75rem",color:"var(--muted)",marginBottom:".9rem",lineHeight:1.6,fontWeight:300}}>Growth tips, feature releases, and fashion seller stories.</p>
+            {subState === 'success' ? (
+              <div style={{background:"var(--gpale,#EDF3EE)",border:"1px solid var(--border-strong)",borderRadius:8,padding:".75rem 1rem",fontSize:".78rem",color:"var(--g)",fontWeight:500}}>
+                ✓ You're on the list — we'll be in touch.
+              </div>
+            ) : (
+              <form onSubmit={handleSubscribe} style={{display:"flex",flexDirection:"column",gap:".5rem"}}>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  disabled={subState === 'loading'}
+                  style={{padding:".7rem .9rem",borderRadius:8,border:"1px solid var(--border)",fontSize:".8rem",fontFamily:"Inter,sans-serif",background:"var(--bg,#F8FAF8)",color:"var(--dark)",outline:"none",width:"100%"}}
+                />
+                <button type="submit" disabled={subState === 'loading'}
+                  style={{padding:".65rem",borderRadius:8,background:"var(--g)",color:"#fff",border:"none",fontSize:".8rem",fontWeight:600,cursor:"pointer",fontFamily:"Inter,sans-serif",transition:"opacity .2s",opacity:subState==='loading'?0.7:1}}>
+                  {subState === 'loading' ? "Subscribing…" : "Subscribe"}
+                </button>
+                {subState === 'error' && <p style={{fontSize:".72rem",color:"#C97168",margin:0}}>Something went wrong — try again.</p>}
+              </form>
+            )}
+          </div>
+        </div>
+        {/* Bottom divider + copyright */}
+        <div style={{borderTop:"1px solid var(--border)",paddingTop:"1.5rem",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"1rem"}}>
+          <div style={{fontSize:".7rem",color:"var(--muted)"}}>© 2025 Selora. All rights reserved.</div>
+          <div style={{display:"flex",gap:"1.5rem"}}>
+            {[{l:"Privacy Policy",h:"/privacy"},{l:"Terms",h:"/terms"},{l:"Contact",h:"/support"}].map(item => (
+              <Link key={item.l} to={item.h} style={{fontSize:".7rem",color:"var(--muted)",textDecoration:"none"}}>{item.l}</Link>
+            ))}
+          </div>
+        </div>
       </div>
-      <div>
-        {[{l:"Privacy Policy",h:"/privacy"},{l:"Terms of Service",h:"/terms"},{l:"Support",h:"/support"},{l:"Docs",h:"#"},{l:"Contact",h:"/support"}].map(item=>(
-          <Link key={item.l} to={item.h} style={{fontSize:".74rem",color:"var(--muted)",textDecoration:"none",marginLeft:"1.8rem"}}>{item.l}</Link>
-        ))}
-      </div>
-      <div style={{fontSize:".7rem",color:"var(--muted)"}}>© 2025 Selora. All rights reserved.</div>
     </footer>
   );
 }
@@ -1047,63 +1061,25 @@ function Footer() {
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function Selora() {
   const [scrolled, setScrolled] = useState(false);
-  const [publicStats, setPublicStats] = useState(null);
-  const landingRef = useRef(null);
-
-  // Read initial dark mode from localStorage / system preference — same source as Connect.jsx
-  const [darkMode, setDarkMode] = useState(() => {
-    const t = localStorage.getItem('selora-theme');
-    return t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  });
-
-  // Initialise snowflake colour synchronously so the canvas starts with the right value
-  const [snowflakeColor, setSnowflakeColor] = useState(() => {
-    const t = localStorage.getItem('selora-theme');
-    const isDark = t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    return isDark ? 'rgba(212, 175, 110, 0.10)' : 'rgba(90, 138, 103, 0.45)';
-  });
-
-  const toggleTheme = () => {
-    const next = !darkMode;
-    setDarkMode(next);
-    localStorage.setItem('selora-theme', next ? 'dark' : 'light');
-  };
-
-  // Apply / remove dark class on <html>, then re-read --snowflake-color from the
-  // scoped .landing-page wrapper so .landing-page.dark overrides are honoured
-  // (reading from document.documentElement would miss the scoped block).
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', darkMode);
-    if (landingRef.current) {
-      const color = getComputedStyle(landingRef.current).getPropertyValue('--snowflake-color').trim();
-      if (color) setSnowflakeColor(color);
-    }
-  }, [darkMode]);
+  const [darkMode, toggleTheme] = useDarkMode();
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", fn);
-
-    // Fetch public stats
-    fetch((import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/public/stats')
-      .then(r => r.json())
-      .then(d => setPublicStats(d))
-      .catch(e => console.error("Error loading public stats:", e));
-
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
   return (
-    <div className="landing-page" ref={landingRef}>
+    <div className="landing-page">
       <GlobalStyles/>
       <Navbar scrolled={scrolled} darkMode={darkMode} onToggleDark={toggleTheme}/>
-      <Hero snowflakeColor={snowflakeColor}/>
-      <TrustBar/>
-      <ListingShowcase />
+      <Hero darkMode={darkMode}/>
+      <StatsBar/>
       <Features/>
-      <HowItWorks />
+      <HowItWorks/>
       <Pricing/>
-      <Testimonials/>
+      <Testimonial/>
+      <FAQ/>
       <CTA/>
       <Footer/>
     </div>
