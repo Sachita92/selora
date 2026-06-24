@@ -31,7 +31,7 @@ const GlobalStyles = () => (
     .pdot  { animation: pulse 2.2s infinite; }
     .float { animation: float 4.5s ease-in-out infinite; }
 
-    .feat-card { background:var(--bg-1,#fff); border:1px solid var(--border); border-radius:14px; padding:1.8rem; transition:border-color 0.2s ease, transform 0.2s ease; position:relative; overflow:hidden; }
+    .feat-card { background:var(--bg-1,#fff); border:1px solid var(--border); border-radius:14px; padding:2.6rem 2.2rem; transition:border-color 0.2s ease, transform 0.2s ease; position:relative; overflow:hidden; }
     .feat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--g),var(--g2)); opacity:0; transition:opacity .3s; }
     .feat-card:hover { border-color:var(--border-strong); transform:translateY(-2px); }
     .feat-card:hover::before { opacity:1; }
@@ -54,6 +54,19 @@ const GlobalStyles = () => (
     .faq-chevron.open { transform:rotate(180deg); }
     .faq-body { overflow:hidden; transition:max-height .3s ease, opacity .25s ease; }
 
+    .integ-card { background:var(--bg-1,#fff); border:1px solid var(--border); border-radius:14px; transition:transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease; text-decoration:none; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; text-align:left; padding:1.5rem; }
+    .integ-card:hover { transform:translateY(-5px); border-color:var(--g); box-shadow:0 12px 30px rgba(90,138,103,0.08); }
+    .integ-card.disabled { cursor:default; }
+    .integ-card.disabled:hover { transform:none; border-color:var(--border); box-shadow:none; }
+    .marquee-container { overflow:hidden; width:100%; position:relative; margin:2.2rem 0; mask-image:linear-gradient(to right, transparent, #000 12%, #000 88%, transparent); -webkit-mask-image:linear-gradient(to right, transparent, #000 12%, #000 88%, transparent); padding: 0.5rem 0; }
+    .marquee-track { display:flex; gap:1.1rem; width:max-content; animation: marquee-scroll 30s linear infinite; }
+    .marquee-track:hover { animation-play-state: paused; }
+    @keyframes marquee-scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+
     @media (max-width: 900px) {
       .nav-links { display:none !important; }
       .two-col, .how-grid, .feat-inner, .price-inner, .testi-inner { grid-template-columns:1fr !important; }
@@ -66,6 +79,9 @@ const GlobalStyles = () => (
     @media (max-width: 600px) {
       .footer-grid { grid-template-columns:1fr !important; }
       .stats-bar { gap:1.5rem !important; }
+    }
+    @media (max-width: 480px) {
+      .nav-btn-text-long { display: none; }
     }
     @keyframes skeleton-pulse {
       0%, 100% { opacity: 0.6; }
@@ -197,7 +213,7 @@ const STEPS = [
 
 const SHOWCASE_EXAMPLES = [
   { before: "Floral wrap dress. 100% rayon. S, M, L. Machine washable.",   after: "Effortless floral wrap dress — flowy, flattering, brunch-to-backyard.",         bgImage: "/hero-dress.png",  bgPos: "center 30%" },
-  { before: "Linen blazer. White color. Slim fit. Dry clean only.",         after: "Classic white linen blazer — breathable, crisp, sunset-dinner ready.",         bgImage: "/hero-blazer.png", bgPos: "center 40%" },
+  { before: "Woolen sweater. Sage green. Oversized fit. Hand wash.",         after: "Cozy sage green woolen sweater — warm, oversized, fireside-ready.",         bgImage: "/hero-blazer.png", bgPos: "center 40%" },
   { before: "Leather boots. Black. Size 6-10. rubber sole. round toe.",     after: "Handcrafted black leather boots — weather-resistant, all-day cushioned walk.", bgImage: "/hero-boots.png",  bgPos: "center 45%" },
 ];
 
@@ -219,7 +235,7 @@ const FAQS = [
 
 const ACTIVITY = [
   { text:"Repriced Floral Wrap Dress — peak season", time:"2am" },
-  { text:"Rewrote Linen Blazer listing — CTR up",    time:"3am" },
+  { text:"Rewrote Woolen Sweater listing — CTR up",    time:"3am" },
   { text:"Paused 2 low-performing ads · saved $18",  time:"4am" },
   { text:"Restock alert: Cargo Pants — 3 units left", time:"6am" },
 ];
@@ -258,48 +274,61 @@ function Reveal({ children, delay = 0, duration = 600, offset = 16, style = {} }
 function Navbar({ scrolled, darkMode, onToggleDark }) {
   const { user } = useAppContext();
   return (
-    <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"1rem 3.5rem",background:scrolled?"var(--nav-bg-scrolled,rgba(248,250,248,.97))":"var(--nav-bg,rgba(248,250,248,.88))",backdropFilter:"blur(14px)",borderBottom:"1px solid var(--border)",transition:"background .3s"}}>
-      <div style={{fontFamily:"Inter,sans-serif",fontSize:"1.2rem",fontWeight:700,letterSpacing:"-.3px",color:"var(--dark)"}}>
-        Se<span style={{color:"var(--g)"}}>lo</span>ra
-      </div>
-      <div className="nav-links" style={{display:"flex",alignItems:"center"}}>
-        {[
-          { label: "Features", path: "/features" },
-          { label: "How It Works", path: "/how-it-works" },
-          { label: "Pricing", path: "/pricing" }
-        ].map(item => (
-          <Link key={item.label} to={item.path} style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none",marginLeft:"2rem"}}>{item.label}</Link>
-        ))}
-        <Link to="/demo" style={{fontSize:".82rem",fontWeight:500,color:"var(--g)",textDecoration:"none",marginLeft:"2rem"}}>Book a Demo</Link>
-      </div>
-      <div style={{display:"flex",gap:".7rem",alignItems:"center"}}>
-        <button className="cn-theme-toggle" onClick={onToggleDark} title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-          style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:".25rem",borderRadius:6}}>
-          {darkMode ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-          )}
-        </button>
-        {user ? (
-          <Link to="/dashboard" style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
-            Dashboard
-          </Link>
-        ) : (
-          <>
-            <Link to="/login" style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none"}}>Sign In</Link>
-            <Link to="/signup" style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
-              Get Started Free
+    <nav style={{
+      position:"fixed",top:0,left:0,right:0,zIndex:100,
+      background:scrolled?"var(--nav-bg-scrolled,rgba(248,250,248,.97))":"var(--nav-bg,rgba(248,250,248,.88))",
+      backdropFilter:"blur(14px)",
+      borderBottom:"1px solid var(--border)",
+      transition:"background .3s"
+    }}>
+      <div className="mob-pad" style={{
+        maxWidth:1400, margin:"0 auto", padding:"1rem 2rem",
+        display:"flex", alignItems:"center", justifyContent:"space-between"
+      }}>
+        <Link to="/" style={{textDecoration:"none"}}>
+          <div style={{fontFamily:"Inter,sans-serif",fontSize:"1.2rem",fontWeight:700,letterSpacing:"-.3px",color:"var(--dark)"}}>
+            Se<span style={{color:"var(--g)"}}>lo</span>ra
+          </div>
+        </Link>
+        <div className="nav-links" style={{display:"flex",alignItems:"center"}}>
+          {[
+            { label: "Features", path: "/features" },
+            { label: "How It Works", path: "/how-it-works" },
+            { label: "Pricing", path: "/pricing" }
+          ].map(item => (
+            <Link key={item.label} to={item.path} style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none",marginLeft:"2rem"}}>{item.label}</Link>
+          ))}
+          <Link to="/demo" style={{fontSize:".82rem",fontWeight:500,color:"var(--g)",textDecoration:"none",marginLeft:"2rem"}}>Book a Demo</Link>
+        </div>
+        <div style={{display:"flex",gap:".7rem",alignItems:"center"}}>
+          <button className="cn-theme-toggle" onClick={onToggleDark} title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+            style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:".25rem",borderRadius:6}}>
+            {darkMode ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            )}
+          </button>
+          {user ? (
+            <Link to="/dashboard" style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
+              Dashboard
             </Link>
-          </>
-        )}
+          ) : (
+            <>
+              <Link to="/login" style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none"}}>Sign In</Link>
+              <Link to="/signup" style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
+                Get Started<span className="nav-btn-text-long"> Free</span>
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     </nav>
   );
@@ -434,6 +463,7 @@ function AIRewriteCard({ exampleIdx, onCycle }) {
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 function Hero({ darkMode }) {
+  const { user } = useAppContext();
   const [exampleIdx, setExampleIdx] = useState(0);
 
   const TRUST_ITEMS = [
@@ -445,7 +475,7 @@ function Hero({ darkMode }) {
   ];
 
   return (
-    <div style={{position:"relative",overflow:"hidden",paddingTop:"5.5rem",paddingBottom:"4rem"}}>
+    <div style={{position:"relative",overflow:"hidden",paddingTop:"8rem",paddingBottom:"6rem"}}>
 
       {/* Per-product background images — cross-fade with card cycle */}
       {SHOWCASE_EXAMPLES.map((ex, i) => (
@@ -466,14 +496,14 @@ function Hero({ darkMode }) {
         />
       ))}
 
-      {/* Scrim — CSS vars auto-adapt to light & dark */}
+      {/* Overlay to dim backdrop images and ensure text readability */}
       <div style={{
         position:"absolute", inset:0, zIndex:1, pointerEvents:"none",
         background:"linear-gradient(170deg, var(--bg2,#EEF4EF) 0%, var(--bg,#F8FAF8) 100%)",
         opacity: 0.76,
       }}/>
 
-      <div className="hero-grid" style={{position:"relative",zIndex:2,maxWidth:1160,margin:"0 auto",padding:"0 3.5rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4rem",alignItems:"center"}}>
+      <div className="hero-grid" style={{position:"relative",zIndex:2,maxWidth:1400,margin:"0 auto",padding:"0 2rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6rem",alignItems:"center"}}>
 
         {/* Left: single static headline */}
         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",justifyContent:"center"}}>
@@ -492,7 +522,9 @@ function Hero({ darkMode }) {
           </p>
           {/* CTAs */}
           <div className="au3" style={{display:"flex",gap:".9rem",flexWrap:"wrap",marginBottom:"1.5rem"}}>
-            <Link to="/signup" style={{textDecoration:"none"}}><BtnP>Start Growing for Free →</BtnP></Link>
+            <Link to={user ? "/dashboard" : "/signup"} style={{textDecoration:"none"}}>
+              <BtnP>{user ? "Go to Dashboard →" : "Start Growing for Free →"}</BtnP>
+            </Link>
             <Link to="/how-it-works" style={{textDecoration:"none"}}><BtnS>See How It Works</BtnS></Link>
           </div>
           {/* Trust strip */}
@@ -516,26 +548,59 @@ function Hero({ darkMode }) {
 
 
 // ─── Stats Bar ────────────────────────────────────────────────────────────────
-function StatsBar() {
+// ─── Stats Bar ─── Rolling Number digit-by-digit animation ───────────────────
+function RollingNumber({ value }) {
+  const valueStr = String(value);
   return (
-    <div style={{background:"var(--bg-1,#fff)",borderTop:"1px solid var(--border)",borderBottom:"1px solid var(--border)"}}>
-      <div className="stats-bar" style={{maxWidth:1000,margin:"0 auto",padding:".9rem 3.5rem",display:"flex",alignItems:"center",justifyContent:"space-around",gap:"2rem",flexWrap:"wrap"}}>
-        {STATS.map(({num,label}) => (
-          <div key={label} style={{textAlign:"center",display:"flex",alignItems:"center",gap:".55rem"}}>
-            <span style={{fontFamily:"Fraunces,serif",fontSize:"1.35rem",fontWeight:500,color:"var(--dark)",lineHeight:1}}>{num}</span>
-            <span style={{fontSize:".75rem",color:"var(--muted)",fontFamily:"Inter,sans-serif"}}>{label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <span style={{ display: "inline-flex", overflow: "hidden", lineHeight: 1 }}>
+      {valueStr.split("").map((char, idx) => {
+        if (/[0-9]/.test(char)) {
+          const digit = parseInt(char, 10);
+          return (
+            <span
+              key={idx}
+              style={{
+                display: "inline-block",
+                height: "1.35rem",
+                width: "0.62em",
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              <span
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  transition: "transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                  transform: `translateY(-${digit * 10}%)`,
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                }}
+              >
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                  <span key={n} style={{ height: "1.35rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {n}
+                  </span>
+                ))}
+              </span>
+            </span>
+          );
+        }
+        return <span key={idx} style={{ display: "inline-block" }}>{char}</span>;
+      })}
+    </span>
   );
 }
+
+
 
 // ─── Features ─────────────────────────────────────────────────────────────────
 function Features() {
   return (
     <div style={{background:"var(--bg2,#F1F5F1)",borderTop:"1px solid var(--border-strong)"}}>
-      <section className="mob-pad mob-vpad" style={{padding:"4.5rem 3.5rem",maxWidth:1160,margin:"0 auto"}}>
+      <section className="mob-pad mob-vpad" style={{padding:"4.5rem 2rem",maxWidth:1400,margin:"0 auto"}}>
         <div style={{textAlign:"center",maxWidth:540,margin:"0 auto 2.5rem"}}>
           <Tag center>What Selora Does</Tag>
           <Title center>Six ways your collection<br/>grows every day</Title>
@@ -589,7 +654,7 @@ function getFallbackDashboardData() {
     activity: [
       { action: "Optimized listing", product: "Floral wrap dress", time: "2:00 AM" },
       { action: "Adjusted price", product: "Leather boots", time: "3:15 AM" },
-      { action: "Restocked alert", product: "Linen blazer", time: "5:30 AM" },
+      { action: "Restocked alert", product: "Woolen sweater", time: "5:30 AM" },
       { action: "Generated growth report", product: null, time: "7:00 AM" }
     ]
   };
@@ -687,7 +752,7 @@ function Dashboard() {
 function HowItWorks() {
   return (
     <div style={{background:"var(--bg,#F8FAF8)",borderTop:"1px solid var(--border-strong)"}}>
-      <div className="how-grid mob-pad" style={{maxWidth:1160,margin:"0 auto",padding:"4.5rem 3.5rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5rem",alignItems:"center"}}>
+      <div className="how-grid mob-pad" style={{maxWidth:1400,margin:"0 auto",padding:"4.5rem 2rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5rem",alignItems:"center"}}>
         <div>
           <Tag>How It Works</Tag>
           <Title>Three steps to a<br/>self-growing collection</Title>
@@ -717,7 +782,7 @@ function Pricing() {
   const { user } = useAppContext();
   return (
     <div style={{background:"var(--bg2,#F1F5F1)",borderTop:"1px solid var(--border-strong)"}}>
-      <section className="mob-pad mob-vpad" style={{padding:"4.5rem 3.5rem",maxWidth:1160,margin:"0 auto"}}>
+      <section className="mob-pad mob-vpad" style={{padding:"4.5rem 2rem",maxWidth:1400,margin:"0 auto"}}>
         <div style={{textAlign:"center",maxWidth:500,margin:"0 auto 2.8rem"}}>
           <Tag center>Pricing</Tag>
           <Title center>Grow your collection,<br/>pay as you scale</Title>
@@ -769,23 +834,23 @@ const TESTIMONIALS = [
     quote:  "Selora found the words I never could for my collection. My listings finally sound like the pieces themselves.",
     author: "Founder, independent fashion label",
     image:  "/sweater.png",
-    pos:    "center 40%",
+    pos:    "center 30%",
   },
   {
     quote:  "I stopped dreading Monday mornings. Selora's overnight report tells me exactly what happened and what to do next — in plain English.",
     author: "Owner, womenswear boutique",
-    image:  "/silk-dress.png",
-    pos:    "center top",
+    image:  "/leather-jacket.png",
+    pos:    "center 25%",
   },
   {
     quote:  "My bestseller sold out before I even noticed the trend. Selora caught it first and flagged a restock in time. That alone paid for a year.",
     author: "Designer, sustainable fashion brand",
-    image:  "/leather-jacket.png",
-    pos:    "center 35%",
+    image:  "/trench-coat.png",
+    pos:    "center 30%",
   },
 ];
 
-function Testimonial() {
+function Testimonial({ darkMode }) {
   const [current, setCurrent] = useState(0);
   const [fading, setFading]   = useState(false);
   const timerRef = useRef(null);
@@ -805,43 +870,43 @@ function Testimonial() {
 
   return (
     <div style={{
-      background:"#111814",
-      borderTop:"1px solid rgba(255,255,255,.07)",
-      borderBottom:"1px solid rgba(255,255,255,.07)",
+      background: darkMode ? "#000" : "#fff",
+      borderTop: "1px solid var(--border)",
+      borderBottom: "1px solid var(--border)",
     }}>
       <div className="two-col" style={{
-        maxWidth:1100, margin:"0 auto",
-        display:"grid", gridTemplateColumns:"1fr 1fr",
-        minHeight:280,
+        maxWidth: 1400, margin: "0 auto",
+        display: "grid", gridTemplateColumns: "1fr 1fr",
+        minHeight: 230,
       }}>
         {/* LEFT — quote panel */}
         <div
           style={{
-            padding:"3rem 3.5rem",
-            display:"flex", flexDirection:"column", justifyContent:"center",
+            padding: "2rem 2rem",
+            display: "flex", flexDirection: "column", justifyContent: "center",
             opacity: fading ? 0 : 1,
             transform: fading ? "translateX(-10px)" : "translateX(0)",
-            transition:"opacity 0.38s ease, transform 0.38s ease",
+            transition: "opacity 0.38s ease, transform 0.38s ease",
           }}
         >
-          <div style={{color:"#86EFAC",fontSize:".85rem",marginBottom:".9rem",letterSpacing:3}}>★★★★★</div>
+          <div style={{color: darkMode ? "#86EFAC" : "var(--g)", fontSize: ".85rem", marginBottom: ".9rem", letterSpacing: 3}}>★★★★★</div>
           <blockquote style={{
-            fontFamily:"Fraunces,serif",
-            fontSize:"clamp(1rem,1.8vw,1.4rem)",
-            fontWeight:400, fontStyle:"italic",
-            lineHeight:1.55, letterSpacing:"-.15px",
-            color:"#fff", marginBottom:"1.3rem",
-            borderLeft:"none", padding:0,
+            fontFamily: "Fraunces,serif",
+            fontSize: "clamp(1rem,1.8vw,1.4rem)",
+            fontWeight: 400, fontStyle: "italic",
+            lineHeight: 1.55, letterSpacing: "-.15px",
+            color: "var(--dark)", marginBottom: "1.3rem",
+            borderLeft: "none", padding: 0,
           }}>
             "{t.quote}"
           </blockquote>
-          <div style={{fontSize:".72rem",color:"rgba(255,255,255,.4)",fontFamily:"Inter,sans-serif",fontWeight:300,letterSpacing:".04em"}}>
+          <div style={{fontSize: ".72rem", color: "var(--muted)", fontFamily: "Inter,sans-serif", fontWeight: 300, letterSpacing: ".04em"}}>
             — {t.author}
           </div>
         </div>
 
         {/* RIGHT — image cross-fades */}
-        <div style={{position:"relative",overflow:"hidden",minHeight:240}}>
+        <div style={{position: "relative", overflow: "hidden", minHeight: 200}}>
           {TESTIMONIALS.map((slide, i) => (
             <img
               key={slide.image}
@@ -849,66 +914,334 @@ function Testimonial() {
               alt=""
               aria-hidden="true"
               style={{
-                position:"absolute", inset:0,
-                width:"100%", height:"100%",
-                objectFit:"cover", objectPosition: slide.pos,
-                display:"block",
+                position: "absolute", inset: 0,
+                width: "100%", height: "100%",
+                objectFit: "cover", objectPosition: slide.pos,
+                display: "block",
                 opacity: i === current ? 1 : 0,
-                transition:"opacity 0.65s ease",
+                transition: "opacity 0.65s ease",
                 zIndex: i === current ? 1 : 0,
               }}
             />
           ))}
-          {/* left-edge gradient blending into dark panel */}
-          <div style={{position:"absolute",inset:0,background:"linear-gradient(to right,rgba(17,24,20,0.4) 0%,transparent 28%)",zIndex:2,pointerEvents:"none"}}/>
+          {/* left-edge gradient blending into panel */}
+          <div style={{
+            position: "absolute", inset: 0,
+            background: darkMode
+              ? "linear-gradient(to right, rgba(0,0,0,0.6) 0%, transparent 28%)"
+              : "linear-gradient(to right, rgba(255,255,255,0.6) 0%, transparent 28%)",
+            zIndex: 2, pointerEvents: "none"
+          }}/>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── FAQ ─────────────────────────────────────────────────────────────────────
 
-function FAQ() {
-  const [open, setOpen] = useState(null);
+// ─── ConnectSection ───────────────────────────────────────────────────────────
+// ─── ConnectSection ───────────────────────────────────────────────────────────
+function ShopifyLogo() {
   return (
-    <div style={{background:"var(--bg2,#F1F5F1)",borderTop:"1px solid var(--border-strong)"}}>
-      <div className="mob-pad mob-vpad" style={{maxWidth:740,margin:"0 auto",padding:"4.5rem 3.5rem"}}>
-        <div style={{textAlign:"center",marginBottom:"3rem"}}>
-          <Tag center>FAQ</Tag>
-          <Title center>Common questions</Title>
+    <svg 
+      width="18" 
+      height="18" 
+      viewBox="0 0 150 162" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg" 
+      style={{ marginRight: "10px", flexShrink: 0 }}
+    >
+      <path d="M100.5 25.1C95.9 24.5 91.1 27.5 89.8 32.1L73 96.2L126.2 35.8L100.5 25.1Z" fill="#95BF47"/>
+      <path d="M132.8 53L73 36.5L20.3 95.7L45.3 158C47 162.3 51.2 165 55.7 165H122.4C127.4 165 131.8 161.8 133.3 157L151.7 92.2C153.5 86 151.7 79.3 147.4 75L132.8 53Z" fill="#5E8E3E"/>
+      <path d="M69.3 37.3C67.6 39.2 66.8 41.9 67.1 44.6L72 86.4C72.3 88.6 74.1 90.2 76.2 90.5C76.5 90.5 76.8 90.5 77.1 90.5C79 90.5 80.8 89.2 81.3 87.3L87.8 60.7L69.3 37.3Z" fill="#95BF47"/>
+    </svg>
+  );
+}
+
+function SparkleIcon() {
+  return (
+    <svg 
+      width="16" 
+      height="16" 
+      viewBox="0 0 24 24" 
+      fill="var(--g, #6FBF8B)" 
+      stroke="var(--g, #6FBF8B)" 
+      strokeWidth="1.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      style={{ marginRight: "10px", flexShrink: 0 }}
+    >
+      <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+    </svg>
+  );
+}
+
+function WooCommerceLogo() {
+  return (
+    <svg 
+      width="22" 
+      height="15" 
+      viewBox="0 0 56 32" 
+      fill="#96588a" 
+      xmlns="http://www.w3.org/2000/svg" 
+      style={{ marginRight: "10px", flexShrink: 0 }}
+    >
+      <path d="M49.2 1.6C46.8.6 44.2 0 41.5 0c-5.8 0-10.8 2.7-14 6.8C24.3 2.7 19.3 0 13.5 0c-2.7 0-5.3.6-7.7 1.6L0 12.8v11.7l8 5.9h40l8-5.9V12.8l-6.8-11.2zm-28 17.9L16 11.2l-5.2 8.3c-.6.9-1.6 1.4-2.7 1.4H4.8l7.2-11.5c1-1.6 2.8-2.6 4.7-2.6s3.7 1 4.7 2.6l7.2 11.5H23.9c-1.1 0-2.1-.5-2.7-1.4zm23.6 0l-5.2-8.3-5.2 8.3c-.6.9-1.6 1.4-2.7 1.4h-4.3l7.2-11.5c1-1.6 2.8-2.6 4.7-2.6s3.7 1 4.7 2.6l7.2 11.5h-4.3c-1.1.1-2.1-.4-2.7-1.4z"/>
+    </svg>
+  );
+}
+
+function AmazonLogo() {
+  return (
+    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', marginRight: '10px', height: '18px', justifyContent: 'center', flexShrink: 0 }}>
+      <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: '0.92rem', color: 'var(--dark)', letterSpacing: '-0.3px', lineHeight: 1 }}>
+        a
+      </span>
+      <svg width="12" height="4" viewBox="0 0 12 4" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginTop: '-2px' }}>
+        <path d="M1 1C4 2.5 8 2.5 11 1" stroke="#FF9900" strokeWidth="1.8" strokeLinecap="round"/>
+      </svg>
+    </div>
+  );
+}
+
+function EtsyLogo() {
+  return (
+    <span style={{ fontFamily: '"Georgia", serif', fontSize: '1.05rem', fontWeight: 'bold', color: '#D5641C', marginRight: '10px', flexShrink: 0 }}>
+      E
+    </span>
+  );
+}
+
+function ConnectSection() {
+  const { user } = useAppContext();
+  const [stores, setStores] = useState(12491);
+  const [revenue, setRevenue] = useState(2148591248);
+  const [growth, setGrowth] = useState(3.8271);
+  const [uptime, setUptime] = useState(99.9994);
+
+  useEffect(() => {
+    // 1. Stores: ticks up by 1 store every 5 seconds
+    const storesInterval = setInterval(() => {
+      setStores(s => s + 1);
+    }, 5000);
+
+    // 2. Revenue: ticks up by a random sale amount ($120 - $340) every 2 seconds
+    const revenueInterval = setInterval(() => {
+      setRevenue(r => r + Math.floor(120 + Math.random() * 220));
+    }, 2000);
+
+    // 3. Growth Rate: fluctuates slightly every 4 seconds
+    const growthInterval = setInterval(() => {
+      setGrowth(g => {
+        const delta = Math.random() > 0.4 ? 0.0001 : -0.0001;
+        return Math.max(3.8000, Math.min(3.9000, g + delta));
+      });
+    }, 4000);
+
+    // 4. Uptime: fluctuates between 99.9990% and 99.9999% every 6 seconds
+    const uptimeInterval = setInterval(() => {
+      setUptime(u => {
+        const target = 99.999 + Math.random() * 0.0009;
+        return Math.round(target * 10000) / 10000;
+      });
+    }, 6000);
+
+    return () => {
+      clearInterval(storesInterval);
+      clearInterval(revenueInterval);
+      clearInterval(growthInterval);
+      clearInterval(uptimeInterval);
+    };
+  }, []);
+
+  const INTEGRATIONS = [
+    {
+      title: "Shopify",
+      desc: "One-click connect",
+      icon: <ShopifyLogo />,
+      isStandout: false,
+      isComingSoon: false,
+    },
+    {
+      title: "Create your Store",
+      desc: "Launch with Selora",
+      icon: <SparkleIcon />,
+      isStandout: true,
+      isComingSoon: false,
+    },
+    {
+      title: "WooCommerce",
+      desc: "Sync products",
+      icon: <WooCommerceLogo />,
+      isStandout: false,
+      isComingSoon: true,
+    },
+    {
+      title: "Amazon",
+      desc: "Optimize listings",
+      icon: <AmazonLogo />,
+      isStandout: false,
+      isComingSoon: true,
+    },
+    {
+      title: "Etsy",
+      desc: "Improve SEO",
+      icon: <EtsyLogo />,
+      isStandout: false,
+      isComingSoon: true,
+    }
+  ];
+
+  return (
+    <div style={{ background: "var(--bg-1,#fff)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+      <div className="mob-pad" style={{ maxWidth: 1400, margin: "0 auto", padding: "4rem 2rem" }}>
+        
+        {/* Centered Heading */}
+        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          <span style={{ fontSize: ".78rem", fontWeight: 700, color: "var(--g)", textTransform: "uppercase", letterSpacing: ".1em", display: "block", fontFamily: "Inter,sans-serif", marginBottom: "0.4rem" }}>
+            SETUP & INTEGRATIONS
+          </span>
+          <h2 style={{ fontFamily: "Fraunces,serif", fontSize: "2.1rem", fontWeight: 500, color: "var(--dark)", lineHeight: 1.2, letterSpacing: "-.3px" }}>
+            Trusted by Fashion Sellers Worldwide
+          </h2>
         </div>
-        <div style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:16,overflow:"hidden"}}>
-          {FAQS.map((item, i) => {
-            const isOpen = open === i;
-            return (
-              <div key={i} className="faq-item" style={{borderBottom: i < FAQS.length-1 ? "1px solid var(--border)" : "none"}}>
-                <button className="faq-btn" onClick={() => setOpen(isOpen ? null : i)}>
-                  <span style={{fontSize:".9rem",fontWeight:500,color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{item.q}</span>
-                  <svg className={`faq-chevron${isOpen?" open":""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="6 9 12 15 18 9"/>
-                  </svg>
-                </button>
-                <div className="faq-body" style={{maxHeight: isOpen ? 300 : 0, opacity: isOpen ? 1 : 0}}>
-                  <p style={{fontSize:".84rem",color:"var(--muted)",lineHeight:1.75,fontWeight:300,padding:"0 0 1.3rem"}}>{item.a}</p>
-                </div>
-              </div>
-            );
-          })}
+
+        {/* Infinite Marquee Scroll */}
+        <div className="marquee-container au">
+          <div className="marquee-track">
+            {[...INTEGRATIONS, ...INTEGRATIONS].map((card, idx) => {
+              const isStandout = card.isStandout;
+              const isComingSoon = card.isComingSoon;
+              const borderStyle = isStandout 
+                ? "1px solid var(--g)" 
+                : "1px solid var(--border)";
+              const bgStyle = isStandout 
+                ? "linear-gradient(135deg, var(--bg-1, #fff), var(--gpale, #EDF3EE))" 
+                : "var(--bg-1, #fff)";
+
+              const content = (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                    {card.icon}
+                    <span style={{ fontWeight: 600, fontSize: "1.05rem", color: isStandout ? "var(--g)" : "var(--dark)", fontFamily: "Inter, sans-serif" }}>
+                      {card.title}
+                    </span>
+                  </div>
+                  <div style={{ color: "var(--muted)", fontSize: ".85rem", lineHeight: 1.4, fontWeight: 300, paddingLeft: "28px", marginTop: "0.25rem" }}>
+                    {card.desc}
+                  </div>
+                  {isComingSoon && (
+                    <div style={{ fontSize: "0.68rem", fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", paddingLeft: "28px", marginTop: "0.4rem" }}>
+                      Coming soon
+                    </div>
+                  )}
+                </>
+              );
+
+              if (isComingSoon) {
+                return (
+                  <div 
+                    key={idx} 
+                    className="integ-card disabled"
+                    style={{
+                      border: borderStyle,
+                      background: bgStyle,
+                      opacity: 0.75,
+                      minHeight: "115px",
+                      width: "240px",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {content}
+                  </div>
+                );
+              }
+
+              const getLinkTarget = () => {
+                if (user) {
+                  return card.title === "Create your Store" ? "/store-builder" : "/connect";
+                }
+                return "/signup";
+              };
+
+              return (
+                <Link 
+                  key={idx} 
+                  to={getLinkTarget()} 
+                  className="integ-card"
+                  style={{
+                    border: borderStyle,
+                    background: bgStyle,
+                    minHeight: "115px",
+                    width: "240px",
+                    flexShrink: 0,
+                  }}
+                >
+                  {content}
+                </Link>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Bottom Metrics Row */}
+        <div style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "1.5rem",
+          flexWrap: "wrap",
+          fontSize: "0.85rem",
+          color: "var(--muted)",
+          fontFamily: "Inter, sans-serif",
+          marginTop: "2.5rem",
+          borderTop: "1px solid var(--border)",
+          paddingTop: "1.5rem"
+        }}>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span style={{ fontWeight: 600, color: "var(--dark)", marginRight: "4px", fontVariantNumeric: "tabular-nums" }}>
+              <RollingNumber value={stores.toLocaleString()} />+
+            </span>
+            <span>Stores</span>
+          </div>
+          <span style={{ color: "var(--border-strong)" }}>•</span>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span style={{ fontWeight: 600, color: "var(--dark)", marginRight: "4px", fontVariantNumeric: "tabular-nums" }}>
+              $<RollingNumber value={revenue.toLocaleString()} />+
+            </span>
+            <span>Revenue</span>
+          </div>
+          <span style={{ color: "var(--border-strong)" }}>•</span>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span style={{ fontWeight: 600, color: "var(--dark)", marginRight: "4px", fontVariantNumeric: "tabular-nums" }}>
+              <RollingNumber value={uptime.toFixed(4)} />%
+            </span>
+            <span>Uptime</span>
+          </div>
+          <span style={{ color: "var(--border-strong)" }}>•</span>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <span style={{ fontWeight: 600, color: "var(--dark)", marginRight: "4px", fontVariantNumeric: "tabular-nums" }}>
+              <RollingNumber value={growth.toFixed(4)} />x
+            </span>
+            <span>Avg Growth</span>
+          </div>
+        </div>
+
       </div>
     </div>
   );
 }
+
 
 // ─── CTA ──────────────────────────────────────────────────────────────────────
 function CTA() {
+  const { user } = useAppContext();
   return (
-    <div style={{textAlign:"center",padding:"3.5rem 4rem",position:"relative",overflow:"hidden",background:"linear-gradient(140deg,#1A271C 0%,#233329 100%)",borderTop:"1px solid var(--border-strong)"}}>
+    <div style={{position:"relative",overflow:"hidden",background:"linear-gradient(140deg,#1A271C 0%,#233329 100%)",borderTop:"1px solid var(--border-strong)"}}>
       {/* CTA gradient is intentionally hardcoded dark-forest — it stays dark in both light and dark page modes.
           Do NOT replace #1A271C with var(--dark): in dark mode that alias resolves to near-white (text-primary). */}
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 70% 60% at 50% 50%,rgba(90,138,103,.12),transparent)",pointerEvents:"none"}}/>
-      <div style={{position:"relative"}}>
+      <div style={{maxWidth:1400,margin:"0 auto",padding:"3.5rem 2rem",position:"relative",textAlign:"center"}}>
         <Tag center style={{color:"#86EFAC"}}>Start Growing Today</Tag>
         <h2 style={{fontFamily:"Fraunces,serif",fontSize:"clamp(2rem,4vw,3rem)",fontWeight:500,color:"#fff",margin:".5rem 0 1rem",lineHeight:1.15,letterSpacing:"-.3px"}}>
           Every night, Selora works.<br/>
@@ -918,8 +1251,8 @@ function CTA() {
           Join 12,000+ fashion sellers already growing with Selora.<br/>14-day free trial — no credit card needed.
         </p>
         <div style={{display:"flex",gap:"1rem",justifyContent:"center",flexWrap:"wrap"}}>
-          <Link to="/signup" style={{background:"#86EFAC",color:"#1A271C",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>
-            Start Growing for Free →
+          <Link to={user ? "/dashboard" : "/signup"} style={{background:"#86EFAC",color:"#1A271C",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>
+            {user ? "Go to Dashboard →" : "Start Growing for Free →"}
           </Link>
           <Link to="/demo" style={{background:"transparent",color:"rgba(255,255,255,.6)",border:"1px solid rgba(255,255,255,.18)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
             Book a Demo
@@ -988,14 +1321,16 @@ function Footer() {
 
   return (
     <footer style={{borderTop:"1px solid var(--border-strong)",background:"var(--bg-1,#fff)"}}>
-      <div className="mob-pad" style={{maxWidth:1160,margin:"0 auto",padding:"3.5rem 3.5rem 2rem"}}>
+      <div className="mob-pad" style={{maxWidth:1400,margin:"0 auto",padding:"3.5rem 2rem 2rem"}}>
         {/* Top row: logo + cols + newsletter */}
         <div className="footer-grid" style={{display:"grid",gridTemplateColumns:"1.5fr 1fr 1fr 1fr 1.8fr",gap:"2.5rem",marginBottom:"2.5rem"}}>
           {/* Brand */}
           <div>
-            <div style={{fontFamily:"Inter,sans-serif",fontSize:"1.1rem",fontWeight:700,letterSpacing:"-.3px",color:"var(--dark)",marginBottom:".7rem"}}>
-              Se<span style={{color:"var(--g)"}}>lo</span>ra
-            </div>
+            <Link to="/" style={{textDecoration:"none"}}>
+              <div style={{fontFamily:"Inter,sans-serif",fontSize:"1.1rem",fontWeight:700,letterSpacing:"-.3px",color:"var(--dark)",marginBottom:".7rem"}}>
+                Se<span style={{color:"var(--g)"}}>lo</span>ra
+              </div>
+            </Link>
             <p style={{fontSize:".78rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300,maxWidth:200}}>
               AI-powered growth for fashion sellers. Works while you sleep.
             </p>
@@ -1074,12 +1409,11 @@ export default function Selora() {
       <GlobalStyles/>
       <Navbar scrolled={scrolled} darkMode={darkMode} onToggleDark={toggleTheme}/>
       <Hero darkMode={darkMode}/>
-      <StatsBar/>
+      <ConnectSection/>
       <Features/>
       <HowItWorks/>
       <Pricing/>
-      <Testimonial/>
-      <FAQ/>
+      <Testimonial darkMode={darkMode}/>
       <CTA/>
       <Footer/>
     </div>

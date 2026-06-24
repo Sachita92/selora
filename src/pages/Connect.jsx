@@ -495,9 +495,11 @@ export default function Connect() {
         transition:'background-color 0.35s, border-color 0.35s',
         ...anim('fadeIn', 400, 350)
       }}>
-        <div style={{ fontFamily:"Inter,sans-serif", fontSize:".95rem", fontWeight:700, color:'var(--logo-text)', transition:'color 0.3s' }}>
-          Se<span style={{ color:"#5A8A67" }}>lo</span>ra
-        </div>
+        <Link to="/" style={{ textDecoration: 'none' }}>
+          <div style={{ fontFamily:"Inter,sans-serif", fontSize:".95rem", fontWeight:700, color:'var(--logo-text)', transition:'color 0.3s' }}>
+            Se<span style={{ color:"#5A8A67" }}>lo</span>ra
+          </div>
+        </Link>
         <div>
           {[{l:"Privacy Policy",h:"/privacy"},{l:"Terms of Service",h:"/terms"},{l:"Support",h:"/support"},{l:"Docs",h:"#"},{l:"Contact",h:"/support"}].map(item=>(
             <Link key={item.l} to={item.h} className="cn-footer-link" style={{ fontSize:".74rem", textDecoration:"none", marginLeft:"1.8rem", transition:'color 0.3s' }}>{item.l}</Link>

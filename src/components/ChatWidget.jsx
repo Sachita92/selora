@@ -148,28 +148,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
       })
   }
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const footer = document.querySelector('footer')
-      if (footer) {
-        const footerRect = footer.getBoundingClientRect()
-        const windowHeight = window.innerHeight
-        if (footerRect.top < windowHeight) {
-          const overlap = windowHeight - footerRect.top
-          setBottomOffset(overlap + 20)
-        } else {
-          setBottomOffset(28)
-        }
-      }
-    }
-    window.addEventListener('scroll', handleScroll)
-    window.addEventListener('resize', handleScroll)
-    handleScroll()
-    return () => {
-      window.removeEventListener('scroll', handleScroll)
-      window.removeEventListener('resize', handleScroll)
-    }
-  }, [])
+
 
   useEffect(() => {
     if (isLandingPage && !open && window.location.pathname === '/') {

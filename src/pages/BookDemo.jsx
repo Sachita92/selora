@@ -392,7 +392,9 @@ export default function BookDemo() {
 
       {/* FOOTER */}
       <footer style={{ borderTop: `1px solid ${c.border}`, padding: '1.8rem 4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: c.card, flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ fontSize: '.95rem', fontWeight: 700, color: c.dark }}>Se<span style={{ color: c.green }}>lo</span>ra</div>
+        <Link to="/" style={{ textDecoration: 'none' }}>
+          <div style={{ fontSize: '.95rem', fontWeight: 700, color: c.dark }}>Se<span style={{ color: c.green }}>lo</span>ra</div>
+        </Link>
         <div style={{ display: 'flex', gap: '1.8rem', flexWrap: 'wrap' }}>
           {[{ label: 'Privacy Policy', href: '/privacy' }, { label: 'Terms of Service', href: '/terms' }, { label: 'Support', href: '/support' }].map(l => (
             <Link key={l.label} to={l.href} style={{ fontSize: '.74rem', color: c.muted, textDecoration: 'none', marginLeft: '1.8rem' }}>{l.label}</Link>

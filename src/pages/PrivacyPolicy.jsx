@@ -170,7 +170,9 @@ export default function PrivacyPolicy() {
 
             {/* FOOTER */}
             <footer style={{ borderTop: "1px solid var(--border)", padding: "1.8rem 4rem", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--card-bg)", flexWrap: "wrap", gap: "1rem" }}>
-                <div style={{ fontSize: ".95rem", fontWeight: 700, color: "var(--dark)" }}>Se<span style={{ color: "var(--g)" }}>lo</span>ra</div>
+                <Link to="/" style={{ textDecoration: 'none' }}>
+                    <div style={{ fontSize: ".95rem", fontWeight: 700, color: "var(--dark)" }}>Se<span style={{ color: "var(--g)" }}>lo</span>ra</div>
+                </Link>
                 <div style={{ display: "flex", gap: "1.8rem", flexWrap: "wrap" }}>
                     {[
                         { label: "Privacy Policy", href: "/privacy" },
