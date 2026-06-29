@@ -36,8 +36,8 @@ export default function Terms() {
                 </div>
             </nav>
 
-            {/* CONTENT */}
-            <div style={{ maxWidth: 760, margin: "0 auto", padding: "4rem 2rem 6rem" }}>
+            <div className="site-page-container" style={{ padding: "4rem 1.5rem 6rem" }}>
+                <div style={{ maxWidth: 760, margin: "0 auto" }}>
 
                 {/* Header */}
                 <div style={{ marginBottom: "3rem", paddingBottom: "2rem", borderBottom: "1px solid var(--border)" }}>
@@ -170,6 +170,7 @@ export default function Terms() {
                     </div>
                 </Section>
 
+                </div>
             </div>
 
             {/* FOOTER */}

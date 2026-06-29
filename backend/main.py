@@ -730,6 +730,12 @@ from fastapi import Header, Request
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_mock")
 
+webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+if not webhook_secret:
+    print("\n⚠️ WARNING: STRIPE_WEBHOOK_SECRET is not set in backend/.env file.")
+    print("   Webhook signature verification will be bypassed for local development.")
+    print("   Set this variable in production to secure your webhook endpoint.\n")
+
 # Setup plan lookup mapping
 PLAN_PRICE_MAP = {
     "growth_monthly": os.getenv("STRIPE_PRICE_GROWTH", "price_growth_mock"),
@@ -746,36 +752,126 @@ class CheckoutRequest(BaseModel):
 
 @app.post("/api/billing/create-checkout")
 def create_checkout_session(body: CheckoutRequest):
-    """Create a Stripe checkout session for a customer."""
+    """Create a Stripe subscription and return the client secret for payment element."""
     plan_key = f"{body.plan}_{body.billing_period}"
     if plan_key not in PLAN_PRICE_MAP:
         raise HTTPException(status_code=400, detail="Invalid plan or billing period selection")
 
     price_id = PLAN_PRICE_MAP[plan_key]
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
     try:
         # Check if user already has stripe_customer_id in Supabase
-        from database import get_user_by_id
+        from database import get_user_by_id, update_user_subscription
         user = get_user_by_id(body.user_id)
         customer_id = user.get("stripe_customer_id") if user else None
 
-        checkout_session = stripe.checkout.Session.create(
+        if not customer_id:
+            customer = stripe.Customer.create(
+                email=body.email,
+                metadata={"user_id": body.user_id}
+            )
+            customer_id = customer.id
+            update_user_subscription(
+                user_id=body.user_id,
+                plan="free",
+                status="active",
+                customer_id=customer_id
+            )
+
+        # Check for existing incomplete or unconfirmed trialing subscriptions for this customer & price_id
+        existing_subs = stripe.Subscription.list(
             customer=customer_id,
-            customer_email=body.email if not customer_id else None,
-            ui_mode="embedded_page",
-            line_items=[{"price": price_id, "quantity": 1}],
-            mode="subscription",
-            return_url=f"{frontend_url}/dashboard?session_id={{CHECKOUT_SESSION_ID}}&billing_status=success",
-            metadata={
-                "user_id": body.user_id,
-                "plan": body.plan,
-                "billing_period": body.billing_period,
-            }
+            status='all',
+            limit=20
         )
-        return {"clientSecret": checkout_session.client_secret}
+        existing_sub = None
+        for sub in existing_subs.data:
+            sub_dict = sub.to_dict()
+            items = sub_dict.get('items', {}).get('data', [])
+            if items and items[0].get('price', {}).get('id') == price_id:
+                # Reuse if the subscription is incomplete OR if it is trialing but has no payment method configured
+                if sub.status == 'incomplete' or (sub.status == 'trialing' and not sub.default_payment_method):
+                    existing_sub = sub
+                    break
+
+        if existing_sub:
+            # Retrieve with expansions
+            subscription = stripe.Subscription.retrieve(
+                existing_sub.id,
+                expand=[
+                    'latest_invoice.confirmation_secret',
+                    'latest_invoice.payment_intent',
+                    'pending_setup_intent',
+                ]
+            )
+        else:
+            # Create subscription — restrict to card-only so the frontend
+            # shows a direct card form rather than a payment-method picker.
+            subscription = stripe.Subscription.create(
+                customer=customer_id,
+                items=[{"price": price_id}],
+                payment_behavior='default_incomplete',
+                payment_settings={
+                    'save_default_payment_method': 'on_subscription',
+                    'payment_method_types': ['card'],
+                },
+                trial_period_days=14,  # 14-day free trial on Growth and Scale tiers
+                # Expand both paths: new API uses confirmation_secret,
+                # older API versions expose payment_intent directly.
+                expand=[
+                    'latest_invoice.confirmation_secret',
+                    'latest_invoice.payment_intent',
+                    'pending_setup_intent',
+                ],
+                metadata={
+                    "user_id": body.user_id,
+                    "plan": body.plan,
+                    "billing_period": body.billing_period,
+                }
+            )
+
+        # Save subscription ID and customer ID to user record (status incomplete initially)
+        update_user_subscription(
+            user_id=body.user_id,
+            plan=body.plan,
+            status="inactive",
+            customer_id=customer_id,
+            subscription_id=subscription.id
+        )
+
+        invoice = subscription.latest_invoice
+
+        # Try new-style confirmation_secret first, fall back to payment_intent
+        client_secret = None
+        confirmation_secret = getattr(invoice, "confirmation_secret", None)
+        if confirmation_secret:
+            client_secret = getattr(confirmation_secret, "client_secret", None)
+
+        if not client_secret:
+            payment_intent = getattr(invoice, "payment_intent", None)
+            if payment_intent:
+                client_secret = getattr(payment_intent, "client_secret", None)
+
+        # Fallback to pending_setup_intent if it's a $0.00 trial subscription
+        if not client_secret:
+            setup_intent = getattr(subscription, "pending_setup_intent", None)
+            if setup_intent:
+                client_secret = getattr(setup_intent, "client_secret", None)
+
+        if not client_secret:
+            raise HTTPException(
+                status_code=500,
+                detail="Stripe returned no client secret. Check Stripe dashboard for configuration issues."
+            )
+
+        return {
+            "clientSecret": client_secret,
+            "subscriptionId": subscription.id
+        }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Stripe session error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Stripe subscription error: {str(e)}")
 
 
 @app.post("/api/billing/portal")
@@ -820,6 +916,13 @@ def get_user_subscriptions(email: str = Query(..., description="User email")):
         formatted_subs = []
 
         for sub in subs.data:
+            # Skip subscriptions that are not active, or are trialing but have no payment method
+            # (which indicates they closed the checkout modal without completing card details).
+            if sub.status not in ["active", "trialing"]:
+                continue
+            if sub.status == "trialing" and not sub.default_payment_method:
+                continue
+
             sub_dict = sub.to_dict() if hasattr(sub, "to_dict") else dict(sub)
             items = sub_dict.get("items", {}).get("data", [])
             plan_name = "Growth Plan"
@@ -896,6 +999,89 @@ def get_billing_history(email: str = Query(..., description="User email")):
         return {"history": res.data or []}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch billing history: {str(e)}")
+
+
+def send_trial_warning_email(email: str):
+    """Send an email warning the user that their free trial is ending in 3 days."""
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = os.getenv("SMTP_PORT", "587")
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASS")
+    smtp_from = os.getenv("SMTP_FROM", "billing@selora.ai")
+
+    subject = "Your Selora Free Trial is Ending Soon"
+    body = (
+        "Hi there,\n\n"
+        "This is a reminder that your 14-day free trial of Selora is ending in 3 days. "
+        "Your card on file will be charged soon to keep your Growth/Scale features active.\n\n"
+        "If you wish to avoid charges, you can cancel your subscription anytime in 1 click from your Dashboard settings.\n\n"
+        "Thanks,\n"
+        "The Selora Billing Team"
+    )
+
+    if not smtp_host or not smtp_user or not smtp_pass:
+        print(f"\n[EMAIL SIMULATION] Sent trial-ending email to {email}")
+        print(f"Subject: {subject}\nBody:\n{body}\n")
+        return True
+
+    import smtplib
+    from email.mime.text import MIMEText
+    try:
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = smtp_from
+        msg['To'] = email
+
+        with smtplib.SMTP(smtp_host, int(smtp_port)) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+        print(f"Successfully sent trial-ending email to {email} via SMTP.")
+        return True
+    except Exception as e:
+        print(f"Error sending email to {email} via SMTP: {e}")
+        return False
+
+
+def send_payment_failed_email(email: str):
+    """Send an email notifying the user that their subscription payment failed."""
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = os.getenv("SMTP_PORT", "587")
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASS")
+    smtp_from = os.getenv("SMTP_FROM", "billing@selora.ai")
+
+    subject = "Action Required: Selora Payment Failed"
+    body = (
+        "Hi there,\n\n"
+        "Your recent subscription payment for Selora failed. Your plan has been set to unpaid.\n\n"
+        "Please log in to your Dashboard Settings and update your payment method to restore full access.\n\n"
+        "Thanks,\n"
+        "The Selora Billing Team"
+    )
+
+    if not smtp_host or not smtp_user or not smtp_pass:
+        print(f"\n[EMAIL SIMULATION] Sent payment-failed email to {email}")
+        print(f"Subject: {subject}\nBody:\n{body}\n")
+        return True
+
+    import smtplib
+    from email.mime.text import MIMEText
+    try:
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = smtp_from
+        msg['To'] = email
+
+        with smtplib.SMTP(smtp_host, int(smtp_port)) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+        print(f"Successfully sent payment-failed email to {email} via SMTP.")
+        return True
+    except Exception as e:
+        print(f"Error sending payment-failed email to {email} via SMTP: {e}")
+        return False
 
 
 @app.post("/api/billing/webhook")
@@ -998,6 +1184,61 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
         
         if updated and "id" in updated:
             save_billing_event(updated["id"], f"subscription_{stripe_status}", event["id"], event_data)
+
+    elif event_type == "invoice.paid":
+        subscription_id = event_data.get("subscription")
+        customer_id = event_data.get("customer")
+        
+        if subscription_id:
+            sub = stripe.Subscription.retrieve(subscription_id)
+            sub_dict = sub.to_dict() if hasattr(sub, "to_dict") else dict(sub)
+            current_period_end_timestamp = sub_dict.get("current_period_end")
+            
+            from datetime import datetime, timezone
+            if current_period_end_timestamp:
+                period_end = datetime.fromtimestamp(current_period_end_timestamp, tz=timezone.utc).isoformat()
+            else:
+                period_end = None
+                
+            plan = "free"
+            items = sub_dict.get("items", {}).get("data", [])
+            if items:
+                price_id = items[0].get("price", {}).get("id")
+                for plan_key, pid in PLAN_PRICE_MAP.items():
+                    if pid == price_id:
+                        plan = plan_key.split("_")[0]
+                        break
+                        
+            updated = update_user_subscription_by_stripe_id(
+                stripe_sub_id=subscription_id,
+                plan=plan,
+                status="active",
+                period_end=period_end
+            )
+            if updated and "id" in updated:
+                save_billing_event(updated["id"], "invoice_paid", event["id"], event_data)
+
+    elif event_type == "customer.subscription.trial_will_end":
+        customer_id = event_data.get("customer")
+        
+        from database import db
+        res = db().table("users").select("*").eq("stripe_customer_id", customer_id).execute()
+        if res.data:
+            user = res.data[0]
+            send_trial_warning_email(user["email"])
+            save_billing_event(user["id"], "trial_will_end_warning", event["id"], event_data)
+
+    elif event_type == "invoice.payment_failed":
+        subscription_id = event_data.get("subscription")
+        
+        updated = update_user_subscription_by_stripe_id(
+            stripe_sub_id=subscription_id,
+            plan="free",
+            status="unpaid"
+        )
+        if updated and "id" in updated:
+            send_payment_failed_email(updated["email"])
+            save_billing_event(updated["id"], "invoice_payment_failed", event["id"], event_data)
 
     return {"status": "success"}
 

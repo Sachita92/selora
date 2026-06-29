@@ -12,7 +12,7 @@ const s = {
   page:    { minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif', color: 'var(--text)' },
   nav:     { background: 'var(--nav-bg)', borderBottom: `1px solid var(--border)`, padding: '1rem 3.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(14px)' },
   logo:    { fontSize: '1.2rem', fontWeight: 700, color: 'var(--dark)', textDecoration: 'none', fontFamily: 'Inter, sans-serif' },
-  container: { maxWidth: 960, margin: '0 auto', padding: '4rem 2rem 6rem' },
+  container: { width: '100%', maxWidth: 1280, margin: '0 auto', padding: '4rem 1.5rem 6rem', boxSizing: 'border-box' },
   header:  { textAlign: 'center', marginBottom: '4rem' },
   tag:     { fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', color: c.green, marginBottom: '.6rem' },
   title:   { fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: 'var(--dark)', letterSpacing: '-.4px', marginBottom: '1rem' },

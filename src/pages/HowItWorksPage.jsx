@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import { useAppContext } from '../lib/AppContext'
 import { useDarkMode } from '../hooks/useDarkMode'
+import Navbar from '../components/Navbar'
 
 // ─── Constants & Styles ──────────────────────────────────────────────────────
 const c = {
@@ -148,57 +149,7 @@ function Reveal({ children, delay = 0, duration = 600, offset = 16, style = {} }
   );
 }
 
-// ─── Navigation Header ───────────────────────────────────────────────────────
-function PageNav() {
-  const { user } = useAppContext()
-  const [darkMode, toggleTheme] = useDarkMode()
-  return (
-    <nav style={{position:'fixed',top:0,left:0,right:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'1rem 3.5rem',background:'var(--nav-bg)',backdropFilter:'blur(14px)',borderBottom:`1px solid var(--border)`,fontFamily:'Inter,sans-serif'}}>
-      <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'1.2rem',fontWeight:700,letterSpacing:'-.3px',color:'var(--dark)',textDecoration:'none'}}>
-        Se<span style={{color:'var(--g)'}}>lo</span>ra
-      </Link>
-      <div style={{display:'flex',gap:'2rem',alignItems:'center',fontSize:'.82rem'}}>
-        <Link to="/features" className="cn-nav-link" style={{color:'var(--nav-link)',textDecoration:'none',fontWeight:500}}>Features</Link>
-        <Link to="/how-it-works" style={{fontWeight:600,color:'var(--dark)',textDecoration:'none',borderBottom:`2px solid var(--g)`,paddingBottom:'.15rem'}}>How It Works</Link>
-        <Link to="/pricing" className="cn-nav-link" style={{color:'var(--nav-link)',textDecoration:'none',fontWeight:500}}>Pricing</Link>
-        <Link to="/demo" style={{color:'var(--g)',textDecoration:'none',fontWeight:500}}>Book a Demo</Link>
-      </div>
-      <div style={{display:'flex',gap:'.7rem',alignItems:'center'}}>
-        <button
-          className="cn-theme-toggle"
-          onClick={toggleTheme}
-          title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-          style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:".25rem",borderRadius:6}}
-        >
-          {darkMode ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-          )}
-        </button>
-        {user ? (
-          <Link to="/dashboard" style={{background:'var(--g)',color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
-            Dashboard
-          </Link>
-        ) : (
-          <>
-            <Link to="/login" className="cn-nav-link" style={{fontSize:'.82rem',fontWeight:500,color:'var(--nav-link)',textDecoration:'none'}}>Sign In</Link>
-            <Link to="/signup" style={{background:'var(--g)',color:'#fff',padding:'.5rem 1.3rem',borderRadius:7,fontSize:'.82rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
-              Get Started Free
-            </Link>
-          </>
-        )}
-      </div>
-    </nav>
-  )
-}
+
 
 // ─── Shopify Connect Demo (Step 1) ───────────────────────────────────────────
 function ShopifyConnectDemo({ c }) {
@@ -1424,14 +1375,7 @@ export default function HowItWorksPage() {
             transform: translateY(0);
           }
         }
-        .hiw-page-container {
-          width: 100%;
-          max-width: 1280px;
-          margin: 0 auto;
-          padding-left: 1.5rem;
-          padding-right: 1.5rem;
-          box-sizing: border-box;
-        }
+
         .hiw-step-card {
           background: var(--bg2);
           border: 1px solid var(--border);
@@ -1460,17 +1404,7 @@ export default function HowItWorksPage() {
           justify-content: flex-end;
           width: 100%;
         }
-        .hiw-faq-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 1.2rem;
-          align-items: start;
-        }
-        @media (min-width: 769px) {
-          .hiw-faq-grid {
-            grid-template-columns: 1fr 1fr;
-          }
-        }
+
         @media (max-width: 768px) {
           .hiw-timeline-grid {
             grid-template-columns: 1fr;
@@ -1497,14 +1431,17 @@ export default function HowItWorksPage() {
           }
         }
       `}</style>
-      <PageNav />
+      <Navbar />
 
       {/* HERO */}
       <div style={{paddingTop:'6.3rem',paddingBottom:'1.5rem',background:'var(--bg2)'}}>
-        <div className="hiw-page-container" style={{textAlign: 'left'}}>
-          <div style={{maxWidth: '760px', width: '100%'}}>
-            <h1 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.8rem,3.5vw,2.8rem)',fontWeight:500,lineHeight:1.15,letterSpacing:'-.3px',color:c.dark,margin:'0 0 .8rem'}}>
-              Three steps to a <em style={{fontStyle:'italic',color:c.g}}>self-growing collection</em>
+        <div className="site-page-container" style={{textAlign: 'center'}}>
+          <div style={{maxWidth: '640px', width: '100%', margin: '0 auto'}}>
+            <p style={{ fontSize: '.78rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', color: c.g, marginBottom: '.5rem' }}>
+              Collection
+            </p>
+            <h1 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.5rem,3.5vw,2.8rem)',fontWeight:500,lineHeight:1.15,letterSpacing:'-.3px',color:c.dark,margin:'0 0 .8rem'}}>
+              Three steps to a <em style={{fontStyle:'italic',color:c.g}}>self-growing</em>
             </h1>
             <p style={{fontSize:'.88rem',color:c.muted,lineHeight:1.8,fontWeight:300,margin:0}}>
               No technical setup. Built for fashion sellers, not developers. Start growing in under 5 minutes.
@@ -1515,7 +1452,7 @@ export default function HowItWorksPage() {
 
       {/* STEPS CONTAINER */}
       <div style={{ background: 'var(--bg2)', position: 'relative' }}>
-        <div ref={containerRef} className="hiw-page-container" style={{ position: 'relative', paddingTop: '1rem', paddingBottom: '3rem' }}>
+        <div ref={containerRef} className="site-page-container" style={{ position: 'relative', paddingTop: '1rem', paddingBottom: '3rem' }}>
           
           {/* Render individual steps */}
           {STEPS.map((step, i) => {
@@ -1583,9 +1520,9 @@ export default function HowItWorksPage() {
 
       {/* WEEK TIMELINE */}
       <div style={{background:c.card,borderTop:`1px solid ${c.border}`,padding:'4rem 0'}}>
-        <div className="hiw-page-container" style={{textAlign:'center'}}>
+        <div className="site-page-container" style={{textAlign:'center'}}>
           <p style={{fontSize:'.68rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'.14em',color:c.g,marginBottom:'.7rem'}}>What Happens Next</p>
-          <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.6rem,3vw,2.2rem)',fontWeight:500,color:c.dark,marginBottom:'1rem',letterSpacing:'-.3px'}}>
+          <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.35rem,3vw,2.2rem)',fontWeight:500,color:c.dark,marginBottom:'1rem',letterSpacing:'-.3px'}}>
             Your first week with Selora
           </h2>
           <p style={{fontSize:'.88rem',color:c.muted,fontWeight:300,lineHeight:1.7,maxWidth:480,margin:'0 auto 2.5rem'}}>
@@ -1602,12 +1539,12 @@ export default function HowItWorksPage() {
 
       {/* FAQ */}
       <div style={{background:c.bg2,borderTop:`1px solid ${c.border}`,padding:'4rem 0'}}>
-        <div className="hiw-page-container">
+        <div className="site-page-container">
           <div style={{textAlign:'center',marginBottom:'3rem'}}>
             <p style={{fontSize:'.68rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'.14em',color:c.g,marginBottom:'.7rem'}}>FAQ</p>
-            <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.6rem,3vw,2.2rem)',fontWeight:500,color:c.dark,letterSpacing:'-.3px'}}>Common questions</h2>
+            <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.35rem,3vw,2.2rem)',fontWeight:500,color:c.dark,letterSpacing:'-.3px'}}>Common questions</h2>
           </div>
-          <div className="hiw-faq-grid">
+          <div className="site-faq-grid">
             {FAQ.map((item, i) => (
               <FAQItem 
                 key={i} 
@@ -1624,8 +1561,8 @@ export default function HowItWorksPage() {
       {/* CTA */}
       <div style={{padding:'3rem 0',background:'linear-gradient(140deg,#1A271C 0%,#233329 100%)',position:'relative',overflow:'hidden',textAlign:'center'}}>
         <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 70% 60% at 50% 50%,rgba(90,138,103,.12),transparent)',pointerEvents:'none'}} />
-        <div className="hiw-page-container" style={{position:'relative'}}>
-          <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.8rem,3.5vw,2.8rem)',fontWeight:500,color:'#fff',marginBottom:'1rem',lineHeight:1.15,letterSpacing:'-.3px'}}>
+        <div className="site-page-container" style={{position:'relative'}}>
+          <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.5rem,3.5vw,2.8rem)',fontWeight:500,color:'#fff',marginBottom:'1rem',lineHeight:1.15,letterSpacing:'-.3px'}}>
             Ready to start? It takes <em style={{color:'#86EFAC',fontStyle:'italic'}}>5 minutes</em>
           </h2>
           <p style={{color:'rgba(255,255,255,.4)',fontSize:'.9rem',marginBottom:'2.2rem',fontWeight:300,lineHeight:1.7,maxWidth:480,margin:'0 auto 2.2rem'}}>

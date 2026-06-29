@@ -384,3 +384,26 @@
   color: var(--step-desc) !important;
   opacity: 1;
 }
+
+/* Shared page container class across marketing pages */
+.site-page-container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  box-sizing: border-box;
+}
+
+/* Shared FAQ grid layout across pages */
+.site-faq-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.2rem;
+  align-items: start;
+}
+@media (min-width: 769px) {
+  .site-faq-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

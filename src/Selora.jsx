@@ -2,6 +2,73 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "./lib/AppContext";
 import { useDarkMode } from "./hooks/useDarkMode";
+import Navbar from "./components/Navbar";
+
+// ─── SVG Icons ───────────────────────────────────────────────────────────────
+function TagIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+      <line x1="7" y1="7" x2="7.01" y2="7" strokeWidth="2.5" />
+    </svg>
+  )
+}
+
+function PencilIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" />
+    </svg>
+  )
+}
+
+function MegaphoneIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 5L6 9H2v6h4l5 4V5z" />
+      <path d="M23 9c0 2.5-2 4.5-4.5 4.5" />
+      <path d="M19 12c0 1.5-1 2.5-2.5 2.5" />
+    </svg>
+  )
+}
+
+function ChartIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+    </svg>
+  )
+}
+
+function BoxIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  )
+}
+
+function ShieldIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  )
+}
+
+const iconMap = {
+  tag: <TagIcon size={18} color="var(--g)" />,
+  pencil: <PencilIcon size={18} color="var(--g)" />,
+  megaphone: <MegaphoneIcon size={18} color="var(--g)" />,
+  chart: <ChartIcon size={18} color="var(--g)" />,
+  box: <BoxIcon size={18} color="var(--g)" />,
+  shield: <ShieldIcon size={18} color="var(--g)" />,
+}
 
 // ─── Global Styles ────────────────────────────────────────────────────────────
 const GlobalStyles = () => (
@@ -197,12 +264,12 @@ const STATS = [
 ];
 
 const FEATURES = [
-  { icon:"💰", title:"Fashion-Smart Pricing",      desc:"Selora understands seasonality and trends. It adjusts prices at exactly the right moment — peak season, end of season, or when a style is trending." },
-  { icon:"✍️", title:"Listings That Convert",       desc:"Weak listings kill fashion sales. Selora rewrites titles and descriptions with styling tips, fit guidance, and occasion copy that makes buyers act." },
-  { icon:"📣", title:"Smarter Ad Spend",            desc:"Stop burning budget on ads that don't convert. Selora shifts your spend toward the pieces that are actually selling — automatically." },
-  { icon:"📊", title:"Collection Analytics",        desc:"See which pieces are your stars and which are slow movers. Plain English insights — no confusing dashboards to decode." },
-  { icon:"📦", title:"Never Sell Out",              desc:"Selora tracks sell velocity per piece and warns you before you run out — so you never lose a sale to an empty size grid." },
-  { icon:"🛡️", title:"You're Always in Control",   desc:"Every action Selora takes is logged and explained. Approve, adjust, or pause anything — it's your collection, always." },
+  { icon:"tag", title:"Fashion-Smart Pricing",      desc:"Selora understands seasonality and trends. It adjusts prices at exactly the right moment — peak season, end of season, or when a style is trending." },
+  { icon:"pencil", title:"Listings That Convert",       desc:"Weak listings kill fashion sales. Selora rewrites titles and descriptions with styling tips, fit guidance, and occasion copy that makes buyers act." },
+  { icon:"megaphone", title:"Smarter Ad Spend",            desc:"Stop burning budget on ads that don't convert. Selora shifts your spend toward the pieces that are actually selling — automatically." },
+  { icon:"chart", title:"Collection Analytics",        desc:"See which pieces are your stars and which are slow movers. Plain English insights — no confusing dashboards to decode." },
+  { icon:"box", title:"Never Sell Out",              desc:"Selora tracks sell velocity per piece and warns you before you run out — so you never lose a sale to an empty size grid." },
+  { icon:"shield", title:"You're Always in Control",   desc:"Every action Selora takes is logged and explained. Approve, adjust, or pause anything — it's your collection, always." },
 ];
 
 const STEPS = [
@@ -271,68 +338,7 @@ function Reveal({ children, delay = 0, duration = 600, offset = 16, style = {} }
 }
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
-function Navbar({ scrolled, darkMode, onToggleDark }) {
-  const { user } = useAppContext();
-  return (
-    <nav style={{
-      position:"fixed",top:0,left:0,right:0,zIndex:100,
-      background:scrolled?"var(--nav-bg-scrolled,rgba(248,250,248,.97))":"var(--nav-bg,rgba(248,250,248,.88))",
-      backdropFilter:"blur(14px)",
-      borderBottom:"1px solid var(--border)",
-      transition:"background .3s"
-    }}>
-      <div className="mob-pad" style={{
-        maxWidth:1400, margin:"0 auto", padding:"1rem 2rem",
-        display:"flex", alignItems:"center", justifyContent:"space-between"
-      }}>
-        <Link to="/" style={{textDecoration:"none"}}>
-          <div style={{fontFamily:"Inter,sans-serif",fontSize:"1.2rem",fontWeight:700,letterSpacing:"-.3px",color:"var(--dark)"}}>
-            Se<span style={{color:"var(--g)"}}>lo</span>ra
-          </div>
-        </Link>
-        <div className="nav-links" style={{display:"flex",alignItems:"center"}}>
-          {[
-            { label: "Features", path: "/features" },
-            { label: "How It Works", path: "/how-it-works" },
-            { label: "Pricing", path: "/pricing" }
-          ].map(item => (
-            <Link key={item.label} to={item.path} style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none",marginLeft:"2rem"}}>{item.label}</Link>
-          ))}
-          <Link to="/demo" style={{fontSize:".82rem",fontWeight:500,color:"var(--g)",textDecoration:"none",marginLeft:"2rem"}}>Book a Demo</Link>
-        </div>
-        <div style={{display:"flex",gap:".7rem",alignItems:"center"}}>
-          <button className="cn-theme-toggle" onClick={onToggleDark} title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-            style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:".25rem",borderRadius:6}}>
-            {darkMode ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-              </svg>
-            )}
-          </button>
-          {user ? (
-            <Link to="/dashboard" style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
-              Dashboard
-            </Link>
-          ) : (
-            <>
-              <Link to="/login" style={{fontSize:".82rem",fontWeight:500,color:"var(--muted)",textDecoration:"none"}}>Sign In</Link>
-              <Link to="/signup" style={{background:"var(--g)",color:"#fff",padding:".5rem 1.3rem",borderRadius:7,fontSize:".82rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
-                Get Started<span className="nav-btn-text-long"> Free</span>
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
-    </nav>
-  );
-}
+
 
 // ─── Three-stage AI Card (Hero right column) ──────────────────────────────────
 const CHECKLIST = ["Material & Fabric", "Style & Silhouette", "Fit & Sizing", "Occasion & Styling", "SEO Keywords"];
@@ -513,7 +519,7 @@ function Hero({ darkMode }) {
             AI Growth Agent for Fashion
           </div>
           {/* Headline */}
-          <h1 className="au1" style={{fontFamily:"Cormorant Garamond,serif",fontSize:"clamp(2rem,5vw,3.5rem)",fontWeight:500,lineHeight:1.1,letterSpacing:"-.5px",maxWidth:560,marginBottom:"1.1rem",color:"var(--dark)"}}>
+          <h1 className="au1" style={{fontFamily:"Cormorant Garamond,serif",fontSize:"clamp(1.6rem,5vw,3.5rem)",fontWeight:500,lineHeight:1.1,letterSpacing:"-.5px",maxWidth:560,marginBottom:"1.1rem",color:"var(--dark)"}}>
             Your Fashion Store Grows<br/><em style={{fontStyle:"italic",color:"var(--g)"}}>While You Sleep</em>
           </h1>
           {/* Sub */}
@@ -610,7 +616,7 @@ function Features() {
           {FEATURES.map((f, idx) => (
             <Reveal key={f.title} delay={idx * 70} style={{height:"100%"}}>
               <div className="feat-card" style={{height:"100%"}}>
-                <div style={{width:38,height:38,background:"var(--gpale,#EDF3EE)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",marginBottom:"1rem"}}>{f.icon}</div>
+                <div style={{width:38,height:38,background:"var(--gpale,#EDF3EE)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:"1rem"}}>{iconMap[f.icon]}</div>
                 <h3 style={{fontSize:".9rem",fontWeight:600,marginBottom:".4rem",color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{f.title}</h3>
                 <p style={{fontSize:".79rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{f.desc}</p>
               </div>
@@ -1101,7 +1107,7 @@ function ConnectSection() {
           <span style={{ fontSize: ".78rem", fontWeight: 700, color: "var(--g)", textTransform: "uppercase", letterSpacing: ".1em", display: "block", fontFamily: "Inter,sans-serif", marginBottom: "0.4rem" }}>
             SETUP & INTEGRATIONS
           </span>
-          <h2 style={{ fontFamily: "Fraunces,serif", fontSize: "2.1rem", fontWeight: 500, color: "var(--dark)", lineHeight: 1.2, letterSpacing: "-.3px" }}>
+          <h2 style={{ fontFamily: "Fraunces,serif", fontSize: "clamp(1.4rem, 4vw, 2.1rem)", fontWeight: 500, color: "var(--dark)", lineHeight: 1.2, letterSpacing: "-.3px" }}>
             Trusted by Fashion Sellers Worldwide
           </h2>
         </div>
@@ -1243,7 +1249,7 @@ function CTA() {
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 70% 60% at 50% 50%,rgba(90,138,103,.12),transparent)",pointerEvents:"none"}}/>
       <div style={{maxWidth:1400,margin:"0 auto",padding:"3.5rem 2rem",position:"relative",textAlign:"center"}}>
         <Tag center style={{color:"#86EFAC"}}>Start Growing Today</Tag>
-        <h2 style={{fontFamily:"Fraunces,serif",fontSize:"clamp(2rem,4vw,3rem)",fontWeight:500,color:"#fff",margin:".5rem 0 1rem",lineHeight:1.15,letterSpacing:"-.3px"}}>
+        <h2 style={{fontFamily:"Fraunces,serif",fontSize:"clamp(1.6rem,4vw,3rem)",fontWeight:500,color:"#fff",margin:".5rem 0 1rem",lineHeight:1.15,letterSpacing:"-.3px"}}>
           Every night, Selora works.<br/>
           <em style={{color:"#86EFAC",fontStyle:"italic"}}>Every morning, your collection grows.</em>
         </h2>
@@ -1407,7 +1413,7 @@ export default function Selora() {
   return (
     <div className="landing-page">
       <GlobalStyles/>
-      <Navbar scrolled={scrolled} darkMode={darkMode} onToggleDark={toggleTheme}/>
+      <Navbar />
       <Hero darkMode={darkMode}/>
       <ConnectSection/>
       <Features/>
