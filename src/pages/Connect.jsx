@@ -147,7 +147,7 @@ function Check() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Connect() {
-  const { user, activeStore } = useAppContext()
+  const { user, activeStore, openAuthModal } = useAppContext()
   const [demoStoreId, setDemoStoreId] = useState(null)
   const [scrolled, setScrolled] = useState(false)
   const navigate              = useNavigate()
@@ -281,10 +281,10 @@ export default function Connect() {
             </Link>
           ) : (
             <>
-              <Link to="/login" className="cn-nav-link" style={{ fontSize:".82rem", fontWeight:500, textDecoration:"none", transition:'color 0.3s' }}>Sign In</Link>
-              <Link to="/signup" className="cn-shopify-btn" style={{ padding:".5rem 1.3rem", borderRadius:7, fontSize:".82rem", fontWeight:600, textDecoration:"none", fontFamily:"Inter,sans-serif", display:'inline-flex', alignItems:'center' }}>
+              <button onClick={() => openAuthModal('login')} className="cn-nav-link" style={{ fontSize:".82rem", fontWeight:500, background:'none', border:'none', cursor:'pointer', fontFamily:'Inter,sans-serif', transition:'color 0.3s' }}>Sign In</button>
+              <button onClick={() => openAuthModal('signup')} className="cn-shopify-btn" style={{ padding:".5rem 1.3rem", borderRadius:7, fontSize:".82rem", fontWeight:600, border:'none', cursor:'pointer', fontFamily:"Inter,sans-serif", display:'inline-flex', alignItems:'center' }}>
                 Get Started Free
-              </Link>
+              </button>
             </>
           )}
         </div>

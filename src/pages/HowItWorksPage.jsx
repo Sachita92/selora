@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAppContext } from '../lib/AppContext'
 import { useDarkMode } from '../hooks/useDarkMode'
 import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
 
 // ─── Constants & Styles ──────────────────────────────────────────────────────
 const c = {
@@ -1574,18 +1575,7 @@ export default function HowItWorksPage() {
         </div>
       </div>
 
-      {/* FOOTER */}
-      <footer style={{borderTop:`1px solid ${c.border}`,padding:'2.5rem 4rem',display:'flex',justifyContent:'space-between',alignItems:'center',background:c.card,flexWrap:'wrap',gap:'1rem'}}>
-        <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'.95rem',fontWeight:700,color:c.dark,textDecoration:'none'}}>
-          Se<span style={{color:c.g}}>lo</span>ra
-        </Link>
-        <div>
-          {[{l:"Privacy Policy",h:"/privacy"},{l:"Terms of Service",h:"/terms"},{l:"Support",h:"/support"},{l:"Docs",h:"#"},{l:"Contact",h:"/support"}].map(item=>(
-            <Link key={item.l} to={item.h} style={{fontSize:'.74rem',color:c.muted,textDecoration:'none',marginLeft:'1.8rem'}}>{item.l}</Link>
-          ))}
-        </div>
-        <div style={{fontSize:'.7rem',color:'#c0c8c1'}}>© 2025 Selora. All rights reserved.</div>
-      </footer>
+      <Footer />
     </div>
   )
 }

@@ -1,10 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { ChatProvider } from './lib/ChatContext'
 import { AppProvider, useAppContext } from './lib/AppContext'
 import ChatWidget from './components/ChatWidget'
 import SidebarLayout from './components/SidebarLayout'
+import AuthModal from './components/AuthModal'
 
 import Selora        from './Selora'
 import Login         from './pages/Login'
@@ -26,11 +27,24 @@ import Storefront     from './pages/Storefront'
 
 // ─── Protected route wrapper ──────────────────────────────────────────────────
 function ProtectedRoute({ children }) {
-  const { user, loading } = useAppContext()
+  const { user, loading, openAuthModal } = useAppContext()
 
-  if (loading) return null // still loading
-  if (!user) return <Navigate to="/login" replace />
+  useEffect(() => {
+    if (!loading && !user) {
+      openAuthModal('login')
+    }
+  }, [loading, user, openAuthModal])
+
+  if (loading) return null
+  if (!user) return <Navigate to="/" replace />
   return children
+}
+
+// ─── Auth shim: redirect old bookmarked /login and /signup to / with modal ───
+function AuthShim({ mode }) {
+  const { openAuthModal } = useAppContext()
+  useEffect(() => { openAuthModal(mode) }, [mode, openAuthModal])
+  return <Navigate to="/" replace />
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────
@@ -42,8 +56,8 @@ export default function App() {
           <Routes>
             {/* Public */}
             <Route path="/"        element={<Selora />} />
-            <Route path="/login"   element={<Login />} />
-            <Route path="/signup"  element={<Signup />} />
+            <Route path="/login"   element={<AuthShim mode="login" />} />
+            <Route path="/signup"  element={<AuthShim mode="signup" />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms"   element={<Terms />} />
             <Route path="/support" element={<Support />} />
@@ -68,6 +82,7 @@ export default function App() {
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <AuthModal />
           <GlobalChatWidget />
         </BrowserRouter>
       </ChatProvider>

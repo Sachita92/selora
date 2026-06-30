@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from './supabase'
 
 const AppContext = createContext(null)
@@ -9,6 +9,9 @@ export function AppProvider({ children }) {
   const [stores, setStores] = useState([])
   const [activeStore, setActiveStore] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [authModal, setAuthModal] = useState({ open: false, mode: 'login', plan: null })
+  const openAuthModal = useCallback((mode = 'login', plan = null) => setAuthModal({ open: true, mode, plan }), [])
+  const closeAuthModal = useCallback(() => setAuthModal({ open: false, mode: 'login', plan: null }), [])
   const [products, setProducts] = useState([])
   const [fetchingProducts, setFetchingProducts] = useState(false)
   const [productsStats, setProductsStats] = useState({ revenue: 0, orders: 0 })
@@ -125,7 +128,8 @@ export function AppProvider({ children }) {
       products, setProducts,
       fetchingProducts,
       productsStats, setProductsStats,
-      fetchProducts
+      fetchProducts,
+      authModal, openAuthModal, closeAuthModal
     }}>
       {children}
     </AppContext.Provider>

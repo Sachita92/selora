@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useDarkMode } from '../hooks/useDarkMode'
+import Footer from '../components/Footer'
 
 export default function Terms() {
     const [darkMode, toggleTheme] = useDarkMode()
@@ -173,23 +174,7 @@ export default function Terms() {
                 </div>
             </div>
 
-            {/* FOOTER */}
-            <footer style={{ borderTop: "1px solid var(--border)", padding: "1.8rem 4rem", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--card-bg)", flexWrap: "wrap", gap: "1rem" }}>
-                <Link to="/" style={{ textDecoration: 'none' }}>
-                    <div style={{ fontSize: ".95rem", fontWeight: 700, color: "var(--dark)" }}>Se<span style={{ color: "var(--g)" }}>lo</span>ra</div>
-                </Link>
-                <div style={{ display: "flex", gap: "1.8rem", flexWrap: "wrap" }}>
-                    {[
-                        { label: "Privacy Policy", href: "/privacy" },
-                        { label: "Terms of Service", href: "/terms" },
-                        { label: "Support", href: "/support" },
-                        { label: "Contact", href: "/support" },
-                    ].map(l => (
-                        <Link key={l.label} to={l.href} style={{ fontSize: ".74rem", color: "var(--text-muted)", textDecoration: "none", marginLeft: "1.8rem" }}>{l.label}</Link>
-                    ))}
-                </div>
-                <div style={{ fontSize: ".7rem", color: "#c0c8c1" }}>© 2025 Selora. All rights reserved.</div>
-            </footer>
+            <Footer />
 
         </div>
     );

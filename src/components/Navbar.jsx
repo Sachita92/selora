@@ -4,7 +4,7 @@ import { useAppContext } from '../lib/AppContext'
 import { useDarkMode } from '../hooks/useDarkMode'
 
 export default function Navbar() {
-  const { user } = useAppContext()
+  const { user, openAuthModal } = useAppContext()
   const [darkMode, toggleTheme] = useDarkMode()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -49,9 +49,9 @@ export default function Navbar() {
       <style>{`
         .site-nav-container {
           width: 100%;
-          max-width: 1280px;
+          max-width: 1400px;
           margin: 0 auto;
-          padding: 1rem 1.5rem;
+          padding: 1rem 2rem;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -219,15 +219,15 @@ export default function Navbar() {
               </Link>
             ) : (
               <>
-                <Link
-                  to="/login"
+                <button
+                  onClick={() => openAuthModal('login')}
                   className="nav-btn-desktop site-nav-link"
-                  style={{ fontSize: '.82rem', fontWeight: 500, alignSelf: 'center', padding: 0 }}
+                  style={{ fontSize: '.82rem', fontWeight: 500, alignSelf: 'center', padding: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontFamily: 'Inter, sans-serif' }}
                 >
                   Sign In
-                </Link>
-                <Link
-                  to="/signup"
+                </button>
+                <button
+                  onClick={() => openAuthModal('signup')}
                   className="nav-btn-desktop"
                   style={{
                     background: 'var(--g)',
@@ -236,12 +236,14 @@ export default function Navbar() {
                     borderRadius: 7,
                     fontSize: '.82rem',
                     fontWeight: 600,
-                    textDecoration: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
                     transition: 'opacity 0.2s'
                   }}
                 >
                   Get Started Free
-                </Link>
+                </button>
               </>
             )}
           </div>
@@ -303,21 +305,24 @@ export default function Navbar() {
             </Link>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-              <Link
-                to="/login"
+              <button
+                onClick={() => { openAuthModal('login'); setIsMenuOpen(false) }}
                 style={{
                   fontSize: '.85rem',
                   fontWeight: 500,
                   color: 'var(--muted)',
-                  textDecoration: 'none',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
                   textAlign: 'center',
-                  padding: '0.4rem 0'
+                  padding: '0.4rem 0',
+                  fontFamily: 'Inter, sans-serif'
                 }}
               >
                 Sign In
-              </Link>
-              <Link
-                to="/signup"
+              </button>
+              <button
+                onClick={() => { openAuthModal('signup'); setIsMenuOpen(false) }}
                 style={{
                   background: 'var(--g)',
                   color: '#fff',
@@ -325,12 +330,14 @@ export default function Navbar() {
                   borderRadius: 7,
                   fontSize: '.85rem',
                   fontWeight: 600,
-                  textDecoration: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'Inter, sans-serif',
                   textAlign: 'center'
                 }}
               >
                 Get Started Free
-              </Link>
+              </button>
             </div>
           )}
         </div>

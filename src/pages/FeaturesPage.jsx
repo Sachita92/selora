@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { useDarkMode } from '../hooks/useDarkMode'
 import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
 
 // ─── SVG Icons ───────────────────────────────────────────────────────────────
 function TagIcon({ size = 20, color = 'currentColor' }) {
@@ -129,7 +130,7 @@ const FEATURES = [
 
 
 export default function FeaturesPage() {
-  const { user } = useAppContext()
+  const { user, openAuthModal } = useAppContext()
   const scrollTo = (title) => {
     const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const el = document.getElementById(id);
@@ -302,9 +303,10 @@ export default function FeaturesPage() {
               14-day free trial — no credit card needed.
             </p>
             <div style={{display:'flex',gap:'1rem',justifyContent:'center',flexWrap:'wrap'}}>
-              <Link to={user ? "/dashboard" : "/signup"} style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
-                {user ? "Go to Dashboard" : "Get Started Free"} →
-              </Link>
+              {user
+                ? <Link to="/dashboard" style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>Go to Dashboard →</Link>
+                : <button onClick={() => openAuthModal('signup')} style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,border:'none',cursor:'pointer',fontFamily:'Inter,sans-serif'}}>Get Started Free →</button>
+              }
               <Link to="/demo" style={{background:'transparent',color:'rgba(255,255,255,.6)',border:'1px solid rgba(255,255,255,.18)',padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:500,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
                 Book a Demo
               </Link>
@@ -312,18 +314,7 @@ export default function FeaturesPage() {
           </div>
         </div>
 
-        {/* Footer */}
-        <footer style={{borderTop:`1px solid ${c.border}`,padding:'2rem 4rem',display:'flex',justifyContent:'space-between',alignItems:'center',background:c.card,flexWrap:'wrap',gap:'1rem'}}>
-          <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'.95rem',fontWeight:700,color:c.dark,textDecoration:'none'}}>
-            Se<span style={{color:c.g}}>lo</span>ra
-          </Link>
-          <div>
-            {[{l:"Privacy Policy",h:"/privacy"},{l:"Terms of Service",h:"/terms"},{l:"Support",h:"/support"},{l:"Docs",h:"#"},{l:"Contact",h:"/support"}].map(item=>(
-              <Link key={item.l} to={item.h} style={{fontSize:'.74rem',color:c.muted,textDecoration:'none',marginLeft:'1.8rem'}}>{item.l}</Link>
-            ))}
-          </div>
-          <div style={{fontSize:'.7rem',color:'#c0c8c1'}}>© 2025 Selora. All rights reserved.</div>
-        </footer>
+        <Footer />
       </div>
   )
 }

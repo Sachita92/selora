@@ -1,5 +1,6 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { useAppContext } from '../lib/AppContext'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -76,6 +77,7 @@ const S = {
 
 export default function Storefront() {
   const { handle } = useParams()
+  const { openAuthModal } = useAppContext()
   const [store, setStore]     = useState(null)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -158,7 +160,7 @@ export default function Storefront() {
           <a href="/" style={S.brand}>Se<span style={{ color:'#5A8A67' }}>lo</span>ra</a>
           <div style={S.navRight}>
             <span style={S.badge}>✦ Selora Store</span>
-            <a href="/login" style={{ fontSize:'.82rem', color:'#7B907D', textDecoration:'none', fontWeight:500 }}>Sign in</a>
+            <a href="/login" onClick={e => { e.preventDefault(); openAuthModal('login') }} style={{ fontSize:'.82rem', color:'#7B907D', textDecoration:'none', fontWeight:500, cursor:'pointer' }}>Sign in</a>
           </div>
         </div>
       </nav>
@@ -237,7 +239,7 @@ export default function Storefront() {
       <footer style={S.footer}>
         <p style={S.footerText}>
           Powered by <a href="/" style={{ color:'#5A8A67', textDecoration:'none', fontWeight:600 }}>Selora</a>
-          {' '}· <a href="/login" style={{ color:'#7B907D', textDecoration:'none' }}>Start your store free</a>
+          {' '}· <a href="/login" onClick={e => { e.preventDefault(); openAuthModal('signup') }} style={{ color:'#7B907D', textDecoration:'none', cursor:'pointer' }}>Start your store free</a>
         </p>
       </footer>
 

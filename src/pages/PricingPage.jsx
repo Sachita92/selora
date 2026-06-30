@@ -5,6 +5,7 @@ import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { useDarkMode } from '../hooks/useDarkMode'
 import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
@@ -120,7 +121,7 @@ const FAQS = [
 
 export default function PricingPage() {
   const navigate = useNavigate()
-  const { user } = useAppContext()
+  const { user, openAuthModal } = useAppContext()
   const [billingPeriod, setBillingPeriod] = useState('monthly') // 'monthly' or 'annual'
   const [activeFaq, setActiveFaq] = useState(null)
   const [checkoutLoading, setCheckoutLoading] = useState(null)
@@ -137,7 +138,7 @@ export default function PricingPage() {
       if (user) {
         navigate('/dashboard')
       } else {
-        navigate('/signup')
+        openAuthModal('signup')
       }
       return
     }
@@ -147,7 +148,7 @@ export default function PricingPage() {
     if (user) {
       setCheckoutPlan({ slug: planSlug, period: activePeriod })
     } else {
-      navigate(`/signup?plan=${planSlug}${activePeriod === 'annual' ? '&period=annual' : ''}`)
+      openAuthModal('signup', planSlug)
     }
   }
 
@@ -518,9 +519,10 @@ export default function PricingPage() {
               14-day free trial on paid plans — cancel anytime.
             </p>
             <div style={{display:'flex',gap:'1rem',justifyContent:'center',flexWrap:'wrap'}}>
-              <Link to={user ? "/dashboard" : "/signup"} style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif',boxShadow:'0 4px 20px rgba(134,239,172,.2)'}}>
-                {user ? "Go to Dashboard" : "Get Started Free"} →
-              </Link>
+              {user
+                ? <Link to="/dashboard" style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif',boxShadow:'0 4px 20px rgba(134,239,172,.2)'}}>Go to Dashboard →</Link>
+                : <button onClick={() => openAuthModal('signup')} style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,border:'none',cursor:'pointer',fontFamily:'Inter,sans-serif',boxShadow:'0 4px 20px rgba(134,239,172,.2)'}}>Get Started Free →</button>
+              }
               <Link to="/demo" style={{background:'transparent',color:'rgba(255,255,255,.6)',border:'1px solid rgba(255,255,255,.18)',padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:500,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
                 Book a Demo
               </Link>
@@ -528,18 +530,7 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Footer */}
-        <footer style={{borderTop:`1px solid ${c.border}`,padding:'2rem 4rem',display:'flex',justifyContent:'space-between',alignItems:'center',background:c.card,flexWrap:'wrap',gap:'1rem'}}>
-          <Link to="/" style={{fontFamily:'Inter,sans-serif',fontSize:'.95rem',fontWeight:700,color:c.dark,textDecoration:'none'}}>
-            Se<span style={{color:c.g}}>lo</span>ra
-          </Link>
-          <div>
-            {[{l:"Privacy Policy",h:"/privacy"},{l:"Terms of Service",h:"/terms"},{l:"Support",h:"/support"},{l:"Docs",h:"#"},{l:"Contact",h:"/support"}].map(item=>(
-              <Link key={item.l} to={item.h} style={{fontSize:'.74rem',color:c.muted,textDecoration:'none',marginLeft:'1.8rem'}}>{item.l}</Link>
-            ))}
-          </div>
-          <div style={{fontSize:'.7rem',color:'#c0c8c1'}}>© 2025 Selora. All rights reserved.</div>
-        </footer>
+        <Footer />
         {checkoutPlan && (
           <CheckoutModal 
             planSlug={checkoutPlan.slug} 

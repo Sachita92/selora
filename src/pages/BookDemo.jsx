@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useDarkMode } from '../hooks/useDarkMode'
 import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
 
 // ─── Shared Styles & Constants ───────────────────────────────────────────────
 const c = {
@@ -751,28 +752,7 @@ export default function BookDemo() {
       </div>
       )}
 
-      {/* FOOTER */}
-      <footer style={{ borderTop: `1px solid ${c.border}`, padding: '2rem 4rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: c.card }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <Link to="/" style={{ textDecoration: 'none' }}>
-            <div style={{ fontSize: '.95rem', fontWeight: 700, color: c.dark }}>Se<span style={{ color: c.green }}>lo</span>ra</div>
-          </Link>
-          <div style={{ display: 'flex', gap: '1.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            {[{ label: 'Privacy Policy', href: '/privacy' }, { label: 'Terms of Service', href: '/terms' }, { label: 'Support', href: '/support' }].map(l => (
-              <Link key={l.label} to={l.href} style={{ fontSize: '.74rem', color: c.muted, textDecoration: 'none' }}>{l.label}</Link>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderTop: `1px solid ${c.border}`, paddingTop: '1.2rem', fontSize: '.72rem', color: c.muted }}>
-          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-            <span>Questions? <a href="mailto:support@selora.co" style={{ color: 'var(--g)', textDecoration: 'none', fontWeight: 500 }}>support@selora.co</a></span>
-            <span>·</span>
-            <span>Average email response: <strong style={{ color: 'var(--dark)' }}>&lt;10 minutes</strong></span>
-          </div>
-          <div style={{ fontSize: '.7rem', color: '#c0c8c1' }}>© 2025 Selora. All rights reserved.</div>
-        </div>
-      </footer>
+      <Footer />
 
     </div>
   )
