@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAppContext } from '../lib/AppContext'
+import { useDarkMode } from '../hooks/useDarkMode'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -156,26 +157,16 @@ export default function Connect() {
   const [error, setError]     = useState('')
   const [email, setEmail]     = useState('')
   const [ready, setReady]     = useState(false)
-  const [darkMode, setDarkMode] = useState(() => {
-    const theme = localStorage.getItem('selora-theme')
-    return theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  })
+  const [darkMode, toggleTheme] = useDarkMode()
   const [snowflakeColor, setSnowflakeColor] = useState('#5A8A67')
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', darkMode)
     // Resolve snowflake color dynamically from CSS custom properties
     const color = getComputedStyle(document.documentElement).getPropertyValue('--snowflake-color').trim()
     if (color) {
       setSnowflakeColor(color)
     }
   }, [darkMode])
-
-  const toggleTheme = () => {
-    const nextMode = !darkMode
-    setDarkMode(nextMode)
-    localStorage.setItem('selora-theme', nextMode ? 'dark' : 'light')
-  }
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 20);

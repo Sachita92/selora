@@ -496,7 +496,7 @@ function Hero({ darkMode }) {
             width:"100%", height:"100%",
             objectFit:"cover", objectPosition: ex.bgPos,
             display:"block",
-            opacity: i === exampleIdx ? (darkMode ? 0.28 : 0.38) : 0,
+            opacity: i === exampleIdx ? "var(--hero-img-opacity)" : 0,
             transition:"opacity 0.45s ease",
             zIndex: 0,
           }}
@@ -884,7 +884,7 @@ function Testimonial({ darkMode }) {
 
   return (
     <div style={{
-      background: darkMode ? "#000" : "#fff",
+      background: "var(--testimonial-bg)",
       borderTop: "1px solid var(--border)",
       borderBottom: "1px solid var(--border)",
     }}>
@@ -903,7 +903,7 @@ function Testimonial({ darkMode }) {
             transition: "opacity 0.38s ease, transform 0.38s ease",
           }}
         >
-          <div style={{color: darkMode ? "#86EFAC" : "var(--g)", fontSize: ".85rem", marginBottom: ".9rem", letterSpacing: 3}}>★★★★★</div>
+          <div style={{color: "var(--testimonial-stars)", fontSize: ".85rem", marginBottom: ".9rem", letterSpacing: 3}}>★★★★★</div>
           <blockquote style={{
             fontFamily: "Fraunces,serif",
             fontSize: "clamp(1rem,1.8vw,1.4rem)",
@@ -938,12 +938,9 @@ function Testimonial({ darkMode }) {
               }}
             />
           ))}
-          {/* left-edge gradient blending into panel */}
           <div style={{
             position: "absolute", inset: 0,
-            background: darkMode
-              ? "linear-gradient(to right, rgba(0,0,0,0.6) 0%, transparent 28%)"
-              : "linear-gradient(to right, rgba(255,255,255,0.6) 0%, transparent 28%)",
+            background: "linear-gradient(to right, var(--testimonial-overlay) 0%, transparent 28%)",
             zIndex: 2, pointerEvents: "none"
           }}/>
         </div>

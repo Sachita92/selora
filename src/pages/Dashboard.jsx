@@ -23,12 +23,12 @@ const getOptimizedImageUrl = (url, width = 300) => {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const c = {
-  green: '#5F8D76', dark: '#1A271C', muted: '#7B907D',
-  border: '#E4EBE5', bg: '#F8FAF8', bg2: '#F1F5F1', card: '#fff',
+  green: 'var(--g)', dark: 'var(--text-primary)', muted: 'var(--text-muted)',
+  border: 'var(--border)', bg: 'var(--bg-0)', bg2: 'var(--bg-2)', card: 'var(--bg-1)',
 }
 
 const s = {
-  page:    { minHeight:'100vh', background:'radial-gradient(circle at top right, rgba(95, 141, 118, 0.04), transparent 45%), radial-gradient(circle at bottom left, rgba(95, 141, 118, 0.02), transparent 45%), #F8FAF8', fontFamily:'Inter, sans-serif' },
+  page:    { minHeight:'100vh', background:'radial-gradient(circle at top right, rgba(95, 141, 118, 0.04), transparent 45%), radial-gradient(circle at bottom left, rgba(95, 141, 118, 0.02), transparent 45%), var(--bg-0)', fontFamily:'Inter, sans-serif' },
   nav:     { background:c.card, borderBottom:`1px solid ${c.border}`, padding:'.9rem 2.5rem', display:'flex', alignItems:'center', justifyContent:'space-between' },
   logo:    { fontFamily:'Fraunces, serif', fontSize:'1.1rem', fontWeight:600, color:c.dark, textDecoration:'none' },
   navRight:{ display:'flex', alignItems:'center', gap:'1rem' },
@@ -48,11 +48,11 @@ const s = {
   dot:     { width:5, height:5, borderRadius:'50%', background:c.green, flexShrink:0 },
   time:    { color:c.muted, fontSize:'.68rem', marginLeft:'auto' },
   store:   { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1rem 1.2rem', background:c.card, borderRadius:10, border:`1px solid ${c.border}`, marginBottom:'.6rem', cursor:'pointer', transition:'all 0.2s' },
-  badge:   { fontSize:'.65rem', fontWeight:600, background:'#DCFCE7', color:'#166534', padding:'.2rem .6rem', borderRadius:999, textTransform:'uppercase', letterSpacing:'.06em' },
+  badge:   { fontSize:'.65rem', fontWeight:600, background:'var(--badge-success-bg)', color:'var(--badge-success-text)', padding:'.2rem .6rem', borderRadius:999, textTransform:'uppercase', letterSpacing:'.06em' },
   empty:   { textAlign:'center', padding:'3rem 1rem', color:c.muted, fontSize:'.88rem', fontWeight:300, lineHeight:1.7 },
   
   metricCard: {
-    background: '#FFFFFF',
+    background: 'var(--bg-1)',
     border: `1px solid ${c.border}`,
     borderRadius: 12,
     padding: '1.2rem',
@@ -80,7 +80,7 @@ const s = {
     fontWeight: 500,
   },
   actionItem: {
-    background: '#FFFFFF',
+    background: 'var(--bg-1)',
     border: `1px solid ${c.border}`,
     borderRadius: 8,
     padding: '1rem',
@@ -96,7 +96,7 @@ const s = {
   actionBadge: {
     fontSize: '.68rem',
     fontWeight: 600,
-    background: '#F1F4F2',
+    background: 'var(--bg-2)',
     color: c.green,
     padding: '.2rem .5rem',
     borderRadius: 4,
@@ -358,13 +358,13 @@ export default function Dashboard() {
               {fetchingProducts ? (
                 <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
                   {[1, 2, 3, 4].map(n => (
-                    <div key={n} style={{ border: `1px solid ${c.border}`, borderRadius: 10, background: '#fff', width: 'calc(25% - 0.75rem)', flexShrink: 0, height: 210, display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ aspectRatio: '1.15', width: '100%', background: '#F1F4F2' }} />
+                    <div key={n} style={{ border: `1px solid ${c.border}`, borderRadius: 10, background: 'var(--bg-1)', width: 'calc(25% - 0.75rem)', flexShrink: 0, height: 210, display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ aspectRatio: '1.15', width: '100%', background: 'var(--bg-2)' }} />
                       <div style={{ padding: '.65rem .8rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-                        <div style={{ height: 12, background: '#F1F4F2', borderRadius: 4, width: '80%' }} />
+                        <div style={{ height: 12, background: 'var(--bg-2)', borderRadius: 4, width: '80%' }} />
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'auto' }}>
-                          <div style={{ height: 12, background: '#F1F4F2', borderRadius: 4, width: '40%' }} />
-                          <div style={{ height: 12, background: '#F1F4F2', borderRadius: 4, width: '30%' }} />
+                          <div style={{ height: 12, background: 'var(--bg-2)', borderRadius: 4, width: '40%' }} />
+                          <div style={{ height: 12, background: 'var(--bg-2)', borderRadius: 4, width: '30%' }} />
                         </div>
                       </div>
                     </div>
@@ -385,10 +385,10 @@ export default function Dashboard() {
                         key={prod.id} 
                         onClick={() => navigate(`/products/${prod.id}`)}
                         style={{ 
-                          border: `1px solid ${c.border}`, 
+                          border: `1px solid var(--border)`, 
                           borderRadius: 10, 
                           overflow: 'hidden', 
-                          background: '#fff', 
+                          background: 'var(--bg-1)', 
                           cursor: 'pointer',
                           display: 'flex',
                           flexDirection: 'column',
@@ -397,7 +397,7 @@ export default function Dashboard() {
                         }}
                         className="selora-card"
                       >
-                        <div style={{ aspectRatio: '1.15', width: '100%', overflow: 'hidden', background: '#F1F4F2', position: 'relative' }}>
+                        <div style={{ aspectRatio: '1.15', width: '100%', overflow: 'hidden', background: 'var(--bg-2)', position: 'relative' }}>
                           {prod.image_url ? (
                             <img 
                               src={getOptimizedImageUrl(prod.image_url, 300)} 
@@ -418,8 +418,8 @@ export default function Dashboard() {
                               left: 6, 
                               fontSize: '.55rem', 
                               fontWeight: 700, 
-                              background: prod.inventory === 0 ? '#FEF2F2' : '#FFFBEB', 
-                              color: prod.inventory === 0 ? '#DC2626' : '#D97706', 
+                              background: prod.inventory === 0 ? 'var(--inventory-empty-bg)' : 'var(--inventory-low-bg)', 
+                              color: prod.inventory === 0 ? 'var(--inventory-empty-text)' : 'var(--inventory-low-text)', 
                               padding: '.12rem .35rem', 
                               borderRadius: 4,
                               textTransform: 'uppercase',
@@ -455,7 +455,7 @@ export default function Dashboard() {
                 <div style={{ ...s.metricCard, padding: '1rem' }} className="selora-card">
                   <div style={{ ...s.metricValue, fontSize: '1.4rem' }}>
                     {fetchingReports ? (
-                      <div style={{ height: 24, background: '#F1F4F2', borderRadius: 4, width: 40, margin: '.3rem 0' }} />
+                      <div style={{ height: 24, background: 'var(--bg-2)', borderRadius: 4, width: 40, margin: '.3rem 0' }} />
                     ) : (
                       latestReport?.actions_taken?.length || 0
                     )}
@@ -465,7 +465,7 @@ export default function Dashboard() {
                 <div style={{ ...s.metricCard, padding: '1rem' }} className="selora-card">
                   <div style={{ ...s.metricValue, fontSize: '1.4rem' }}>
                     {fetchingReports ? (
-                      <div style={{ height: 24, background: '#F1F4F2', borderRadius: 4, width: 40, margin: '.3rem 0' }} />
+                      <div style={{ height: 24, background: 'var(--bg-2)', borderRadius: 4, width: 40, margin: '.3rem 0' }} />
                     ) : (
                       latestReport?.wins?.length || 0
                     )}
@@ -476,7 +476,7 @@ export default function Dashboard() {
                 <div style={{ ...s.metricCard, padding: '1rem' }} className="selora-card">
                   <div style={{ ...s.metricValue, fontSize: '1.4rem' }}>
                     {fetchingReports ? (
-                      <div style={{ height: 24, background: '#F1F4F2', borderRadius: 4, width: 40, margin: '.3rem 0' }} />
+                      <div style={{ height: 24, background: 'var(--bg-2)', borderRadius: 4, width: 40, margin: '.3rem 0' }} />
                     ) : (
                       latestReport?.concerns?.length || 0
                     )}
@@ -497,7 +497,7 @@ export default function Dashboard() {
                     {[1, 2, 3, 4].map(n => (
                       <div key={n} style={{ ...s.logItem, margin: 0, padding: '.5rem .6rem', height: 35 }}>
                         <div style={s.dot} />
-                        <div style={{ height: 12, background: '#F1F4F2', borderRadius: 4, width: '60%' }} />
+                        <div style={{ height: 12, background: 'var(--bg-2)', borderRadius: 4, width: '60%' }} />
                       </div>
                     ))}
                   </div>
@@ -525,9 +525,9 @@ export default function Dashboard() {
                 <div style={{ ...s.cardTit, marginBottom: '1rem' }}>Latest Growth Report</div>
                 {fetchingReports ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.8rem' }}>
-                    <div style={{ height: 14, background: '#F1F4F2', borderRadius: 4, width: '100%' }} />
-                    <div style={{ height: 14, background: '#F1F4F2', borderRadius: 4, width: '95%' }} />
-                    <div style={{ height: 14, background: '#F1F4F2', borderRadius: 4, width: '70%' }} />
+                    <div style={{ height: 14, background: 'var(--bg-2)', borderRadius: 4, width: '100%' }} />
+                    <div style={{ height: 14, background: 'var(--bg-2)', borderRadius: 4, width: '95%' }} />
+                    <div style={{ height: 14, background: 'var(--bg-2)', borderRadius: 4, width: '70%' }} />
                   </div>
                 ) : !latestReport ? (
                   <p style={{ fontSize: '.82rem', color: c.muted, fontWeight: 300, lineHeight: 1.7 }}>
@@ -554,10 +554,10 @@ export default function Dashboard() {
 
                     {latestReport.concerns?.length > 0 && (
                       <div>
-                        <h4 style={{ fontSize: '.68rem', fontWeight: 700, color: '#D97706', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.4rem' }}>Concerns</h4>
+                        <h4 style={{ fontSize: '.68rem', fontWeight: 700, color: 'var(--inventory-low-text)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.4rem' }}>Concerns</h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
                           {latestReport.concerns.map((con, i) => (
-                            <div key={i} style={{ ...s.logItem, borderLeft: '2px solid #D97706', borderRadius: '0 6px 6px 0', margin: 0, padding: '.45rem .6rem' }}>
+                            <div key={i} style={{ ...s.logItem, borderLeft: '2px solid var(--inventory-low-text)', borderRadius: '0 6px 6px 0', margin: 0, padding: '.45rem .6rem' }}>
                               <span style={{ color: c.dark, fontSize: '.78rem' }}>{con}</span>
                             </div>
                           ))}

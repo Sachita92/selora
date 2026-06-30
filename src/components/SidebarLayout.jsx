@@ -3,10 +3,11 @@ import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { useChat } from '../lib/ChatContext'
 import { supabase } from '../lib/supabase'
+import { useDarkMode } from '../hooks/useDarkMode'
 
 const c = {
-  green: '#5F8D76', dark: '#1A271C', muted: '#7B907D',
-  border: '#E4EBE5', bg: '#F8FAF8', bg2: '#F1F5F1', card: '#fff',
+  green: 'var(--g)', dark: 'var(--text-primary)', muted: 'var(--text-muted)',
+  border: 'var(--border)', bg: 'var(--bg-0)', bg2: 'var(--bg-2)', card: 'var(--bg-1)',
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -16,6 +17,7 @@ export default function SidebarLayout() {
   const { sessionId, sessions, selectSession, setOpen, startNewSession } = useChat()
   const navigate = useNavigate()
   const location = useLocation()
+  const [darkMode, toggleTheme] = useDarkMode()
   
   const [showProfile, setShowProfile] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768)
@@ -79,20 +81,30 @@ export default function SidebarLayout() {
         />
       )}
 
+      {/* ─── SIDEBAR CONTAINER SPACER (Desktop only) ────────────────────────── */}
+      {!isMobile && sidebarOpen && (
+        <div style={{ width: 76, flexShrink: 0, height: '100vh' }} />
+      )}
+
       {/* ─── SIDEBAR ───────────────────────────────────────────────────────── */}
-      <div style={{
-        width: isMobile ? 280 : (isCollapsed ? 76 : 280),
-        background: c.card,
-        borderRight: `1px solid ${c.border}`,
-        display: sidebarOpen ? 'flex' : 'none',
-        flexDirection: 'column',
-        flexShrink: 0,
-        position: isMobile ? 'fixed' : 'relative',
-        height: '100vh',
-        zIndex: 50,
-        top: 0, left: 0,
-        transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-      }}>
+      <div 
+        onMouseEnter={() => { if (!isMobile) setIsCollapsed(false) }}
+        onMouseLeave={() => { if (!isMobile) setIsCollapsed(true) }}
+        style={{
+          width: isMobile ? 280 : (isCollapsed ? 76 : 280),
+          background: c.card,
+          borderRight: `1px solid ${c.border}`,
+          display: sidebarOpen ? 'flex' : 'none',
+          flexDirection: 'column',
+          flexShrink: 0,
+          position: isMobile ? 'fixed' : 'absolute',
+          height: '100vh',
+          zIndex: 51,
+          top: 0, left: 0,
+          transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          boxShadow: (!isMobile && !isCollapsed) ? '6px 0 24px rgba(0,0,0,0.12)' : 'none',
+        }}
+      >
         {/* LOGO & TOGGLE */}
         <div style={{ 
           padding: '1.2rem 1.5rem', 
@@ -186,8 +198,8 @@ export default function SidebarLayout() {
                   padding: isCollapsed && !isMobile ? '.75rem' : '.65rem 1rem',
                   borderRadius: 10, 
                   textDecoration: 'none',
-                  background: active ? '#F1F4F2' : 'transparent',
-                  color: active ? '#1A271C' : c.muted,
+                  background: active ? 'var(--bg-2)' : 'transparent',
+                  color: active ? c.dark : c.muted,
                   fontWeight: active ? 600 : 500,
                   fontSize: '.88rem', 
                   transition: 'all 0.2s ease',
@@ -223,6 +235,61 @@ export default function SidebarLayout() {
               </Link>
             )
           })}
+
+          {/* Theme Toggler Link-styled Button */}
+          <button
+            onClick={toggleTheme}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isCollapsed && !isMobile ? 'center' : 'flex-start',
+              gap: isCollapsed && !isMobile ? '0' : '.75rem',
+              padding: isCollapsed && !isMobile ? '.75rem' : '.65rem 1rem',
+              borderRadius: 10,
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: c.muted,
+              fontWeight: 500,
+              fontSize: '.88rem',
+              transition: 'all 0.2s ease',
+              width: '100%',
+              fontFamily: 'Inter, sans-serif',
+              textAlign: 'left'
+            }}
+            title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = c.bg2
+              e.currentTarget.style.color = c.dark
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.color = c.muted
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {darkMode ? (
+                // Sun Icon
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5"></circle>
+                  <line x1="12" y1="1" x2="12" y2="3"></line>
+                  <line x1="12" y1="21" x2="12" y2="23"></line>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                  <line x1="1" y1="12" x2="3" y2="12"></line>
+                  <line x1="21" y1="12" x2="23" y2="12"></line>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+              ) : (
+                // Moon Icon
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+              )}
+            </span>
+            {(!isCollapsed || isMobile) && <span style={{ marginLeft: isCollapsed && !isMobile ? '0' : '.75rem' }}>{darkMode ? "Light Mode" : "Dark Mode"}</span>}
+          </button>
         </div>
 
         {/* CONNECTED STORES */}
@@ -242,7 +309,7 @@ export default function SidebarLayout() {
                     onClick={() => setActiveStore(store)}
                     style={{
                       padding: '.4rem .5rem',
-                      background: isActive ? '#F1F4F2' : 'transparent',
+                      background: isActive ? 'var(--bg-2)' : 'transparent',
                       border: `1px solid ${isActive ? c.border : 'transparent'}`,
                       borderRadius: 6,
                       cursor: 'pointer',
@@ -416,8 +483,8 @@ export default function SidebarLayout() {
               width: 32, 
               height: 32, 
               borderRadius: 8, 
-              background: user.subscription_plan && user.subscription_plan !== 'free' ? '#F3E8FF' : '#DCFCE7', 
-              color: user.subscription_plan && user.subscription_plan !== 'free' ? '#6B21A8' : '#166534', 
+              background: user.subscription_plan && user.subscription_plan !== 'free' ? 'var(--badge-upgrade-bg)' : 'var(--badge-success-bg)', 
+              color: user.subscription_plan && user.subscription_plan !== 'free' ? 'var(--badge-upgrade-text)' : 'var(--badge-success-text)', 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center', 
@@ -517,8 +584,8 @@ export default function SidebarLayout() {
                 right: isCollapsed && !isMobile ? 'auto' : '1rem',
                 width: isCollapsed && !isMobile ? '230px' : 'auto',
                 zIndex: 100,
-                background: '#fff', border: `1px solid ${c.border}`, borderRadius: 12, padding: '1rem',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.08)'
+                background: 'var(--bg-1)', border: `1px solid ${c.border}`, borderRadius: 12, padding: '1rem',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.15)'
               }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem', marginBottom: '1rem' }}>
                   <div>
@@ -557,7 +624,7 @@ export default function SidebarLayout() {
                     width: '100%',
                     padding: '.5rem',
                     border: `1px solid ${c.border}`,
-                    background: '#fff',
+                    background: 'var(--bg-1)',
                     borderRadius: 6,
                     fontSize: '.75rem',
                     color: c.dark,
@@ -572,13 +639,13 @@ export default function SidebarLayout() {
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = c.bg2;
                   }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#fff';
-                  }}
+                   onMouseLeave={(e) => {
+                     e.currentTarget.style.background = 'var(--bg-1)';
+                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06-.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                   </svg>
                   Account Settings
                 </Link>
