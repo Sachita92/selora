@@ -24,6 +24,7 @@ import HowItWorksPage from './pages/HowItWorksPage'
 import PricingPage    from './pages/PricingPage'
 import StoreBuilder   from './pages/StoreBuilder'
 import Storefront     from './pages/Storefront'
+import Reports        from './pages/Reports'
 
 // ─── Protected route wrapper ──────────────────────────────────────────────────
 function ProtectedRoute({ children }) {
@@ -76,6 +77,7 @@ export default function App() {
               <Route path="/products"      element={<Products />} />
               <Route path="/products/:id"  element={<ProductDetail />} />
               <Route path="/settings"      element={<Settings />} />
+              <Route path="/reports"       element={<Reports />} />
               <Route path="/store-builder" element={<StoreBuilder />} />
             </Route>
 
@@ -112,6 +114,10 @@ function GlobalChatWidget() {
 
   // Don't show on public customer-facing storefronts
   if (location.pathname.startsWith('/store/')) return null
+
+  // Don't show on authenticated dashboard routes — the right panel replaces it there
+  const dashboardPaths = ['/dashboard', '/products', '/settings', '/reports', '/store-builder']
+  if (dashboardPaths.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))) return null
 
   const storeId = activeStore?.id || demoStoreId
   if (!storeId) return null
