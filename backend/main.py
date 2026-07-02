@@ -22,6 +22,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "http://127.0.0.1:5173",
         "https://selora.fashion",
         "https://www.selora.fashion",
         os.getenv("SHOPIFY_APP_URL", ""),
@@ -149,6 +150,54 @@ def get_stores(email: str = Query(..., description="User email")):
     from database import get_or_create_user, get_stores_for_user
 
     user = get_or_create_user(email)
+
+    # Self-healing Stripe plan synchronization on dashboard store list retrieval
+    customer_id = user.get("stripe_customer_id")
+    if customer_id:
+        try:
+            subs = stripe.Subscription.list(customer=customer_id, status="active", limit=1)
+            active_subs = subs.data
+            
+            plan = "free"
+            status = "inactive"
+            sub_id = None
+            period_end = None
+            
+            if active_subs:
+                sub = active_subs[0]
+                sub_dict = sub.to_dict() if hasattr(sub, "to_dict") else dict(sub)
+                sub_id = sub_dict.get("id")
+                stripe_status = sub_dict.get("status")
+                status = "active" if stripe_status in ["active", "trialing"] else "inactive"
+                
+                items = sub_dict.get("items", {}).get("data", [])
+                if items:
+                    price_id = items[0].get("price", {}).get("id")
+                    for plan_key, pid in PLAN_PRICE_MAP.items():
+                        if pid == price_id:
+                            plan = plan_key.split("_")[0]
+                            break
+                    current_period_end_timestamp = items[0].get("current_period_end")
+                    from datetime import datetime, timezone
+                    if current_period_end_timestamp:
+                        period_end = datetime.fromtimestamp(current_period_end_timestamp, tz=timezone.utc).isoformat()
+            
+            # If the database is out of sync with actual Stripe subscription status, heal it
+            if user.get("subscription_plan") != plan or user.get("subscription_status") != status:
+                from database import update_user_subscription
+                update_user_subscription(
+                    user_id=user["id"],
+                    plan=plan,
+                    status=status,
+                    customer_id=customer_id,
+                    subscription_id=sub_id,
+                    period_end=period_end
+                )
+                # Re-retrieve database record to reflect healed state in the response
+                user = get_or_create_user(email)
+        except Exception as e:
+            print(f"⚠️ Error auto-syncing user subscription plan with Stripe: {e}")
+
     stores = get_stores_for_user(user["id"])
 
     # Don't expose access tokens in API response
@@ -324,6 +373,46 @@ def get_chat_sessions_endpoint(store_id: str):
     return {"sessions": sessions}
 
 
+class SessionMetadataRequest(BaseModel):
+    title: Optional[str] = None
+    pinned: Optional[bool] = None
+
+
+@app.put("/api/chat/{store_id}/sessions/{session_id}")
+def update_chat_session_endpoint(store_id: str, session_id: str, body: SessionMetadataRequest):
+    """Update metadata (title or pinned status) of a chat session."""
+    from database import get_store_by_id, update_chat_session_metadata
+    store = get_store_by_id(store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    try:
+        updated = update_chat_session_metadata(
+            store_id=store_id,
+            session_id=session_id,
+            title=body.title,
+            pinned=body.pinned
+        )
+        return {"success": True, "metadata": updated}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update session metadata: {str(e)}")
+
+
+@app.delete("/api/chat/{store_id}/sessions/{session_id}")
+def delete_chat_session_endpoint(store_id: str, session_id: str):
+    """Delete all messages associated with a chat session."""
+    from database import get_store_by_id, delete_chat_session
+    store = get_store_by_id(store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+        
+    try:
+        delete_chat_session(store_id, session_id)
+        return {"success": True, "message": "Session deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete session: {str(e)}")
+
+
 _guest_chat_ip_limits = {}
 
 @app.post("/api/chat/{store_id}")
@@ -351,7 +440,7 @@ def chat_with_agent(store_id: str, body: ChatRequest, request: Request):
         from database import db as _db
         demo_domain = os.getenv("DEMO_STORE_SHOPIFY_DOMAIN", "selora-test.myshopify.com")
         demo_res = _db().table("stores").select("id").eq("shop_url", demo_domain).eq("is_active", True).execute()
-        if not demo_res.data or demo_res.data[0]["id"] != store_id:
+        if not demo_res.data or store_id not in [d["id"] for d in demo_res.data]:
             raise HTTPException(status_code=503, detail="Demo store unavailable")
 
         global _guest_chat_ip_limits
@@ -467,7 +556,14 @@ When calling the `add_product` tool, if you need to set an image URL, ALWAYS cho
 - Dress / Skirt: https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80
 - Suit / Blazer / Formal Wear: https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=800&q=80
 
-When the user asks you to do something (e.g. "lower the price of X", "rewrite the description for Y", "add a new product Z", "delete/remove product W"), use your tools to execute it. If you're unsure about something, ask for clarification. Always explain what you're doing before you do it."""
+When the user asks you to do something (e.g. "lower the price of X", "rewrite the description for Y", "add a new product Z", "delete/remove product W"), use your tools to execute it. If you're unsure about something, ask for clarification. Always explain what you're doing before you do it.
+
+CRITICAL TOOL USAGE RULES:
+- When calling ANY tool that requires a product_id (reprice_product, optimize_listing, restock_alert, delete_product), you MUST use the exact numerical ID shown in parentheses next to each product in the CURRENT STORE DATA above (e.g. ID: 9243184750834). NEVER use the product title or name as the product_id.
+- Before calling a tool, always double-check that the product_id you are using is a number from the store data.
+- If the user says "reprice the linen blazer", find "Linen Blazer" in the store data, read its ID (the number in parentheses after ID:), and use that number as product_id.
+- NEVER make up or assume product IDs. Only use IDs that are explicitly listed in CURRENT STORE DATA.
+- NEVER claim you took an action unless you actually called the appropriate tool with a real product ID from the store data."""
 
     # Build messages array
     messages = [{"role": "system", "content": system_prompt}]
@@ -494,6 +590,7 @@ When the user asks you to do something (e.g. "lower the price of X", "rewrite th
                 "model": "llama-3.3-70b-versatile",
                 "messages": messages,
                 "max_tokens": 2048,
+                "temperature": 0.1,
             }
             if tools:
                 kwargs["tools"] = tools
@@ -585,6 +682,38 @@ When the user asks you to do something (e.g. "lower the price of X", "rewrite th
         )
     except Exception as e:
         print(f"⚠️ Failed to save assistant chat message: {e}")
+
+    # Auto-summarize session topic if no custom title is set yet
+    try:
+        from database import get_chat_sessions
+        sessions = get_chat_sessions(store_id)
+        current_sess = next((s for s in sessions if s["session_id"] == body.session_id), None)
+        
+        if not current_sess or not current_sess.get("title"):
+            summary_prompt = f"""Summarize the following user request and AI agent response into a short, concise, natural-sounding title (maximum 4 words, no quotes, no period, e.g. "Optimize Leather Boots", "Smart Pricing Question", "Denim Jacket Add"):
+            
+User: {body.message}
+Agent: {final_response[:300]}"""
+            
+            try:
+                summary_client = Groq(api_key=groq_key)
+                summary_res = summary_client.chat.completions.create(
+                    model="llama-3.1-8b-instant",
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant that generates extremely short titles."},
+                        {"role": "user", "content": summary_prompt}
+                    ],
+                    max_tokens=20,
+                    temperature=0.3
+                )
+                topic_title = summary_res.choices[0].message.content.strip().replace('"', '').replace("'", "")
+                if topic_title and len(topic_title) < 50:
+                    from database import update_chat_session_metadata
+                    update_chat_session_metadata(store_id, body.session_id, title=topic_title)
+            except Exception as ex:
+                print(f"⚠️ Failed to auto-generate session summary title: {ex}")
+    except Exception as e:
+        print(f"⚠️ Error in auto-summarization check: {e}")
 
     return {
         "response": final_response,
@@ -926,7 +1055,7 @@ def get_user_subscriptions(email: str = Query(..., description="User email")):
             sub_dict = sub.to_dict() if hasattr(sub, "to_dict") else dict(sub)
             items = sub_dict.get("items", {}).get("data", [])
             plan_name = "Growth Plan"
-            amount = 9.99
+            amount = 4.99
             interval = "month"
 
             if items:
@@ -935,10 +1064,10 @@ def get_user_subscriptions(email: str = Query(..., description="User email")):
                     if pid == price_id:
                         if "scale" in plan_key:
                             plan_name = "Scale Plan"
-                            amount = 287.88 if "yearly" in plan_key or "annual" in plan_key else 29.99
+                            amount = 191.88 if "yearly" in plan_key or "annual" in plan_key else 19.99
                         else:
                             plan_name = "Growth Plan"
-                            amount = 95.88 if "yearly" in plan_key or "annual" in plan_key else 9.99
+                            amount = 47.88 if "yearly" in plan_key or "annual" in plan_key else 4.99
                         interval = "year" if "yearly" in plan_key or "annual" in plan_key else "month"
                         break
 

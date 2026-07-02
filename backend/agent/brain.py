@@ -21,7 +21,7 @@ class SeloraBrain:
         self.adapter = adapter
         self.dry_run = dry_run
         self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-        self.model = "llama-3.3-70b-versatile"
+        self.model = "llama-3.1-8b-instant"
         self.actions_taken = []
 
         if not os.getenv("GROQ_API_KEY"):

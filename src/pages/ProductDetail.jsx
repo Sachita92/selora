@@ -22,15 +22,15 @@ const getOptimizedImageUrl = (url, width = 600) => {
 }
 
 const c = {
-  green: '#5F8D76', dark: '#1A271C', muted: '#7B907D',
-  border: '#E4EBE5', bg: '#F8FAF8', bg2: '#F1F5F1', card: '#fff',
+  green: 'var(--g)', dark: 'var(--text-primary)', muted: 'var(--text-muted)',
+  border: 'var(--border)', bg: 'var(--bg-0)', bg2: 'var(--bg-2)', card: 'var(--bg-1)',
 }
 
 const s = {
-  page: { minHeight: '100vh', padding: '2.5rem 2rem 5rem', background: 'radial-gradient(circle at top right, rgba(95, 141, 118, 0.04), transparent 45%), radial-gradient(circle at bottom left, rgba(95, 141, 118, 0.02), transparent 45%), #F8FAF8', fontFamily: 'Inter, sans-serif' },
+  page: { minHeight: '100vh', padding: '2.5rem 2rem 5rem', background: 'radial-gradient(circle at top right, rgba(95, 141, 118, 0.04), transparent 45%), radial-gradient(circle at bottom left, rgba(95, 141, 118, 0.02), transparent 45%), var(--bg-0)', fontFamily: 'Inter, sans-serif' },
   backBtn: { display: 'inline-flex', alignItems: 'center', gap: '.4rem', background: 'none', border: `1px solid ${c.border}`, borderRadius: 8, padding: '.55rem 1rem', fontSize: '.8rem', color: c.muted, cursor: 'pointer', fontFamily: 'Inter, sans-serif', textDecoration: 'none', transition: 'all 0.2s', marginBottom: '2rem' },
   container: { background: c.card, border: `1px solid ${c.border}`, borderRadius: 18, overflow: 'hidden', display: 'grid', gridTemplateColumns: '1fr 1.2fr', boxShadow: '0 8px 24px rgba(26, 39, 28, 0.04)', maxWidth: 1000, margin: '0 auto' },
-  imageCol: { background: '#F1F4F2', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: 450 },
+  imageCol: { background: 'var(--bg-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: 450 },
   img: { width: '100%', height: '100%', objectFit: 'cover' },
   infoCol: { padding: '3rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
   badge: (bg, color) => ({ fontSize: '.65rem', fontWeight: 600, background: bg, color: color, padding: '.2rem .55rem', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.05em', display: 'inline-block' }),
@@ -38,7 +38,7 @@ const s = {
   priceRow: { display: 'flex', alignItems: 'baseline', gap: '.6rem', marginBottom: '1.5rem' },
   price: { fontSize: '1.6rem', fontWeight: 700, color: c.dark },
   comparePrice: { fontSize: '1.1rem', color: c.muted, textDecoration: 'line-through' },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.8rem', background: '#F8FAF8', border: `1px solid ${c.border}`, borderRadius: 8, padding: '1rem', marginBottom: '1.8rem' },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.8rem', background: 'var(--bg-0)', border: `1px solid ${c.border}`, borderRadius: 8, padding: '1rem', marginBottom: '1.8rem' },
   statItem: { textAlign: 'center' },
   statLabel: { fontSize: '.65rem', color: c.muted, textTransform: 'uppercase', letterSpacing: '.02em', fontWeight: 600 },
   statVal: { fontSize: '1.1rem', fontWeight: 600, color: c.dark, marginTop: '.2rem' },
@@ -52,7 +52,7 @@ const s = {
 export default function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { activeStore, products, fetchingProducts, loading: storeLoading } = useAppContext()
+  const { activeStore, products, fetchingProducts, loading: storeLoading, fetchProducts } = useAppContext()
   const { sendMessage, setOpen } = useChat()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -97,6 +97,17 @@ export default function ProductDetail() {
         setLoading(false)
       })
   }, [activeStore, id, products, fetchingProducts, storeLoading])
+
+  // Listen for agent actions and force-refresh the product data
+  useEffect(() => {
+    const handleActionTaken = (e) => {
+      if (activeStore && e.detail?.storeId === activeStore.id) {
+        fetchProducts(activeStore.id, true)
+      }
+    }
+    window.addEventListener('selora-action-taken', handleActionTaken)
+    return () => window.removeEventListener('selora-action-taken', handleActionTaken)
+  }, [activeStore, fetchProducts])
 
   if (loading) {
     return (
@@ -160,10 +171,10 @@ export default function ProductDetail() {
           <div>
             {/* Tags */}
             <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
-              <span style={s.badge(inStock ? '#E2EFE5' : '#FEF2F2', inStock ? c.green : '#DC2626')}>
+              <span style={s.badge(inStock ? 'var(--badge-success-bg)' : 'var(--inventory-empty-bg)', inStock ? 'var(--badge-success-text)' : 'var(--inventory-empty-text)')}>
                 {inStock ? `${product.inventory} In Stock` : 'Out of Stock'}
               </span>
-              <span style={s.badge('#F1F4F2', c.muted)}>
+              <span style={s.badge('var(--bg-2)', c.muted)}>
                 {product.platform ? (product.platform === 'shopify' ? 'Shopify' : (product.platform === 'selora' ? 'Selora Native' : product.platform)) : 'Selora Native'}
               </span>
             </div>

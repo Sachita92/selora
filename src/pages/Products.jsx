@@ -6,8 +6,8 @@ import { useAppContext } from '../lib/AppContext'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const c = {
-  green: '#5A8A67', dark: '#1A271C', muted: '#7B907D',
-  border: '#E4EBE5', bg: '#F8FAF8', bg2: '#F1F5F1', card: '#fff',
+  green: 'var(--g)', dark: 'var(--text-primary)', muted: 'var(--text-muted)',
+  border: 'var(--border)', bg: 'var(--bg-0)', bg2: 'var(--bg-2)', card: 'var(--bg-1)',
 }
 
 const s = {
@@ -72,15 +72,15 @@ export default function Products() {
     })
 
   const inventoryColor = (qty) => {
-    if (qty === 0)  return { background: '#FEF2F2', color: '#DC2626' }
-    if (qty < 10)   return { background: '#FFFBEB', color: '#D97706' }
-    return { background: '#F0FDF4', color: '#166534' }
+    if (qty === 0)  return { background: 'var(--inventory-empty-bg)', color: 'var(--inventory-empty-text)' }
+    if (qty < 10)   return { background: 'var(--inventory-low-bg)', color: 'var(--inventory-low-text)' }
+    return { background: 'var(--badge-success-bg)', color: 'var(--badge-success-text)' }
   }
 
   const salesLabel = (sales) => {
-    if (sales === 0) return { label: 'No sales', bg: '#F3F4F6', color: '#6B7280' }
-    if (sales < 5)   return { label: `${sales} sold`, bg: '#EFF6FF', color: '#1D4ED8' }
-    return { label: `${sales} sold`, bg: '#F0FDF4', color: '#166534' }
+    if (sales === 0) return { label: 'No sales', bg: 'var(--bg-2)', color: 'var(--text-muted)' }
+    if (sales < 5)   return { label: `${sales} sold`, bg: 'var(--bg-3)', color: 'var(--g)' }
+    return { label: `${sales} sold`, bg: 'var(--badge-success-bg)', color: 'var(--badge-success-text)' }
   }
 
   return (

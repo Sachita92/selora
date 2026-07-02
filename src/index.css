@@ -413,3 +413,36 @@ html.dark, :root.dark, .dark {
   }
 }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ── Custom Scrollbar Styling (Dark/Light Mode Compatible) ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-3) var(--bg-0);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-0);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Hide scrollbars class utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}

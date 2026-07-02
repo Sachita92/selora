@@ -60,13 +60,13 @@ try:
     scale_prod_id = get_or_create_product("Selora Scale Plan", "scale")
     
     # Get or create Prices (Option B new rates)
-    # Growth monthly: $9.99, Yearly: $95.88 ($7.99/mo)
-    growth_monthly_price_id = get_or_create_price(growth_prod_id, 999, "month", "growth")
-    growth_yearly_price_id = get_or_create_price(growth_prod_id, 9588, "year", "growth")
+    # Growth monthly: $4.99, Yearly: $47.88 ($3.99/mo)
+    growth_monthly_price_id = get_or_create_price(growth_prod_id, 499, "month", "growth")
+    growth_yearly_price_id = get_or_create_price(growth_prod_id, 4788, "year", "growth")
     
-    # Scale monthly: $29.99, Yearly: $287.88 ($23.99/mo)
-    scale_monthly_price_id = get_or_create_price(scale_prod_id, 2999, "month", "scale")
-    scale_yearly_price_id = get_or_create_price(scale_prod_id, 28788, "year", "scale")
+    # Scale monthly: $19.99, Yearly: $191.88 ($15.99/mo)
+    scale_monthly_price_id = get_or_create_price(scale_prod_id, 1999, "month", "scale")
+    scale_yearly_price_id = get_or_create_price(scale_prod_id, 19188, "year", "scale")
     
     print("\nReading backend/.env file...")
     with open(dotenv_path, "r") as f:
@@ -101,10 +101,10 @@ try:
         f.write(content)
         
     print("\nbackend/.env successfully updated!")
-    print(f"   STRIPE_PRICE_GROWTH={growth_monthly_price_id} ($9.99/mo)")
-    print(f"   STRIPE_PRICE_GROWTH_YEARLY={growth_yearly_price_id} ($95.88/yr)")
-    print(f"   STRIPE_PRICE_SCALE={scale_monthly_price_id} ($29.99/mo)")
-    print(f"   STRIPE_PRICE_SCALE_YEARLY={scale_yearly_price_id} ($287.88/yr)")
+    print(f"   STRIPE_PRICE_GROWTH={growth_monthly_price_id} ($4.99/mo)")
+    print(f"   STRIPE_PRICE_GROWTH_YEARLY={growth_yearly_price_id} ($47.88/yr)")
+    print(f"   STRIPE_PRICE_SCALE={scale_monthly_price_id} ($19.99/mo)")
+    print(f"   STRIPE_PRICE_SCALE_YEARLY={scale_yearly_price_id} ($191.88/yr)")
     
 except Exception as e:
     print(f"\nError configuring Stripe products/prices: {e}")

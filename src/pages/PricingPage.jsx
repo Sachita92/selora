@@ -70,7 +70,7 @@ const PLANS = [
   },
   {
     name: 'Growth',
-    price: '9.99',
+    price: '4.99',
     desc: 'Designed for active fashion stores looking to scale operations.',
     features: ['1 Store connection', 'Unlimited products', '30 optimizations / month', 'Full overnight growth agent', 'Automatic smart pricing', 'AI listing rewriter', 'Standard email support'],
     cta: 'Start Free Trial',
@@ -79,7 +79,7 @@ const PLANS = [
   },
   {
     name: 'Scale',
-    price: '29.99',
+    price: '19.99',
     desc: 'For larger brands running multiple storefronts and campaigns.',
     features: ['3 Store connections', 'Unlimited products', 'Unlimited optimizations', 'Priority email & chat support', 'Dynamic ad budget reallocation', 'Early product access', 'Custom pricing guardrails'],
     cta: 'Upgrade to Scale',
@@ -875,7 +875,7 @@ function CheckoutForm({ onClose, priceAmount, billingPeriod, planName, clientSec
     }
   }
 
-  const formattedPrice = priceAmount ? priceAmount.toFixed(2) : '9.99'
+  const formattedPrice = priceAmount ? priceAmount.toFixed(2) : '4.99'
   const billingCycleText = billingPeriod === 'annual' ? 'year' : 'month'
   const finalBillingDetail = billingPeriod === 'annual' 
     ? `Billed annually ($${(parseFloat(formattedPrice) * 12).toFixed(2)}/year)` 

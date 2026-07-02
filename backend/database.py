@@ -35,8 +35,23 @@ def get_or_create_user(email: str) -> dict:
     if result.data:
         return result.data[0]
 
+    # Look up correct Supabase Auth ID if it exists
+    auth_id = None
+    try:
+        auth_users = client.auth.admin.list_users()
+        for u in auth_users:
+            if u.email.lower() == email.lower():
+                auth_id = u.id
+                break
+    except Exception as e:
+        print(f"⚠️ Failed to lookup user in auth: {e}")
+
     # Create new user
-    result = client.table("users").insert({"email": email}).execute()
+    user_data = {"email": email}
+    if auth_id:
+        user_data["id"] = auth_id
+
+    result = client.table("users").insert(user_data).execute()
     return result.data[0]
 
 
@@ -113,7 +128,7 @@ def check_store_run_limit(store_id: str) -> bool:
     status = user.get("subscription_status", "active")
 
     # If subscription is unpaid/canceled, treat as free plan
-    if status not in ["active", "trailing_grace_period"]:
+    if status not in ["active", "trailing_grace_period", "trialing"]:
         plan = "free"
 
     limits = {
@@ -321,15 +336,13 @@ def get_chat_history(store_id: str, session_id: str, limit: int = 50) -> list:
         .order("created_at", desc=False)\
         .limit(limit)\
         .execute()
-    return result.data or []
+    # Filter out metadata messages
+    return [msg for msg in (result.data or []) if not msg.get("content", "").startswith("__session_metadata__:")]
 
 
 def get_chat_sessions(store_id: str, limit: int = 20) -> list:
     """Get unique chat sessions (grouped, latest message timestamp) for a store."""
     client = db()
-    # PostgREST doesn't support complex GROUP BY well out-of-the-box in basic select,
-    # but we can get the most recent messages and group them or fetch from a view/query.
-    # A simple approach is selecting the messages ordered by created_at DESC and deduplicating in Python.
     result = client.table("chat_messages")\
         .select("session_id,role,content,created_at")\
         .eq("store_id", store_id)\
@@ -337,20 +350,45 @@ def get_chat_sessions(store_id: str, limit: int = 20) -> list:
         .limit(200)\
         .execute()
     
-    sessions = []
-    seen = set()
+    # We want to group by session_id
+    sessions_map = {}
     for msg in (result.data or []):
         sid = msg["session_id"]
-        if sid not in seen:
-            seen.add(sid)
-            sessions.append({
+        content = msg["content"]
+        created_at = msg["created_at"]
+        
+        if sid not in sessions_map:
+            sessions_map[sid] = {
                 "session_id": sid,
-                "last_message": msg["content"],
-                "last_active": msg["created_at"]
-            })
-            if len(sessions) >= limit:
-                break
-    return sessions
+                "last_message": "",
+                "last_active": created_at,
+                "title": None,
+                "pinned": False
+            }
+            
+        if content.startswith("__session_metadata__:"):
+            try:
+                import json
+                meta_json = content[len("__session_metadata__:"):]
+                meta = json.loads(meta_json)
+                if "title" in meta:
+                    sessions_map[sid]["title"] = meta["title"]
+                if "pinned" in meta:
+                    sessions_map[sid]["pinned"] = meta["pinned"]
+            except Exception:
+                pass
+        else:
+            # Set last_message to the most recent user or assistant message
+            if not sessions_map[sid]["last_message"]:
+                sessions_map[sid]["last_message"] = content
+
+    # Convert map to list
+    sessions = list(sessions_map.values())
+    
+    # Sort: pinned sessions first, then by last_active DESC
+    sessions.sort(key=lambda s: (1 if s["pinned"] else 0, s["last_active"]), reverse=True)
+    
+    return sessions[:limit]
 
 
 # ─── Support and Demos ────────────────────────────────────────────────────────
@@ -449,4 +487,65 @@ def get_public_stats() -> dict:
             "recent_activity": [],
             "demo_store_id": None
         }
+
+
+def delete_chat_session(store_id: str, session_id: str):
+    """Delete all messages associated with a chat session from database."""
+    client = db()
+    result = client.table("chat_messages")\
+        .delete()\
+        .eq("store_id", store_id)\
+        .eq("session_id", session_id)\
+        .execute()
+    return result.data
+
+
+def update_chat_session_metadata(store_id: str, session_id: str, title: str = None, pinned: bool = None):
+    """Create or update session metadata (custom title or pinned status) in chat_messages table."""
+    client = db()
+    # Find all messages for session
+    res = client.table("chat_messages")\
+        .select("*")\
+        .eq("store_id", store_id)\
+        .eq("session_id", session_id)\
+        .execute()
+    
+    import json
+    meta = {}
+    msg_id = None
+    
+    # Search for an existing metadata message in the list
+    for msg in (res.data or []):
+        content = msg.get("content", "")
+        if content.startswith("__session_metadata__:"):
+            msg_id = msg["id"]
+            try:
+                meta = json.loads(content[len("__session_metadata__:"):])
+            except Exception:
+                pass
+            break
+            
+    if title is not None:
+        meta["title"] = title
+    if pinned is not None:
+        meta["pinned"] = pinned
+        
+    content_str = "__session_metadata__:" + json.dumps(meta)
+    
+    if msg_id:
+        result = client.table("chat_messages")\
+            .update({"content": content_str})\
+            .eq("id", msg_id)\
+            .execute()
+    else:
+        result = client.table("chat_messages")\
+            .insert({
+                "store_id": store_id,
+                "session_id": session_id,
+                "role": "assistant",
+                "content": content_str
+            })\
+            .execute()
+            
+    return result.data[0] if result.data else {}
 

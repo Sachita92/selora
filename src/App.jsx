@@ -48,6 +48,7 @@ function AuthShim({ mode }) {
   return <Navigate to="/" replace />
 }
 
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   return (

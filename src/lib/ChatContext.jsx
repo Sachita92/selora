@@ -184,6 +184,63 @@ export function ChatProvider({ children }) {
     await sendMessage(lastText, storeId, isGuest)
   }
 
+  const deleteSession = async (sid, storeId) => {
+    if (!sid || !storeId) return
+    try {
+      const res = await fetch(`${API_URL}/api/chat/${storeId}/sessions/${sid}`, {
+        method: 'DELETE'
+      })
+      if (res.ok) {
+        // If the deleted session was the currently active one, start a new session or clear active messages
+        if (sessionId === sid) {
+          const nextSessions = sessions.filter(s => s.session_id !== sid)
+          if (nextSessions.length > 0) {
+            selectSession(nextSessions[0].session_id, storeId)
+          } else {
+            startNewSession(storeId)
+          }
+        } else {
+          // Just refresh sessions
+          loadSessions(storeId)
+        }
+      }
+    } catch (e) {
+      console.error("Failed to delete session:", e)
+    }
+  }
+
+  const renameSession = async (sid, storeId, newTitle) => {
+    if (!sid || !storeId || !newTitle.trim()) return
+    try {
+      const res = await fetch(`${API_URL}/api/chat/${storeId}/sessions/${sid}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle.trim() })
+      })
+      if (res.ok) {
+        loadSessions(storeId)
+      }
+    } catch (e) {
+      console.error("Failed to rename session:", e)
+    }
+  }
+
+  const pinSession = async (sid, storeId, isPinned) => {
+    if (!sid || !storeId) return
+    try {
+      const res = await fetch(`${API_URL}/api/chat/${storeId}/sessions/${sid}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinned: isPinned })
+      })
+      if (res.ok) {
+        loadSessions(storeId)
+      }
+    } catch (e) {
+      console.error("Failed to pin session:", e)
+    }
+  }
+
   return (
     <ChatContext.Provider
       value={{
@@ -201,6 +258,9 @@ export function ChatProvider({ children }) {
         startNewSession,
         sendMessage,
         retryLastMessage,
+        deleteSession,
+        renameSession,
+        pinSession,
       }}
     >
       {children}

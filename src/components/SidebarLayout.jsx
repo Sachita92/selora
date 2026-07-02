@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { useChat } from '../lib/ChatContext'
@@ -14,7 +14,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export default function SidebarLayout() {
   const { user, stores, activeStore, setActiveStore, logout } = useAppContext()
-  const { sessionId, sessions, selectSession, setOpen, startNewSession } = useChat()
+  const { messages, loading: chatLoading, sendMessage, loadHistory, loadSessions, sessionId, sessions, selectSession, setOpen, startNewSession, deleteSession, renameSession, pinSession } = useChat()
   const navigate = useNavigate()
   const location = useLocation()
   const [darkMode, toggleTheme] = useDarkMode()
@@ -63,6 +63,37 @@ export default function SidebarLayout() {
   const [editName, setEditName] = useState(user?.user_metadata?.name || '')
   const [editUsername, setEditUsername] = useState(user?.user_metadata?.username || '')
   const [savingProfile, setSavingProfile] = useState(false)
+
+  const [inputText, setInputText] = useState('')
+  const [agentCardCollapsed, setAgentCardCollapsed] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [renamingSessionId, setRenamingSessionId] = useState(null)
+  const [renameText, setRenameText] = useState('')
+  const [activeMenuSessionId, setActiveMenuSessionId] = useState(null)
+  const [deletingSessionId, setDeletingSessionId] = useState(null)
+  const messagesEndRef = useRef(null)
+
+  // Load chat history and sessions when active store changes
+  useEffect(() => {
+    if (activeStore) {
+      loadHistory(activeStore.id)
+      loadSessions(activeStore.id)
+    }
+  }, [activeStore])
+
+  // Scroll to bottom of message list on updates
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages])
+
+  const handleSend = (e) => {
+    e.preventDefault()
+    if (!inputText.trim() || chatLoading || !activeStore) return
+    sendMessage(inputText.trim(), activeStore.id)
+    setInputText('')
+  }
 
   // Wait until user is loaded
   if (!user) return null
@@ -250,8 +281,8 @@ export default function SidebarLayout() {
               path: '/settings',
               icon: (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="3"/>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 9H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9"/>
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                 </svg>
               )
             },
@@ -455,145 +486,8 @@ export default function SidebarLayout() {
           </div>
         )}
 
-        {/* CHAT HISTORY */}
-        {isCollapsed && !isMobile ? (
-          <div style={{ padding: '1.2rem 0', borderTop: `1px solid ${c.border}`, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-            <button 
-              onClick={() => { startNewSession(activeStore?.id); setOpen(true) }}
-              style={{ 
-                background: c.bg2, 
-                border: `1px solid ${c.border}`, 
-                cursor: 'pointer', 
-                color: c.green, 
-                width: 40, 
-                height: 40, 
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s ease',
-              }}
-              title="New Chat Session"
-              onMouseEnter={(e) => e.currentTarget.style.background = '#EAF2EC'}
-              onMouseLeave={(e) => e.currentTarget.style.background = c.bg2}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-              </svg>
-            </button>
-          </div>
-        ) : (
-          <div style={{ padding: '1rem', borderTop: `1px solid ${c.border}`, flex: 1, overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <div style={{ fontSize: '.75rem', fontWeight: 600, color: c.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                Chat History
-              </div>
-              <button 
-                onClick={() => { startNewSession(activeStore?.id); setOpen(true) }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.green, fontSize: '1rem' }}
-                title="New Chat"
-              >
-                +
-              </button>
-            </div>
-            
-            {sessions.length === 0 ? (
-              <p style={{ fontSize: '.75rem', color: c.muted, lineHeight: 1.6 }}>
-                No chats yet. Click the agent widget to start.
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-                {sessions.map((sess) => (
-                  <div 
-                    key={sess.session_id} 
-                    onClick={() => { selectSession(sess.session_id, activeStore?.id); setOpen(true) }}
-                    style={{
-                      padding: '.5rem .6rem',
-                      background: sessionId === sess.session_id ? c.bg2 : 'transparent',
-                      border: `1px solid ${sessionId === sess.session_id ? c.border : 'transparent'}`,
-                      borderRadius: 6, cursor: 'pointer', transition: 'all .15s'
-                    }}
-                  >
-                    <div style={{ fontSize: '.75rem', color: c.dark, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {sess.last_message?.length > 40 ? sess.last_message.substring(0, 40) + '...' : sess.last_message}
-                    </div>
-                    <div style={{ fontSize: '.65rem', color: c.muted, marginTop: '.2rem' }}>
-                      {new Date(sess.last_active).toLocaleDateString()} {formatTime(sess.last_active)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* SUBSCRIPTION */}
-        {isCollapsed && !isMobile ? (
-          <div 
-            onClick={() => {
-              if (!user.subscription_plan || user.subscription_plan === 'free') {
-                navigate('/pricing')
-              } else {
-                navigate('/settings?tab=billing')
-              }
-            }}
-            style={{ 
-              padding: '1.2rem 0', 
-              borderTop: `1px solid ${c.border}`, 
-              background: c.bg2,
-              display: 'flex',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'background 0.2s',
-            }}
-            title={`${user.subscription_plan ? (user.subscription_plan.charAt(0).toUpperCase() + user.subscription_plan.slice(1)) : 'Free'} Plan — Click to Manage`}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#EAF2EC'}
-            onMouseLeave={(e) => e.currentTarget.style.background = c.bg2}
-          >
-            <div style={{ 
-              width: 32, 
-              height: 32, 
-              borderRadius: 8, 
-              background: user.subscription_plan && user.subscription_plan !== 'free' ? 'var(--badge-upgrade-bg)' : 'var(--badge-success-bg)', 
-              color: user.subscription_plan && user.subscription_plan !== 'free' ? 'var(--badge-upgrade-text)' : 'var(--badge-success-text)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              fontSize: '.85rem', 
-              fontWeight: 700 
-            }}>
-              {user.subscription_plan && user.subscription_plan !== 'free' ? 'G' : 'F'}
-            </div>
-          </div>
-        ) : (
-          <div style={{ padding: '1rem', borderTop: `1px solid ${c.border}`, background: c.bg2 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.4rem' }}>
-              <div style={{ fontSize: '.75rem', fontWeight: 600, color: c.dark }}>
-                {user.subscription_plan ? (user.subscription_plan.charAt(0).toUpperCase() + user.subscription_plan.slice(1)) : 'Free'} Plan
-              </div>
-              {(!user.subscription_plan || user.subscription_plan === 'free') && (
-                <button 
-                  onClick={() => navigate('/pricing')}
-                  style={{ background: c.green, color: '#fff', border: 'none', padding: '.2rem .6rem', borderRadius: 4, fontSize: '.65rem', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Upgrade
-                </button>
-              )}
-            </div>
-            <div style={{ fontSize: '.68rem', color: c.muted }}>
-              {user.subscription_plan === 'free' || !user.subscription_plan ? 'Limit: 3 optimizations/mo' : 
-               user.subscription_plan === 'growth' ? 'Limit: 30 optimizations/mo' : 'Unlimited optimizations'}
-            </div>
-            {user.stripe_customer_id && (
-              <button 
-                onClick={() => navigate('/settings?tab=billing')}
-                style={{ background: 'none', border: 'none', color: c.green, fontSize: '.7rem', cursor: 'pointer', padding: 0, marginTop: '.5rem', textDecoration: 'underline' }}
-              >
-                Manage Billing
-              </button>
-            )}
-          </div>
-        )}
+        {/* Spacer to push profile to bottom */}
+        <div style={{ flex: 1 }} />
 
         {/* USER PROFILE — identity display only, actions are in the header dropdown */}
         <div style={{ borderTop: `1px solid ${c.border}` }}>
@@ -603,7 +497,7 @@ export default function SidebarLayout() {
               <div style={{
                 width: 32, height: 32, borderRadius: '50%', background: c.green, color: '#fff',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.85rem', fontWeight: 600
-              }} title={user.user_metadata?.name || user.email}>
+              }} title={`${user.user_metadata?.name || 'Seller'} (${user.subscription_plan ? (user.subscription_plan.charAt(0).toUpperCase() + user.subscription_plan.slice(1)) : 'Free'})`}>
                 {(user.user_metadata?.name || user.email || '?').charAt(0).toUpperCase()}
               </div>
             </div>
@@ -617,8 +511,17 @@ export default function SidebarLayout() {
                 {(user.user_metadata?.name || user.email || '?').charAt(0).toUpperCase()}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '.82rem', fontWeight: 600, color: c.dark, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                  {user.user_metadata?.name || 'Seller'}
+                <div style={{ fontSize: '.82rem', fontWeight: 600, color: c.dark, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
+                  <span>{user.user_metadata?.name || 'Seller'}</span>
+                  <span style={{
+                    fontSize: '.68rem',
+                    color: 'var(--g)',
+                    fontWeight: 600,
+                    textTransform: 'capitalize',
+                    flexShrink: 0
+                  }}>
+                    ({user.subscription_plan || 'free'})
+                  </span>
                 </div>
                 <div style={{ fontSize: '.7rem', color: c.muted, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                   {user.email}
@@ -679,27 +582,39 @@ export default function SidebarLayout() {
           {/* Spacer */}
           <div style={{ flex: 1 }} />
 
-          {/* Agent panel toggle — left of bell */}
+          {/* Agent panel toggle — left of bell (matching left sidebar toggle style) */}
           <button
-            onClick={() => setRightPanelOpen(o => !o)}
-            style={{
-              background: rightPanelOpen ? c.green : 'none',
-              border: rightPanelOpen ? 'none' : 'none',
-              color: rightPanelOpen ? '#fff' : c.muted,
-              display: 'flex', alignItems: 'center', padding: '.35rem .4rem',
-              borderRadius: 8, transition: 'all 0.2s', flexShrink: 0, cursor: 'pointer',
+            onClick={() => {
+              setRightPanelOpen(!rightPanelOpen);
+              if (!rightPanelOpen) {
+                setShowHistory(false);
+              }
             }}
-            title={rightPanelOpen ? 'Close agent panel' : 'Open agent panel'}
-            onMouseEnter={e => { if (!rightPanelOpen) e.currentTarget.style.color = c.dark }}
-            onMouseLeave={e => { if (!rightPanelOpen) e.currentTarget.style.color = c.muted }}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: c.muted,
+              display: 'flex',
+              alignItems: 'center',
+              padding: '.25rem',
+              borderRadius: '4px',
+              transition: 'background 0.2s',
+              flexShrink: 0,
+            }}
+            title={rightPanelOpen ? "Close agent panel" : "Open agent panel"}
+            onMouseEnter={(e) => e.currentTarget.style.background = c.bg2}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
           >
-            {/* Bot / agent icon */}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              <circle cx="9" cy="16" r="1" fill="currentColor" stroke="none"/>
-              <circle cx="15" cy="16" r="1" fill="currentColor" stroke="none"/>
-            </svg>
+            {rightPanelOpen ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            )}
           </button>
 
           {/* Notification bell */}
@@ -794,9 +709,9 @@ export default function SidebarLayout() {
 
       {/* ─── RIGHT AGENT PANEL ─────────────────────────────────────────────── */}
       {/* Width-transition approach: panel is always in the flex row,
-          width animates 0 → 280px so main content compresses, not overlaps. */}
+          width animates 0 → 380px so main content compresses, not overlaps. */}
       <div style={{
-        width: rightPanelOpen ? 280 : 0,
+        width: rightPanelOpen ? 380 : 0,
         flexShrink: 0,
         overflow: 'hidden',
         transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1)',
@@ -804,9 +719,9 @@ export default function SidebarLayout() {
         position: 'sticky',
         top: 0,
       }}>
-        {/* Inner wrapper keeps the panel at fixed 280px inside the collapsing outer */}
+        {/* Inner wrapper keeps the panel at fixed 380px inside the collapsing outer */}
         <div style={{
-          width: 280,
+          width: 380,
           height: '100vh',
           background: c.card,
           borderLeft: `1px solid ${c.border}`,
@@ -827,112 +742,404 @@ export default function SidebarLayout() {
             boxSizing: 'border-box',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-              <span style={{ fontSize: '.88rem', fontWeight: 600, color: c.dark }}>Selora Agent</span>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: activeStore ? c.green : '#D97706', display: 'inline-block', flexShrink: 0 }} className="pdot" />
-              <span style={{ fontSize: '.72rem', color: c.muted }}>{activeStore ? 'Active' : 'Paused'}</span>
+              {showHistory ? (
+                <button
+                  onClick={() => setShowHistory(false)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer', color: c.green,
+                    fontSize: '.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '.2rem',
+                    padding: '0', marginRight: '.5rem'
+                  }}
+                >
+                  ← Chat
+                </button>
+              ) : (
+                <>
+                  <span style={{ fontSize: '.88rem', fontWeight: 600, color: c.dark }}>Selora Agent</span>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: activeStore ? c.green : '#D97706', display: 'inline-block', flexShrink: 0 }} className="pdot" />
+                  <span style={{ fontSize: '.72rem', color: c.muted }}>{activeStore ? 'Active' : 'Paused'}</span>
+                </>
+              )}
             </div>
-            <button
-              onClick={() => setRightPanelOpen(false)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.muted, display: 'flex', padding: '.25rem', borderRadius: 6 }}
-              title="Close panel"
-              onMouseEnter={e => e.currentTarget.style.color = c.dark}
-              onMouseLeave={e => e.currentTarget.style.color = c.muted}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+              <button
+                onClick={() => {
+                  const next = !showHistory
+                  setShowHistory(next)
+                  if (next && activeStore) {
+                    loadSessions(activeStore.id)
+                  }
+                }}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: showHistory ? c.green : c.muted,
+                  display: 'flex', padding: '.3rem', borderRadius: 6,
+                  alignItems: 'center', justifyContent: 'center'
+                }}
+                title={showHistory ? "Show Active Chat" : "Chat History"}
+                onMouseEnter={e => { if(!showHistory) e.currentTarget.style.color = c.dark }}
+                onMouseLeave={e => { if(!showHistory) e.currentTarget.style.color = c.muted }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setRightPanelOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.muted, display: 'flex', padding: '.25rem', borderRadius: 6 }}
+                title="Close panel"
+                onMouseEnter={e => e.currentTarget.style.color = c.dark}
+                onMouseLeave={e => e.currentTarget.style.color = c.muted}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
           </div>
+
+
 
           {/* Panel body */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 1.25rem', overflowY: 'auto' }}>
-
-            {/* Agent avatar — large, centered */}
-            <div style={{
-              width: 72, height: 72, borderRadius: '50%',
-              background: `linear-gradient(135deg, ${c.green}, #3D6B52)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              marginBottom: '1rem', flexShrink: 0,
-              boxShadow: '0 4px 20px rgba(95,141,118,0.3)',
-            }}>
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                <circle cx="9" cy="16" r="1" fill="white" stroke="none"/>
-                <circle cx="15" cy="16" r="1" fill="white" stroke="none"/>
-              </svg>
-            </div>
-
-            {/* Store name + next run */}
-            {activeStore && (
-              <div style={{ textAlign: 'center', marginBottom: '.5rem' }}>
-                <div style={{ fontSize: '.78rem', fontWeight: 600, color: c.dark }}>
-                  {activeStore.shop_name}
+          {showHistory ? (
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.2rem 1rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }} className="no-scrollbar">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem' }}>
+                <div style={{ fontSize: '.75rem', fontWeight: 600, color: c.muted, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                  Chat History
                 </div>
+                <button 
+                  onClick={() => { startNewSession(activeStore?.id); setShowHistory(false); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.green, fontSize: '.75rem', fontWeight: 600 }}
+                  title="New Chat"
+                >
+                  + New Chat
+                </button>
               </div>
-            )}
-            <div style={{ fontSize: '.72rem', color: c.muted, textAlign: 'center', marginBottom: '1.75rem', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-              </svg>
-              {getNextRunText()}
+              
+              {sessions.length === 0 ? (
+                <p style={{ fontSize: '.75rem', color: c.muted, lineHeight: 1.6 }}>
+                  No chats yet. Ask the agent anything to start.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                  {sessions.map((sess) => {
+                    const isEditing = renamingSessionId === sess.session_id
+                    const isDeletingConfirm = deletingSessionId === sess.session_id
+                    const isMenuOpen = activeMenuSessionId === sess.session_id
+                    
+                    return (
+                      <div 
+                        key={sess.session_id} 
+                        style={{
+                          padding: '.6rem .75rem',
+                          background: sessionId === sess.session_id ? c.bg2 : 'transparent',
+                          border: `1px solid ${sessionId === sess.session_id ? c.border : 'transparent'}`,
+                          borderRadius: 8, 
+                          transition: 'all .15s',
+                          position: 'relative',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '.5rem',
+                          justifyContent: 'space-between'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (sessionId !== sess.session_id) e.currentTarget.style.background = c.bg2
+                        }}
+                        onMouseLeave={(e) => {
+                          if (sessionId !== sess.session_id) e.currentTarget.style.background = 'transparent'
+                        }}
+                      >
+                        {isEditing ? (
+                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '.3rem' }} onClick={e => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              value={renameText}
+                              onChange={e => setRenameText(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  renameSession(sess.session_id, activeStore?.id, renameText)
+                                  setRenamingSessionId(null)
+                                } else if (e.key === 'Escape') {
+                                  setRenamingSessionId(null)
+                                }
+                              }}
+                              autoFocus
+                              style={{
+                                flex: 1,
+                                fontSize: '.78rem',
+                                padding: '.2rem .4rem',
+                                borderRadius: 4,
+                                border: `1px solid ${c.green}`,
+                                outline: 'none',
+                                background: 'var(--bg-0)',
+                                color: c.dark,
+                              }}
+                            />
+                            <button
+                              onClick={() => {
+                                renameSession(sess.session_id, activeStore?.id, renameText)
+                                setRenamingSessionId(null)
+                              }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.green, padding: '.2rem', display: 'flex', alignItems: 'center' }}
+                              title="Save"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => setRenamingSessionId(null)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.muted, padding: '.2rem', display: 'flex', alignItems: 'center' }}
+                              title="Cancel"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+                              </svg>
+                            </button>
+                          </div>
+                        ) : isDeletingConfirm ? (
+                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.3rem' }} onClick={e => e.stopPropagation()}>
+                            <span style={{ fontSize: '.75rem', color: '#EF4444', fontWeight: 500 }}>Confirm delete?</span>
+                            <div style={{ display: 'flex', gap: '.4rem' }}>
+                              <button
+                                onClick={() => {
+                                  deleteSession(sess.session_id, activeStore?.id)
+                                  setDeletingSessionId(null)
+                                }}
+                                style={{
+                                  background: '#EF4444', color: '#fff', border: 'none', cursor: 'pointer',
+                                  padding: '.2rem .5rem', borderRadius: 4, fontSize: '.7rem', fontWeight: 600
+                                }}
+                              >
+                                Yes
+                              </button>
+                              <button
+                                onClick={() => setDeletingSessionId(null)}
+                                style={{
+                                  background: 'none', border: `1px solid ${c.border}`, color: c.dark, cursor: 'pointer',
+                                  padding: '.2rem .5rem', borderRadius: 4, fontSize: '.7rem', fontWeight: 500
+                                }}
+                              >
+                                No
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Clickable Area to Select Session */}
+                            <div 
+                              onClick={() => { selectSession(sess.session_id, activeStore?.id); setShowHistory(false); }}
+                              style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+                            >
+                              <div style={{ fontSize: '.78rem', color: c.dark, fontWeight: 500, display: 'flex', alignItems: 'center', gap: '.35rem' }}>
+                                {sess.pinned && (
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ color: c.green, transform: 'rotate(45deg)', flexShrink: 0 }} title="Pinned">
+                                    <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6l1.3 1.5 1.3-1.5v-6H18v-2l-2-2z"></path>
+                                  </svg>
+                                )}
+                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {sess.title || (sess.last_message?.length > 40 ? sess.last_message.substring(0, 40) + '...' : sess.last_message || 'Empty conversation')}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '.65rem', color: c.muted, marginTop: '.2rem' }}>
+                                {new Date(sess.last_active).toLocaleDateString()} {formatTime(sess.last_active)}
+                              </div>
+                            </div>
+                            
+                            {/* 3-Dot Button */}
+                            <div style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={() => setActiveMenuSessionId(isMenuOpen ? null : sess.session_id)}
+                                style={{
+                                  background: 'none', border: 'none', cursor: 'pointer',
+                                  color: isMenuOpen ? c.dark : c.muted,
+                                  padding: '.3rem', borderRadius: 4,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}
+                                className="three-dots-btn"
+                                title="Conversation Actions"
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                                </svg>
+                              </button>
+                              
+                              {/* Dropdown Menu */}
+                              {isMenuOpen && (
+                                <>
+                                  {/* Menu Overlay Backdrop to close menu */}
+                                  <div 
+                                    onClick={() => setActiveMenuSessionId(null)}
+                                    style={{ position: 'fixed', inset: 0, zIndex: 998, cursor: 'default' }} 
+                                  />
+                                  <div 
+                                    style={{
+                                      position: 'absolute',
+                                      top: '100%',
+                                      right: 0,
+                                      background: 'var(--bg-1)',
+                                      border: `1px solid ${c.border}`,
+                                      borderRadius: 6,
+                                      boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                      zIndex: 999,
+                                      minWidth: 100,
+                                      padding: '.25rem 0',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      marginTop: '2px'
+                                    }}
+                                  >
+                                    <button
+                                      onClick={() => {
+                                        pinSession(sess.session_id, activeStore?.id, !sess.pinned)
+                                        setActiveMenuSessionId(null)
+                                      }}
+                                      style={{
+                                        background: 'none', border: 'none', cursor: 'pointer',
+                                        color: c.dark, fontSize: '.72rem', padding: '.4rem .8rem',
+                                        textAlign: 'left', display: 'flex', alignItems: 'center', gap: '.4rem',
+                                        fontFamily: 'Inter, sans-serif'
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.background = c.bg2}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                    >
+                                      {sess.pinned ? 'Unpin' : 'Pin'}
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setRenameText(sess.title || sess.last_message || '')
+                                        setRenamingSessionId(sess.session_id)
+                                        setActiveMenuSessionId(null)
+                                      }}
+                                      style={{
+                                        background: 'none', border: 'none', cursor: 'pointer',
+                                        color: c.dark, fontSize: '.72rem', padding: '.4rem .8rem',
+                                        textAlign: 'left', display: 'flex', alignItems: 'center', gap: '.4rem',
+                                        fontFamily: 'Inter, sans-serif'
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.background = c.bg2}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                    >
+                                      Rename
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setDeletingSessionId(sess.session_id)
+                                        setActiveMenuSessionId(null)
+                                      }}
+                                      style={{
+                                        background: 'none', border: 'none', cursor: 'pointer',
+                                        color: '#EF4444', fontSize: '.72rem', padding: '.4rem .8rem',
+                                        textAlign: 'left', display: 'flex', alignItems: 'center', gap: '.4rem',
+                                        fontWeight: 500, fontFamily: 'Inter, sans-serif'
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.background = c.bg2}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-
-            {/* Run Agent Now CTA */}
-            {activeStore && (
-              <button
-                onClick={runAgentFromPanel}
-                disabled={panelRunning}
-                style={{
-                  width: '100%', padding: '.75rem', borderRadius: 10, border: 'none',
-                  background: panelRunning ? '#7B907D' : c.green,
-                  color: '#fff', fontSize: '.84rem', fontWeight: 600,
-                  cursor: panelRunning ? 'not-allowed' : 'pointer',
-                  fontFamily: 'Inter, sans-serif',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.5rem',
-                  transition: 'background 0.2s',
-                  marginBottom: '.85rem',
-                }}
-              >
-                {panelRunning ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
-                      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                    </svg>
-                    Agent Running...
-                  </>
-                ) : (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polygon points="5 3 19 12 5 21 5 3"/>
-                    </svg>
-                    Run Agent Now
-                  </>
+          ) : (
+            <>
+              {/* Panel body (Scrollable Message Thread) */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '1rem', gap: '0.8rem', width: '100%', boxSizing: 'border-box' }} className="no-scrollbar">
+                {messages.map((msg, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                      maxWidth: '85%',
+                      background: msg.role === 'user' ? 'var(--g)' : 'var(--bg-2)',
+                      color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+                      borderRadius: msg.role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+                      padding: '.75rem .95rem',
+                      fontSize: '.82rem',
+                      lineHeight: 1.45,
+                      wordBreak: 'break-word',
+                      boxShadow: msg.role === 'user' ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
+                      whiteSpace: 'pre-line',
+                    }}
+                  >
+                    {msg.content}
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div style={{
+                    alignSelf: 'flex-start',
+                    background: 'var(--bg-2)',
+                    borderRadius: '12px 12px 12px 2px',
+                    padding: '.75rem .95rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '.3rem',
+                  }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.muted, animation: 'pulse 1.2s infinite' }} />
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.muted, animation: 'pulse 1.2s infinite 0.2s' }} />
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.muted, animation: 'pulse 1.2s infinite 0.4s' }} />
+                  </div>
                 )}
-              </button>
-            )}
-
-            {/* Spacer pushes placeholder to bottom */}
-            <div style={{ flex: 1 }} />
-
-            {/* Chat coming soon placeholder */}
-            <div style={{
-              textAlign: 'center', padding: '1rem',
-              borderTop: `1px solid ${c.border}`,
-              width: '100%',
-            }}>
-              <div style={{ fontSize: '.72rem', color: c.muted, lineHeight: 1.5 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '.3rem' }}>
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg>
-                Ask Selora anything — coming soon
+                <div ref={messagesEndRef} />
               </div>
-            </div>
 
-          </div>
+              {/* Chat Input Bar */}
+              <form onSubmit={handleSend} style={{ padding: '.85rem 1rem', borderTop: `1px solid ${c.border}`, display: 'flex', gap: '.5rem', alignItems: 'center', width: '100%', boxSizing: 'border-box', background: c.card, flexShrink: 0 }}>
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={e => setInputText(e.target.value)}
+                  disabled={chatLoading}
+                  placeholder="Ask Selora anything..."
+                  style={{
+                    flex: 1,
+                    padding: '.6rem .85rem',
+                    borderRadius: 8,
+                    border: `1px solid ${c.border}`,
+                    fontSize: '.82rem',
+                    fontFamily: 'Inter, sans-serif',
+                    outline: 'none',
+                    background: 'var(--bg-0)',
+                    color: c.dark,
+                    minWidth: 0,
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={chatLoading || !inputText.trim()}
+                  style={{
+                    background: inputText.trim() ? c.green : 'transparent',
+                    border: 'none',
+                    cursor: inputText.trim() ? 'pointer' : 'not-allowed',
+                    color: inputText.trim() ? '#fff' : c.muted,
+                    padding: '.5rem',
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                  </svg>
+                </button>
+              </form>
+            </>
+          )}
         </div>
-      </div>
+        </div>
 
-    </div>
+      </div>
   )
 }
