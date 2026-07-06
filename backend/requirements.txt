@@ -16,3 +16,4 @@ certifi==2026.5.20
 typing_extensions==4.15.0
 watchfiles==1.1.1
 stripe
+privy-client==0.6.0

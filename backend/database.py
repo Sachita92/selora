@@ -24,6 +24,17 @@ def db() -> Client:
     return get_client()
 
 
+def get_anon_client() -> Client:
+    """Get a Supabase client using the anon key (standard user permissions)."""
+    if not hasattr(_thread_local, "supabase_anon_client"):
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_ANON_KEY")
+        if not url or not key:
+            raise ValueError("Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env")
+        _thread_local.supabase_anon_client = create_client(url, key)
+    return _thread_local.supabase_anon_client
+
+
 # ─── Users ────────────────────────────────────────────────────────────────────
 
 def get_or_create_user(email: str) -> dict:

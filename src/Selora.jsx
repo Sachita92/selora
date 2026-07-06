@@ -531,7 +531,7 @@ function Hero({ darkMode }) {
           <div className="au3" style={{display:"flex",gap:".9rem",flexWrap:"wrap",marginBottom:"1.5rem"}}>
             {user
               ? <Link to="/dashboard" style={{textDecoration:"none"}}><BtnP>Go to Dashboard →</BtnP></Link>
-              : <button onClick={() => openAuthModal('signup')} style={{background:'none',border:'none',padding:0,cursor:'pointer'}}><BtnP>Start Growing for Free →</BtnP></button>
+              : <BtnP onClick={() => openAuthModal('signup')}>Start Growing for Free →</BtnP>
             }
             <Link to="/how-it-works" style={{textDecoration:"none"}}><BtnS>See How It Works</BtnS></Link>
           </div>

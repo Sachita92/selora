@@ -6,6 +6,8 @@ import { AppProvider, useAppContext } from './lib/AppContext'
 import ChatWidget from './components/ChatWidget'
 import SidebarLayout from './components/SidebarLayout'
 import AuthModal from './components/AuthModal'
+import NameCollectionModal from './components/NameCollectionModal'
+import PrivyProviderWrapper from './components/PrivyProviderWrapper'
 
 import Selora        from './Selora'
 import Login         from './pages/Login'
@@ -52,44 +54,47 @@ function AuthShim({ mode }) {
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   return (
-    <AppProvider>
-      <ChatProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Public */}
-            <Route path="/"        element={<Selora />} />
-            <Route path="/login"   element={<AuthShim mode="login" />} />
-            <Route path="/signup"  element={<AuthShim mode="signup" />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/terms"   element={<Terms />} />
-            <Route path="/support" element={<Support />} />
-            <Route path="/demo"         element={<BookDemo />} />
-            <Route path="/features"     element={<FeaturesPage />} />
-            <Route path="/how-it-works" element={<HowItWorksPage />} />
-            <Route path="/pricing"      element={<PricingPage />} />
-            <Route path="/store/:handle" element={<Storefront />} />
+    <PrivyProviderWrapper>
+      <AppProvider>
+        <ChatProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Public */}
+              <Route path="/"        element={<Selora />} />
+              <Route path="/login"   element={<AuthShim mode="login" />} />
+              <Route path="/signup"  element={<AuthShim mode="signup" />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms"   element={<Terms />} />
+              <Route path="/support" element={<Support />} />
+              <Route path="/demo"         element={<BookDemo />} />
+              <Route path="/features"     element={<FeaturesPage />} />
+              <Route path="/how-it-works" element={<HowItWorksPage />} />
+              <Route path="/pricing"      element={<PricingPage />} />
+              <Route path="/store/:handle" element={<Storefront />} />
 
-            {/* Protected — standalone (own header/footer) */}
-            <Route path="/connect" element={<ProtectedRoute><Connect /></ProtectedRoute>} />
+              {/* Protected — standalone (own header/footer) */}
+              <Route path="/connect" element={<ProtectedRoute><Connect /></ProtectedRoute>} />
 
-            {/* Protected — wrapped in SidebarLayout */}
-            <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
-              <Route path="/dashboard"     element={<Dashboard />} />
-              <Route path="/products"      element={<Products />} />
-              <Route path="/products/:id"  element={<ProductDetail />} />
-              <Route path="/settings"      element={<Settings />} />
-              <Route path="/reports"       element={<Reports />} />
-              <Route path="/store-builder" element={<StoreBuilder />} />
-            </Route>
+              {/* Protected — wrapped in SidebarLayout */}
+              <Route element={<ProtectedRoute><SidebarLayout /></ProtectedRoute>}>
+                <Route path="/dashboard"     element={<Dashboard />} />
+                <Route path="/products"      element={<Products />} />
+                <Route path="/products/:id"  element={<ProductDetail />} />
+                <Route path="/settings"      element={<Settings />} />
+                <Route path="/reports"       element={<Reports />} />
+                <Route path="/store-builder" element={<StoreBuilder />} />
+              </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-          <AuthModal />
-          <GlobalChatWidget />
-        </BrowserRouter>
-      </ChatProvider>
-    </AppProvider>
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+            <AuthModal />
+            <NameCollectionModal />
+            <GlobalChatWidget />
+          </BrowserRouter>
+        </ChatProvider>
+      </AppProvider>
+    </PrivyProviderWrapper>
   )
 }
 

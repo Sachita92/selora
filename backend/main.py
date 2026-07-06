@@ -1502,21 +1502,256 @@ class ProductUpdateRequest(BaseModel):
     is_active: Optional[bool] = None
 
 
+class PrivySyncRequest(BaseModel):
+    privy_token: str
+    wallet_address: Optional[str] = None
+
+
+class ProfileUpdateRequest(BaseModel):
+    display_name: str
+
+
+@app.post('/api/auth/privy-sync')
+def privy_sync(body: PrivySyncRequest, request: Request):
+    """
+    Sync/login a user via Privy.
+    - Verifies the user's Privy token (JWT) using Privy's JWKS.
+    - Synchronizes the Privy email and Solana wallet address with the database user record.
+    - Returns a Supabase action link so the frontend can automatically log in to Supabase.
+    """
+    from database import db as _db, get_anon_client
+    from privy import PrivyAPI
+
+    privy_token = body.privy_token
+    wallet_address = body.wallet_address
+
+    app_id = os.getenv("VITE_PRIVY_APP_ID")
+    app_secret = os.getenv("PRIVY_APP_SECRET")
+    if not app_id:
+        raise HTTPException(status_code=500, detail="Privy App ID is not configured on backend")
+
+    try:
+        # Initialize official Privy API Client
+        privy = PrivyAPI(app_id=app_id, app_secret=app_secret)
+        
+        # Verify the access token (handles JWKS fetch, caching, and ES256 verification internally)
+        claims = privy.users.verify_access_token(auth_token=privy_token)
+        
+        # Get Privy user ID (subject) from claims
+        privy_id = claims.get("user_id")
+        if not privy_id:
+            raise ValueError("No user_id found in verified access token claims")
+            
+        # Fetch the full user details from the Privy API
+        user_info = privy.users.get(user_id=privy_id)
+        
+        # Convert user model to dictionary for easy field access
+        user_dict = user_info.model_dump() if hasattr(user_info, "model_dump") else user_info.dict()
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Privy token verification failed: {e}")
+
+    # Extract email and other details from user_dict
+    linked_accounts = user_dict.get("linked_accounts", [])
+    email = None
+    for acc in linked_accounts:
+        if acc.get("type") == "email":
+            email = acc.get("address")
+            break
+
+    if not email:
+        # Use wallet address placeholder if no email exists
+        email = f"{wallet_address}@selora.io" if wallet_address else f"{privy_id.split(':')[-1]}@selora.io"
+
+    email = email.lower()
+
+    try:
+        # 5. Database Sync: Sync Privy identity with users table
+        user_res = _db().table("users").select("*").eq("email", email).execute()
+        wallet_res = None
+        if wallet_address:
+            wallet_res = _db().table("users").select("*").eq("wallet_address", wallet_address).execute()
+
+        db_user = None
+        if user_res.data:
+            db_user = user_res.data[0]
+        elif wallet_res and wallet_res.data:
+            db_user = wallet_res.data[0]
+
+        if db_user:
+            # Sync / link the wallet address and email if they don't match
+            update_fields = {}
+            if wallet_address and db_user.get("wallet_address") != wallet_address:
+                update_fields["wallet_address"] = wallet_address
+            
+            is_new_email_placeholder = email.endswith("@selora.io")
+            is_old_email_placeholder = db_user.get("email", "").endswith("@selora.io") if db_user.get("email") else True
+            
+            if email and db_user.get("email") != email:
+                if is_old_email_placeholder or not is_new_email_placeholder:
+                    update_fields["email"] = email
+                    
+            if update_fields:
+                update_res = _db().table("users").update(update_fields).eq("id", db_user["id"]).execute()
+                db_user = update_res.data[0]
+        else:
+            # Check if Supabase auth user already exists first
+            supabase_auth_user = None
+            try:
+                auth_users = _db().auth.admin.list_users()
+                for u in auth_users:
+                    if u.email and u.email.lower() == email.lower():
+                        supabase_auth_user = u
+                        break
+            except Exception:
+                pass
+
+            if not supabase_auth_user:
+                import secrets
+                supabase_auth_user = _db().auth.admin.create_user({
+                    "email": email,
+                    "password": secrets.token_urlsafe(16),
+                    "email_confirm": True
+                })
+
+            auth_id = None
+            if hasattr(supabase_auth_user, "user"):
+                auth_id = supabase_auth_user.user.id
+            elif hasattr(supabase_auth_user, "id"):
+                auth_id = supabase_auth_user.id
+            elif isinstance(supabase_auth_user, dict):
+                auth_id = supabase_auth_user.get("id")
+
+            # Create row in user db table
+            user_data = {
+                "id": auth_id,
+                "email": email,
+                "wallet_address": wallet_address
+            }
+            new_res = _db().table("users").insert(user_data).execute()
+            db_user = new_res.data[0]
+
+        # 6. Ensure user exists in Supabase Auth for session generation
+        session_email = db_user.get("email") if db_user else email
+        if not session_email:
+            session_email = email
+            
+        supabase_auth_user = None
+        try:
+            auth_users = _db().auth.admin.list_users()
+            for u in auth_users:
+                if u.email and u.email.lower() == session_email.lower():
+                    supabase_auth_user = u
+                    break
+        except Exception:
+            pass
+
+        if not supabase_auth_user:
+            import secrets
+            supabase_auth_user = _db().auth.admin.create_user({
+                "email": session_email,
+                "password": secrets.token_urlsafe(16),
+                "email_confirm": True
+            })
+
+        # 7. Generate Supabase Session
+        link_res = _db().auth.admin.generate_link({
+            "type": "magiclink",
+            "email": session_email,
+        })
+
+        otp = None
+        if hasattr(link_res, "properties") and hasattr(link_res.properties, "email_otp"):
+            otp = link_res.properties.email_otp
+        elif isinstance(link_res, dict):
+            otp = link_res.get("properties", {}).get("email_otp")
+
+        if not otp:
+            raise ValueError("Failed to retrieve OTP from generated link")
+
+        session_res = get_anon_client().auth.verify_otp({
+            "email": session_email,
+            "token": otp,
+            "type": "magiclink"
+        })
+
+        session = session_res.session
+        access_token = session.access_token
+        refresh_token = session.refresh_token
+
+        display_name = db_user.get("display_name")
+        needs_display_name = not display_name or not display_name.strip()
+
+        return {
+            "success": True,
+            "user": db_user,
+            "needs_display_name": needs_display_name,
+            "session": {
+                "access_token": access_token,
+                "refresh_token": refresh_token
+            }
+        }
+    except Exception as e:
+        print(f"⚠️ Privy sync error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 def _get_user_id_from_token(request: Request) -> str:
-    """Extract user_id from Supabase JWT in Authorization header."""
-    import jwt as pyjwt
+    """Extract and verify user_id from Supabase JWT in Authorization header."""
     auth = request.headers.get('Authorization', '')
     if not auth.startswith('Bearer '):
         raise HTTPException(status_code=401, detail='Missing or invalid Authorization header')
     token = auth[7:]
     try:
-        decoded = pyjwt.decode(token, options={'verify_signature': False})
-        user_id = decoded.get('sub')
+        from database import get_anon_client
+        user_res = get_anon_client().auth.get_user(token)
+        user = user_res.user if hasattr(user_res, "user") else user_res
+        user_id = user.id if hasattr(user, "id") else user.get("id")
         if not user_id:
-            raise HTTPException(status_code=401, detail='Invalid token: no sub claim')
+            raise HTTPException(status_code=401, detail='Invalid token: user ID not found')
         return user_id
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f'Token decode failed: {e}')
+        raise HTTPException(status_code=401, detail=f'Token verification failed: {e}')
+
+
+@app.patch('/api/auth/profile')
+def update_profile(body: ProfileUpdateRequest, request: Request):
+    """
+    Update the authenticated user's profile display name.
+    Syncs the display name to the users table and Supabase Auth user_metadata.
+    """
+    user_id = _get_user_id_from_token(request)
+    display_name = body.display_name.strip()
+    
+    if not display_name or len(display_name) < 2 or len(display_name) > 50:
+        raise HTTPException(status_code=400, detail="Display name must be between 2 and 50 characters")
+        
+    try:
+        from database import db as _db
+        
+        # 1. Update the users table
+        db_res = _db().table("users").update({"display_name": display_name}).eq("id", user_id).execute()
+        if not db_res.data:
+            raise HTTPException(status_code=404, detail="User record not found in database")
+        db_user = db_res.data[0]
+        
+        # 2. Update Supabase Auth user_metadata using admin API (server-side only)
+        _db().auth.admin.update_user_by_id(
+            user_id,
+            {
+                "user_metadata": {
+                    "display_name": display_name,
+                    "name": display_name
+                }
+            }
+        )
+        
+        return {
+            "success": True,
+            "user": db_user
+        }
+    except Exception as e:
+        print(f"⚠️ Profile update error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post('/selora-stores')

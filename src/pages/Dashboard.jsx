@@ -67,6 +67,19 @@ const getGreeting = () => {
   return 'Good evening'
 }
 
+const getDisplayName = (u) => {
+  if (!u) return 'Seller'
+  const nameVal = u.display_name || u.user_metadata?.display_name || u.user_metadata?.name
+  if (nameVal) return nameVal
+  if (u.email && !u.email.endsWith('@selora.io')) return u.email
+  if (u.wallet_address) {
+    const w = u.wallet_address
+    return w.length > 8 ? `${w.slice(0, 4)}...${w.slice(-4)}` : w
+  }
+  if (u.email) return u.email
+  return 'Seller'
+}
+
 const formatDate = (ts) => {
   if (!ts) return ''
   return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -252,13 +265,19 @@ export default function Dashboard() {
 
   const latestReport = reports[0] || null
 
-  // ── Condensed summary ──────────────────────────────────────────────────────
+  // ── Condensed summary (filtered to latest run cycle) ──────────────────────
+  const latestReportLogs = latestReport ? logs.filter(l => {
+    const logTime = new Date(l.created_at).getTime()
+    const reportTime = new Date(latestReport.created_at).getTime()
+    return Math.abs(logTime - reportTime) < 60 * 1000 // within 1 minute of report
+  }) : []
+
   const uniqueProductsInRun = new Set(
-    logs.filter(l => l.data?.product_id || l.data?.product_title)
+    latestReportLogs.filter(l => l.data?.product_id || l.data?.product_title)
         .map(l => l.data?.product_id || l.data?.product_title)
   ).size
 
-  const listingsUpdated = logs.filter(l =>
+  const listingsUpdated = latestReportLogs.filter(l =>
     ['optimize_listing', 'reprice_product'].includes(l.action_type)
   ).length
 
@@ -367,7 +386,7 @@ export default function Dashboard() {
         {/* ── GREETING ──────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1 style={s.h1}>{getGreeting()}, {user?.user_metadata?.name || 'Seller'} 👋</h1>
+            <h1 style={s.h1}>{getGreeting()}, {getDisplayName(user)} 👋</h1>
             <p style={{ fontSize: '.85rem', color: c.muted, marginTop: '.3rem', fontWeight: 300 }}>
               {activeStore
                 ? (activeStore.shop_url ? `Connected to ${activeStore.shop_name}` : `Hosting native store: ${activeStore.shop_name}`)

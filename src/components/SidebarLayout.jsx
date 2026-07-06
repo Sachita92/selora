@@ -4,6 +4,7 @@ import { useAppContext } from '../lib/AppContext'
 import { useChat } from '../lib/ChatContext'
 import { supabase } from '../lib/supabase'
 import { useDarkMode } from '../hooks/useDarkMode'
+import { useAuth } from '../lib/useAuth'
 
 const c = {
   green: 'var(--g)', dark: 'var(--text-primary)', muted: 'var(--text-muted)',
@@ -13,7 +14,8 @@ const c = {
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export default function SidebarLayout() {
-  const { user, stores, activeStore, setActiveStore, logout } = useAppContext()
+  const { user, stores, activeStore, setActiveStore } = useAppContext()
+  const { logout } = useAuth()
   const { messages, loading: chatLoading, sendMessage, loadHistory, loadSessions, sessionId, sessions, selectSession, setOpen, startNewSession, deleteSession, renameSession, pinSession } = useChat()
   const navigate = useNavigate()
   const location = useLocation()

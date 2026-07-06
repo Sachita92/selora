@@ -10,6 +10,7 @@ export function AppProvider({ children }) {
   const [activeStore, setActiveStore] = useState(null)
   const [loading, setLoading] = useState(true)
   const [authModal, setAuthModal] = useState({ open: false, mode: 'login', plan: null })
+  const [nameModal, setNameModal] = useState({ open: false })
   const openAuthModal = useCallback((mode = 'login', plan = null) => setAuthModal({ open: true, mode, plan }), [])
   const closeAuthModal = useCallback(() => setAuthModal({ open: false, mode: 'login', plan: null }), [])
   const [products, setProducts] = useState([])
@@ -129,7 +130,8 @@ export function AppProvider({ children }) {
       fetchingProducts,
       productsStats, setProductsStats,
       fetchProducts,
-      authModal, openAuthModal, closeAuthModal
+      authModal, openAuthModal, closeAuthModal,
+      nameModal, setNameModal
     }}>
       {children}
     </AppContext.Provider>
