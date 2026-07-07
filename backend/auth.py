@@ -6,7 +6,8 @@ import requests
 from urllib.parse import urlencode, parse_qs, urlparse
 from dotenv import load_dotenv
 
-load_dotenv()
+dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(dotenv_path)
 
 SHOPIFY_API_KEY    = os.getenv("SHOPIFY_API_KEY")
 SHOPIFY_API_SECRET = os.getenv("SHOPIFY_API_SECRET")

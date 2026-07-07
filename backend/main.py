@@ -11,7 +11,8 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
-load_dotenv()
+dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(dotenv_path)
 
 from product_facts import PRODUCT_FACTS_CORE, PRODUCT_FACTS_CTA
 
@@ -212,6 +213,25 @@ def get_stores(email: str = Query(..., description="User email")):
         "run_count_this_month": s.get("run_count_this_month", 0),
     } for s in stores]
 
+    # Fetch and merge native Selora stores
+    from database import db as _db
+    try:
+        selora_stores_res = _db().table("selora_stores").select("*").eq("user_id", user["id"]).execute()
+        if selora_stores_res.data:
+            for s in selora_stores_res.data:
+                safe_stores.append({
+                    "id": s["id"],
+                    "platform": "selora",
+                    "shop_url": f"/store/{s['handle']}",
+                    "shop_name": s["name"],
+                    "is_active": s.get("is_public", True),
+                    "last_synced_at": s.get("created_at"),
+                    "created_at": s.get("created_at"),
+                    "run_count_this_month": 0
+                })
+    except Exception as e:
+        print(f"⚠️ Error fetching native Selora stores: {e}")
+
     return {
         "stores": safe_stores,
         "user": {
@@ -261,6 +281,33 @@ def get_store_products(store_id: str, force_refresh: bool = False):
     store = get_store_by_id(store_id)
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
+
+    if store.get("platform") == "selora":
+        from database import db as _db
+        try:
+            prod_res = _db().table("selora_products").select("*").eq("store_id", store_id).execute()
+            
+            # Calculate revenue/orders metrics from paid selora_orders
+            revenue = 0.0
+            orders_count = 0
+            try:
+                orders_res = _db().table("selora_orders").select("total_usd").eq("store_id", store_id).eq("status", "paid").execute()
+                if orders_res.data:
+                    orders_count = len(orders_res.data)
+                    revenue = sum(float(o["total_usd"]) for o in orders_res.data)
+            except Exception as e:
+                print(f"⚠️ Error loading native order metrics for dashboard: {e}")
+                
+            # Mapped native product output (with platform = 'selora' for consistency)
+            native_prods = [{**p, "platform": "selora"} for p in prod_res.data or []]
+            
+            return {
+                "products": native_prods,
+                "total_revenue_30d": revenue,
+                "total_orders_30d": orders_count
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch native products: {e}")
 
     try:
         adapter = ShopifyAdapter(
@@ -480,25 +527,58 @@ def chat_with_agent(store_id: str, body: ChatRequest, request: Request):
 
     # Fetch live store data for context
     try:
-        adapter = ShopifyAdapter(
-            shop_url=store["shop_url"],
-            access_token=store["access_token"],
-        )
-        snapshot = adapter.get_store_snapshot()
-        products_summary = "\n".join([
-            f"  • {p.title} (ID: {p.id}) — ${p.price}, {p.inventory} in stock, "
-            f"{p.sales_last_30_days} sold (30d), ${p.revenue_last_30_days:.2f} revenue"
-            for p in snapshot.products[:20]
-        ])
-        store_context = (
-            f"STORE: {snapshot.shop_name} ({snapshot.platform})\n"
-            f"TOTAL REVENUE (30d): ${snapshot.total_revenue_30d:.2f}\n"
-            f"TOTAL ORDERS (30d): {snapshot.total_orders_30d}\n"
-            f"PRODUCTS ({len(snapshot.products)}):\n{products_summary}"
-        )
+        if store.get("platform") == "selora":
+            # Native storefront: load directly from database
+            from database import db as _db
+            prod_res = _db().table("selora_products").select("*").eq("store_id", store_id).execute()
+            products_list = prod_res.data or []
+            
+            # Retrieve paid orders metrics
+            revenue = 0.0
+            orders_count = 0
+            try:
+                orders_res = _db().table("selora_orders").select("total_usd").eq("store_id", store_id).eq("status", "paid").execute()
+                if orders_res.data:
+                    orders_count = len(orders_res.data)
+                    revenue = sum(float(o["total_usd"]) for o in orders_res.data)
+            except Exception as ev_err:
+                print(f"⚠️ Error loading native order metrics for chat: {ev_err}")
+                
+            products_summary = "\n".join([
+                f"  • {p['title']} (ID: {p['id']}) — ${p['price']}, {p['inventory']} in stock, "
+                f"0 sold (30d), $0.00 revenue"
+                for p in products_list[:20]
+            ])
+            store_context = (
+                f"STORE: {store['shop_name']} (selora)\n"
+                f"TOTAL REVENUE (30d): ${revenue:.2f}\n"
+                f"TOTAL ORDERS (30d): {orders_count}\n"
+                f"PRODUCTS ({len(products_list)}):\n{products_summary}"
+            )
+            adapter = None
+            snapshot = None
+        else:
+            # Shopify connected store
+            adapter = ShopifyAdapter(
+                shop_url=store["shop_url"],
+                access_token=store["access_token"],
+            )
+            snapshot = adapter.get_store_snapshot()
+            products_summary = "\n".join([
+                f"  • {p.title} (ID: {p.id}) — ${p.price}, {p.inventory} in stock, "
+                f"{p.sales_last_30_days} sold (30d), ${p.revenue_last_30_days:.2f} revenue"
+                for p in snapshot.products[:20]
+            ])
+            store_context = (
+                f"STORE: {snapshot.shop_name} ({snapshot.platform})\n"
+                f"TOTAL REVENUE (30d): ${snapshot.total_revenue_30d:.2f}\n"
+                f"TOTAL ORDERS (30d): {snapshot.total_orders_30d}\n"
+                f"PRODUCTS ({len(snapshot.products)}):\n{products_summary}"
+            )
     except Exception as e:
         print(f"⚠️ Could not fetch live store data for chat: {e}")
-        store_context = f"STORE: {store['shop_name']} (shopify)\n(Could not fetch live data — {e})"
+        platform_type = store.get("platform", "shopify")
+        store_context = f"STORE: {store['shop_name']} ({platform_type})\n(Could not fetch live data — {e})"
         adapter = None
         snapshot = None
 
@@ -2035,12 +2115,9 @@ def get_demo_dashboard():
             products = adapter._get_products()
             product_titles = [p.get("title") for p in products if p.get("title")]
         else:
-            raise HTTPException(status_code=503, detail="Demo store unavailable")
-    except HTTPException:
-        raise
+            print("⚠️ Demo store not found/active in database, using fallback products.")
     except Exception as e:
         print(f"Error fetching products for demo dashboard: {e}")
-        raise HTTPException(status_code=503, detail="Demo store unavailable")
 
     # Fallback products if none found or error occurred
     FALLBACK_PRODUCTS = ["Floral Wrap Dress", "Linen Blazer", "Leather Boots"]
@@ -2201,6 +2278,282 @@ async def rewrite_demo(body: dict, request: Request):
         if ip in _ip_limits and _ip_limits[ip]:
             _ip_limits[ip].pop()
         raise HTTPException(status_code=502, detail=f"AI generation failed: {e}")
+
+
+# ─── Solana Pay Checkout Endpoints ───────────────────────────────────────────
+
+BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+def b58encode(b: bytes) -> str:
+    n = int.from_bytes(b, byteorder="big")
+    res = []
+    while n > 0:
+        n, r = divmod(n, 58)
+        res.append(BASE58_ALPHABET[r])
+    pad = 0
+    for byte in b:
+        if byte == 0:
+            pad += 1
+        else:
+            break
+    return "1" * pad + "".join(reversed(res))
+
+
+class CheckoutItem(BaseModel):
+    product_id: str
+    quantity: int
+
+class SolanaCheckoutRequest(BaseModel):
+    store_id: str
+    buyer_wallet: Optional[str] = None
+    cart: List[CheckoutItem]
+
+
+@app.post("/api/checkout/solana/create")
+def create_solana_checkout(body: SolanaCheckoutRequest):
+    from database import db as _db
+    
+    store_id = body.store_id
+    buyer_wallet = body.buyer_wallet
+    cart = body.cart
+    
+    # 1. Fetch store data
+    store_res = _db().table("selora_stores").select("*").eq("id", store_id).execute()
+    if not store_res.data:
+        raise HTTPException(status_code=404, detail="Store not found")
+    store_data = store_res.data[0]
+    
+    # Resolve payout address: check payout_wallet_address, fall back to owner's users.wallet_address
+    recipient = store_data.get("payout_wallet_address")
+    if not recipient or not recipient.strip():
+        user_id = store_data.get("user_id")
+        user_res = _db().table("users").select("wallet_address").eq("id", user_id).execute()
+        if user_res.data:
+            recipient = user_res.data[0].get("wallet_address")
+            
+    if not recipient or not recipient.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Store does not have a configured Solana payout wallet, and owner's Privy wallet is not linked."
+        )
+        
+    recipient = recipient.strip()
+    
+    # 2. Fetch products to calculate exact total (protect against client-side price modification)
+    product_ids = [item.product_id for item in cart]
+    if not product_ids:
+        raise HTTPException(status_code=400, detail="Cart is empty")
+        
+    products_res = _db().table("selora_products").select("*").in_("id", product_ids).execute()
+    products_map = {p["id"]: p for p in products_res.data or []}
+    
+    total_usd = 0.0
+    items_ordered = []
+    
+    for item in cart:
+        prod = products_map.get(item.product_id)
+        if not prod:
+            raise HTTPException(status_code=400, detail=f"Product {item.product_id} not found in store")
+        
+        item_price = float(prod["price"])
+        total_usd += item_price * item.quantity
+        items_ordered.append({
+            "product_id": item.product_id,
+            "title": prod["title"],
+            "price": item_price,
+            "quantity": item.quantity
+        })
+        
+    if total_usd <= 0:
+        raise HTTPException(status_code=400, detail="Invalid order total")
+        
+    # 3. Generate reference public key
+    try:
+        from cryptography.hazmat.primitives.asymmetric import ed25519 as crypto_ed25519
+        priv = crypto_ed25519.Ed25519PrivateKey.generate()
+        pub_bytes = priv.public_key().public_bytes_raw()
+        reference = b58encode(pub_bytes)
+    except Exception as e:
+        print(f"Error generating reference key: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate payment reference")
+        
+    # 4. Save order to database as pending
+    try:
+        order_data = {
+            "store_id": store_id,
+            "reference": reference,
+            "buyer_wallet": buyer_wallet,
+            "total_usd": total_usd,
+            "status": "pending",
+            "items": items_ordered
+        }
+        order_res = _db().table("selora_orders").insert(order_data).execute()
+        order = order_res.data[0]
+    except Exception as e:
+        print(f"Error inserting order record: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create pending order: {e}")
+        
+    usdc_mint = os.getenv("USDC_MINT", "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU")
+    
+    return {
+        "success": True,
+        "order_id": order["id"],
+        "reference": reference,
+        "recipient": recipient,
+        "amount_usdc": round(total_usd, 2),
+        "spl_token_mint": usdc_mint,
+        "memo": f"Order {order['id'][:8]} on {store_data['name']}"
+    }
+
+
+@app.get("/api/checkout/solana/verify/{reference}")
+def verify_solana_checkout(reference: str):
+    import httpx
+    from database import db as _db
+    
+    # 1. Fetch order details from DB
+    order_res = _db().table("selora_orders").select("*").eq("reference", reference).execute()
+    if not order_res.data:
+        raise HTTPException(status_code=404, detail="Order not found for reference")
+    order = order_res.data[0]
+    
+    if order["status"] == "paid":
+        return {"status": "confirmed", "order_id": order["id"]}
+    if order["status"] == "failed":
+        return {"status": "failed", "order_id": order["id"]}
+        
+    store_id = order["store_id"]
+    expected_usdc = float(order["total_usd"])
+    
+    # Resolve merchant payout wallet
+    store_res = _db().table("selora_stores").select("*").eq("id", store_id).execute()
+    if not store_res.data:
+        raise HTTPException(status_code=404, detail="Store not found")
+    store_data = store_res.data[0]
+    
+    recipient = store_data.get("payout_wallet_address")
+    if not recipient or not recipient.strip():
+        user_id = store_data.get("user_id")
+        user_res = _db().table("users").select("wallet_address").eq("id", user_id).execute()
+        if user_res.data:
+            recipient = user_res.data[0].get("wallet_address")
+            
+    if not recipient:
+        raise HTTPException(status_code=400, detail="Merchant payout wallet is not configured")
+        
+    merchant_wallet = recipient.strip()
+    usdc_mint = os.getenv("USDC_MINT", "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU")
+    rpc_url = os.getenv("SOLANA_RPC_URL", "https://api.devnet.solana.com")
+    
+    # 2. Query Solana Devnet RPC to verify transaction
+    try:
+        headers = {"Content-Type": "application/json"}
+        client = httpx.Client(timeout=10.0)
+        
+        # A. Call getSignaturesForAddress
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "getSignaturesForAddress",
+            "params": [
+                reference,
+                {"commitment": "confirmed"}
+            ]
+        }
+        res = client.post(rpc_url, json=payload, headers=headers)
+        if res.status_code != 200:
+            return {"status": "pending", "message": "Failed to query Solana RPC"}
+            
+        rpc_data = res.json()
+        if "error" in rpc_data:
+            return {"status": "pending", "message": f"RPC error: {rpc_data['error']}"}
+            
+        signatures = rpc_data.get("result", [])
+        if not signatures:
+            return {"status": "pending", "message": "No transaction found for reference"}
+            
+        confirmed_signature = None
+        for sig_info in signatures:
+            sig = sig_info.get("signature")
+            if not sig:
+                continue
+                
+            # B. Call getTransaction
+            tx_payload = {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "getTransaction",
+                "params": [
+                    sig,
+                    {
+                        "encoding": "json",
+                        "commitment": "confirmed",
+                        "maxSupportedTransactionVersion": 0
+                    }
+                ]
+            }
+            tx_res = client.post(rpc_url, json=tx_payload, headers=headers)
+            if tx_res.status_code != 200:
+                continue
+                
+            tx_data = tx_res.json()
+            if "error" in tx_data or not tx_data.get("result"):
+                continue
+                
+            result = tx_data["result"]
+            meta = result.get("meta", {})
+            if meta.get("err") is not None:
+                # Execution failed
+                continue
+                
+            # C. Perform explicit owner filter and token balance change check
+            post_token_balances = meta.get("postTokenBalances", [])
+            pre_token_balances = meta.get("preTokenBalances", [])
+            
+            received_usdc = 0.0
+            for post_bal in post_token_balances:
+                bal_mint = post_bal.get("mint")
+                bal_owner = post_bal.get("owner")
+                
+                # Verify owner is the merchant wallet and mint is the Devnet USDC mint
+                if bal_mint == usdc_mint and bal_owner == merchant_wallet:
+                    post_amount = float(post_bal.get("uiTokenAmount", {}).get("uiAmount") or 0.0)
+                    
+                    pre_amount = 0.0
+                    acc_idx = post_bal.get("accountIndex")
+                    for pre_bal in pre_token_balances:
+                        if pre_bal.get("accountIndex") == acc_idx:
+                            pre_amount = float(pre_bal.get("uiTokenAmount", {}).get("uiAmount") or 0.0)
+                            break
+                            
+                    received_usdc += (post_amount - pre_amount)
+                    
+            if received_usdc >= expected_usdc:
+                confirmed_signature = sig
+                break
+                
+        if confirmed_signature:
+            # 3. Update status in database
+            _db().table("selora_orders").update({"status": "paid"}).eq("id", order["id"]).execute()
+            
+            # 4. Insert purchase events into selora_events
+            try:
+                for item in order["items"]:
+                    _db().table("selora_events").insert({
+                        "store_id": store_id,
+                        "product_id": item["product_id"],
+                        "event_type": "purchase"
+                    }).execute()
+            except Exception as ev_err:
+                print(f"⚠️ Failed to track purchase event: {ev_err}")
+                
+            return {"status": "confirmed", "order_id": order["id"], "signature": confirmed_signature}
+            
+        return {"status": "pending", "message": "Transaction found but merchant did not receive expected USDC amount"}
+        
+    except Exception as err:
+        print(f"Error during payment verification: {err}")
+        return {"status": "pending", "error": str(err)}
 
 
 # ─── CLI entry point ──────────────────────────────────────────────────────────

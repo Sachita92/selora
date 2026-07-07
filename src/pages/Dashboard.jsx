@@ -56,6 +56,34 @@ const GlobalStyles = () => (
     .pdot { animation: pulse 2s infinite; }
     .spotlight-card { display:flex; gap:.85rem; padding:.85rem; background:var(--bg-0); border:1px solid var(--border); border-radius:10px; transition:all .15s; cursor:pointer; }
     .spotlight-card:hover { border-color:var(--g); background:var(--bg-2); }
+    @keyframes marquee {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    .marquee-container {
+      width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .65rem 1.25rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+    .marquee-text {
+      display: inline-block;
+      animation: marquee 45s linear infinite;
+      font-size: .85rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      padding-right: 100%;
+    }
+    .marquee-text:hover {
+      animation-play-state: paused;
+    }
   `}</style>
 )
 
@@ -180,6 +208,8 @@ export default function Dashboard() {
   const [scrollIndex, setScrollIndex] = useState(0)
   const [isHovered, setIsHovered]     = useState(false)
   const [bannerDismissed, setBannerDismissed] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [marqueeDismissed, setMarqueeDismissed] = useState(false)
 
   // Redirect if plan param present
   useEffect(() => {
@@ -193,6 +223,7 @@ export default function Dashboard() {
       fetchReports(activeStore.id)
       setScrollIndex(0)
       setBannerDismissed(false)
+      setMarqueeDismissed(false)
     } else {
       setLogs([])
       setReports([])
@@ -299,6 +330,13 @@ export default function Dashboard() {
     return `Selora took ${ac} action${ac !== 1 ? 's' : ''}.`
   }
 
+  const getMarqueeText = () => {
+    if (fetchingReports || fetchingLogs) return "Loading latest agent report..."
+    if (!latestReport) return "No runs yet. Click 'Run Agent Now' at the top right to start your first run."
+    const summary = buildSummaryLine()
+    return `Latest Agent Run: ${summary} · Click 'View Last Report' below to see the details.`
+  }
+
   // ── Stat card values (real data) ───────────────────────────────────────────
   const actionsTaken = (() => {
     if (!latestReport) return 0
@@ -361,13 +399,11 @@ export default function Dashboard() {
     // 4. Agent hasn't run in 48 h
     if (!fetchingReports && !latestReport) return {
       type: 'neutral',
-      msg:  "Your agent hasn't run yet — run it now to start growing your store",
-      action: { label: 'Run Agent Now', onClick: runAgent },
+      msg:  "Your agent hasn't run yet — click 'Run Agent Now' at the top to start growing your store",
     }
     if (latestReport && (Date.now() - new Date(latestReport.created_at).getTime() > 48 * 60 * 60 * 1000)) return {
       type: 'neutral',
-      msg:  "Your agent hasn't run recently — run it now to check your store",
-      action: { label: 'Run Agent Now', onClick: runAgent },
+      msg:  "Your agent hasn't run recently — click 'Run Agent Now' at the top to check your store",
     }
     return null
   })()
@@ -382,6 +418,38 @@ export default function Dashboard() {
     <div style={s.page}>
       <GlobalStyles />
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '2.5rem 2rem 5rem' }}>
+        {activeStore && !marqueeDismissed && (
+          <div className="marquee-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <div className="marquee-text">
+                🤖 {getMarqueeText()}
+              </div>
+            </div>
+            <button
+              onClick={() => setMarqueeDismissed(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '.2rem .4rem',
+                zIndex: 10,
+                fontWeight: 600,
+                fontSize: '1rem',
+                opacity: 0.8,
+                transition: 'opacity 0.15s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+              title="Dismiss Report"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* ── GREETING ──────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -436,6 +504,81 @@ export default function Dashboard() {
 
         {activeStore && (
           <>
+            {activeStore.platform === 'selora' && (
+              <div 
+                style={{
+                  background: 'var(--bg-1)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 12,
+                  padding: '1.25rem 1.5rem',
+                  marginBottom: '1.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '1rem'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
+                  <span style={{ fontSize: '1.5rem' }}>🌿</span>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Your Public Storefront is Live!
+                    </h4>
+                    <p style={{ margin: '.2rem 0 0 0', fontSize: '.82rem', color: 'var(--text-muted)' }}>
+                      Customers can browse your catalog and check out using Solana Pay.
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '.6rem' }}>
+                  <a 
+                    href={activeStore.shop_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      background: 'var(--g)',
+                      color: '#fff',
+                      padding: '.55rem 1.1rem',
+                      borderRadius: 8,
+                      fontSize: '.8rem',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '.4rem',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <span>Visit Storefront</span>
+                    <span>↗</span>
+                  </a>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.origin + activeStore.shop_url);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    style={{
+                      background: copied ? 'rgba(90,138,103,0.1)' : 'transparent',
+                      border: `1px solid ${copied ? 'var(--g)' : 'var(--border-strong)'}`,
+                      color: copied ? 'var(--g)' : 'var(--text-primary)',
+                      padding: '.55rem 1.1rem',
+                      borderRadius: 8,
+                      fontSize: '.8rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '.4rem',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    {copied ? 'Copied ✓' : 'Copy Link'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ── WHAT TO DO NEXT BANNER (2d) ───────────────────────────────── */}
             {topPriority && !bannerDismissed && (() => {
               const bc = bannerColors[topPriority.type]
@@ -482,7 +625,7 @@ export default function Dashboard() {
                   Review Flagged
                 </Link>
               )}
-              <Link to="/connect" className="qa-card">
+              <Link to={activeStore?.platform === 'selora' ? "/store-builder" : "/connect"} className="qa-card">
                 <IconLink />
                 Manage Store
               </Link>
@@ -543,49 +686,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* ── LAST AGENT RUN SUMMARY + NEXT RUN LINE ────────────────────── */}
-            <div style={{ ...s.card, marginBottom: '1.5rem' }} className="selora-card">
-              {fetchingReports || fetchingLogs ? (
-                <div>
-                  <div style={{ height: 12, background: 'var(--bg-2)', borderRadius: 4, width: '28%', marginBottom: '.8rem' }} />
-                  <div style={{ height: 18, background: 'var(--bg-2)', borderRadius: 4, width: '65%' }} />
-                </div>
-              ) : !latestReport ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-                  <div>
-                    <div style={{ fontSize: '.72rem', fontWeight: 600, color: c.muted, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '.4rem' }}>Last Agent Run</div>
-                    <p style={{ color: c.muted, fontSize: '.88rem', fontWeight: 300 }}>No runs yet. Run the agent to see your first summary.</p>
-                  </div>
-                  <button style={s.btnP} onClick={runAgent} disabled={running}>
-                    {running ? 'Agent Running...' : 'Run Agent Now'}
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div>
-                      <div style={{ fontSize: '.72rem', fontWeight: 600, color: c.muted, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '.4rem' }}>
-                        Last Agent Run · {formatDate(latestReport.created_at)}
-                      </div>
-                      <p style={{ color: c.dark, fontSize: '.9rem', fontWeight: 400, lineHeight: 1.5 }}>
-                        {buildSummaryLine()}
-                      </p>
-                    </div>
-                    <Link to="/reports" style={{ fontSize: '.8rem', color: c.green, textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      View Full Report →
-                    </Link>
-                  </div>
-                  {/* Next run line */}
-                  <div style={{ marginTop: '.85rem', paddingTop: '.75rem', borderTop: `1px solid ${c.border}`, fontSize: '.75rem', color: c.muted, display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10"/>
-                      <polyline points="12 6 12 12 16 14"/>
-                    </svg>
-                    {getNextRunText(latestReport)}
-                  </div>
-                </>
-              )}
-            </div>
+            {/* Last Agent Run card section removed (summary now displays in the marquee ticker at the top) */}
 
             {/* ── STAT CARDS (1d: real data wired) ─────────────────────────── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1rem', marginBottom: '1.5rem' }}>

@@ -74,8 +74,8 @@ export function useAuth() {
         if (data.needs_display_name) {
           setNameModal({ open: true })
         } else {
-          // Redirect to dashboard only if user is on dedicated auth pages or just logged in
-          const authPaths = ['/login', '/signup']
+          // Redirect to dashboard only if user is on dedicated auth pages, landing page, or just logged in
+          const authPaths = ['/', '/login', '/signup']
           if (authPaths.includes(location.pathname) || justLoggedInFlag) {
             justLoggedInFlag = false
             navigate('/dashboard')
@@ -101,6 +101,14 @@ export function useAuth() {
       active = false
     }
   }, [ready, authenticated, user, supabaseUser, triggerSync])
+
+  // Redirect to dashboard if session is already active and user visits public auth routes
+  useEffect(() => {
+    const authPaths = ['/', '/login', '/signup']
+    if (supabaseUser && authPaths.includes(location.pathname)) {
+      navigate('/dashboard')
+    }
+  }, [supabaseUser, location.pathname, navigate])
 
   // Reusable logout function that signs out of BOTH Privy and Supabase
   const logout = async () => {

@@ -3,7 +3,8 @@ import threading
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-load_dotenv()
+dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(dotenv_path)
 
 # ─── Client ───────────────────────────────────────────────────────────────────
 
@@ -11,13 +12,11 @@ _thread_local = threading.local()
 
 def get_client() -> Client:
     """Get a Supabase client using the service role key (bypasses RLS for backend use)."""
-    if not hasattr(_thread_local, "supabase_client"):
-        url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_SERVICE_KEY")  # service role — never expose in frontend
-        if not url or not key:
-            raise ValueError("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in .env")
-        _thread_local.supabase_client = create_client(url, key)
-    return _thread_local.supabase_client
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_SERVICE_KEY")  # service role — never expose in frontend
+    if not url or not key:
+        raise ValueError("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in .env")
+    return create_client(url, key)
 
 
 def db() -> Client:
@@ -26,13 +25,11 @@ def db() -> Client:
 
 def get_anon_client() -> Client:
     """Get a Supabase client using the anon key (standard user permissions)."""
-    if not hasattr(_thread_local, "supabase_anon_client"):
-        url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_ANON_KEY")
-        if not url or not key:
-            raise ValueError("Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env")
-        _thread_local.supabase_anon_client = create_client(url, key)
-    return _thread_local.supabase_anon_client
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_ANON_KEY")
+    if not url or not key:
+        raise ValueError("Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env")
+    return create_client(url, key)
 
 
 # ─── Users ────────────────────────────────────────────────────────────────────
@@ -210,9 +207,25 @@ def get_all_active_stores() -> list:
 
 
 def get_store_by_id(store_id: str) -> dict:
-    """Get a single store by ID."""
+    """Get a single store by ID (checking both connected and native stores)."""
     result = db().table("stores").select("*").eq("id", store_id).execute()
-    return result.data[0] if result.data else None
+    if result.data:
+        return result.data[0]
+    # Fallback to selora_stores
+    native_res = db().table("selora_stores").select("*").eq("id", store_id).execute()
+    if native_res.data:
+        s = native_res.data[0]
+        return {
+            "id": s["id"],
+            "user_id": s["user_id"],
+            "platform": "selora",
+            "shop_url": f"/store/{s['handle']}",
+            "shop_name": s["name"],
+            "access_token": "",
+            "is_active": s.get("is_public", True),
+            "created_at": s.get("created_at"),
+        }
+    return None
 
 
 def get_store_by_url(shop_url: str) -> dict:

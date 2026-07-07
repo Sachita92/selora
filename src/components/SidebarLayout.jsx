@@ -407,6 +407,9 @@ export default function SidebarLayout() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '.3rem', maxHeight: '110px', overflowY: 'auto' }} className="no-scrollbar">
               {stores.map(store => {
                 const isActive = activeStore?.id === store.id;
+                const platformLabel = store.platform === 'selora' ? 'Selora' : 'Shopify';
+                const platformColor = store.platform === 'selora' ? '#5A8A67' : '#96bf48';
+
                 return (
                   <div 
                     key={store.id}
@@ -429,7 +432,22 @@ export default function SidebarLayout() {
                       if (!isActive) e.currentTarget.style.background = 'transparent';
                     }}
                   >
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                      <span 
+                        style={{
+                          fontSize: '.62rem',
+                          fontWeight: 700,
+                          padding: '.15rem .35rem',
+                          borderRadius: 4,
+                          background: store.platform === 'selora' ? 'rgba(90,138,103,0.1)' : 'rgba(150,191,72,0.1)',
+                          color: platformColor,
+                          textTransform: 'uppercase',
+                          letterSpacing: '.02em',
+                          flexShrink: 0
+                        }}
+                      >
+                        {platformLabel}
+                      </span>
                       <div style={{ fontSize: '.78rem', color: c.dark, fontWeight: isActive ? 600 : 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {store.shop_name}
                       </div>

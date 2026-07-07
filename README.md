@@ -146,6 +146,46 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
+## Solana Pay Checkout Integration (Native Storefronts)
+
+We have added a native **Solana Pay Checkout** system for Selora Native storefronts. Shoppers can add multiple items to their Cart/Bag and check out using **USDC on Solana Devnet**.
+
+### 1. Database Setup
+Ensure you apply the new migration in your Supabase SQL Editor:
+* `backend/migrations/009_solana_pay_orders.sql` — Creates the `selora_orders` table and adds `payout_wallet_address` to `selora_stores`.
+
+### 2. Environment Variables
+Add the following configuration parameters to your environment files:
+
+**Backend (`backend/.env`)**:
+```env
+SOLANA_RPC_URL=https://api.devnet.solana.com
+USDC_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+```
+
+**Frontend (`.env`)**:
+```env
+VITE_SOLANA_RPC_URL=https://api.devnet.solana.com
+```
+
+### 3. How to Test End-to-End
+1. **Configure Payout Address**: 
+   - Add a Solana wallet address to the `payout_wallet_address` column in the `selora_stores` table for your store, or ensure your developer login wallet address is populated in the `users.wallet_address` table.
+2. **Shop on storefront**:
+   - Go to your native store URL (e.g. `http://localhost:5173/store/your-store-handle`).
+   - Add items to your bag. The product detail modal will close and the **Your Bag** drawer will slide out from the right.
+3. **Pay with Solana**:
+   - Click **Pay with Solana (USDC)**.
+   - A Solana Pay Devnet payment session is initialized:
+     - **Connected Wallet (Desktop)**: If you are signed in with Privy and have a connected Solana wallet, you can click **Pay with Connected Wallet** to build and sign the transfer transaction directly in-browser.
+     - **QR Code (Mobile)**: Scan the QR code with Phantom/Solflare mobile wallet set to Devnet.
+4. **Verification & Fulfillment**:
+   - The frontend automatically polls the backend endpoint `/api/checkout/solana/verify/{reference}`.
+   - The backend checks Devnet block confirmations for token balance changes owned by the merchant's wallet.
+   - Once confirmed, the order status shifts to `paid` in `selora_orders`, a `purchase` event is logged in `selora_events`, the cart is cleared, and a checkmark success screen is rendered.
+
+---
+
 ## Production Build & Deployments
 - Build Vite assets for production: `npm run build`
 - Frontend is configured to deploy directly to Vercel (using the `vercel.json` rewrite settings to enable clean client-side routing).
