@@ -15,7 +15,12 @@ export default function PrivyProviderWrapper({ children }) {
       config={{
         loginMethods: ['wallet', 'email'],
         embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
+          // 'off' — your users connect external Solana wallets (Phantom etc.).
+          // 'users-without-wallets' caused Privy to eagerly load ~15 embedded
+          // wallet UI chunks from auth.privy.io on every login, triggering
+          // ERR_HTTP2_SERVER_REFUSED_STREAM rate-limit errors from their CDN.
+          createOnLogin: 'off',
+          noPromptOnSignature: true,
         },
         appearance: {
           walletChainType: 'solana-only',

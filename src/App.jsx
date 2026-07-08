@@ -27,16 +27,17 @@ import PricingPage    from './pages/PricingPage'
 import StoreBuilder   from './pages/StoreBuilder'
 import Storefront     from './pages/Storefront'
 import Reports        from './pages/Reports'
+import Profile        from './pages/Profile'
 
 // ─── Protected route wrapper ──────────────────────────────────────────────────
 function ProtectedRoute({ children }) {
-  const { user, loading, openAuthModal } = useAppContext()
+  const { user, loading, openAuthModal, isLoggingOut } = useAppContext()
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !isLoggingOut) {
       openAuthModal('login')
     }
-  }, [loading, user, openAuthModal])
+  }, [loading, user, openAuthModal, isLoggingOut])
 
   if (loading) return null
   if (!user) return <Navigate to="/" replace />
@@ -83,6 +84,7 @@ export default function App() {
                 <Route path="/settings"      element={<Settings />} />
                 <Route path="/reports"       element={<Reports />} />
                 <Route path="/store-builder" element={<StoreBuilder />} />
+                <Route path="/profile"       element={<Profile />} />
               </Route>
 
               {/* Fallback */}

@@ -627,14 +627,25 @@ YOUR ROLE IN CHAT:
 CURRENT STORE DATA:
 {store_context}
 
+STORE SCOPE — CRITICAL:
+- You are working EXCLUSIVELY on the store shown above: "{store['shop_name']}".
+- If the user asks you to work on, add products to, or modify a DIFFERENT store by name, do NOT take any action on any store.
+- Instead, tell the user: "To work on [store name], please switch to that store using the store selector in the sidebar — I'll be ready to help once you're there!"
+- NEVER add, edit, or delete products on a store that is not the one loaded in CURRENT STORE DATA.
+
 GUIDELINES FOR CREATING/ADDING PRODUCTS:
-When calling the `add_product` tool, if you need to set an image URL, ALWAYS choose the closest match from these high-quality stock photo URLs to showcase it beautifully in the store layout:
+When calling the `add_product` tool, if you need to set an image URL, ALWAYS choose the single best match from these curated stock photo URLs. Read the product type and color carefully before choosing:
+- Black Leather Jacket: https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=800&q=80
+- White / Light Leather Jacket: https://images.unsplash.com/photo-1621072156002-e2fccdc0b176?auto=format&fit=crop&w=800&q=80
+- Denim Jacket / Jean Jacket: https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=800&q=80
 - Denim Pants / Jeans / Trousers: https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=800&q=80
-- Denim Jacket / Outerwear: https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=800&q=80
 - Cardigan / Sweater / Knitwear: https://images.unsplash.com/photo-1614975058789-41316d0e2e9c?auto=format&fit=crop&w=800&q=80
 - T-Shirt / Top / Shirt: https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80
 - Dress / Skirt: https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80
 - Suit / Blazer / Formal Wear: https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=800&q=80
+- Coat / Trench Coat / Outerwear: https://images.unsplash.com/photo-1539533018447-63fcce2678e3?auto=format&fit=crop&w=800&q=80
+- Sneakers / Casual Shoes: https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80
+IMPORTANT: Leather jackets and denim jackets are DIFFERENT items — always use the leather jacket URL for leather jackets.
 
 When the user asks you to do something (e.g. "lower the price of X", "rewrite the description for Y", "add a new product Z", "delete/remove product W"), use your tools to execute it. If you're unsure about something, ask for clarification. Always explain what you're doing before you do it.
 
@@ -643,7 +654,13 @@ CRITICAL TOOL USAGE RULES:
 - Before calling a tool, always double-check that the product_id you are using is a number from the store data.
 - If the user says "reprice the linen blazer", find "Linen Blazer" in the store data, read its ID (the number in parentheses after ID:), and use that number as product_id.
 - NEVER make up or assume product IDs. Only use IDs that are explicitly listed in CURRENT STORE DATA.
-- NEVER claim you took an action unless you actually called the appropriate tool with a real product ID from the store data."""
+- NEVER claim you took an action unless you actually called the appropriate tool with a real product ID from the store data.
+
+HEALTH CHECK:
+- If the user asks 'run a health check', 'how healthy is my store?', 'what\'s wrong with my store?', 'find issues', 'analyze my catalog', 'analyze my store', or similar — call the `store_health_check` tool immediately.
+- After the tool returns, present the results warmly and clearly. Start with the score, then list critical issues, then warnings, then praise healthy areas.
+- Be specific: mention actual product names from the affected_products lists.
+- End with the top 2–3 action items they can take right now."""
 
     # Build messages array
     messages = [{"role": "system", "content": system_prompt}]
@@ -722,6 +739,7 @@ CRITICAL TOOL USAGE RULES:
                         tool_args=tool_args,
                         adapter=adapter,
                         dry_run=False,
+                        snapshot=snapshot,
                     )
                 else:
                     result = {"success": False, "error": "No store adapter available"}
@@ -845,6 +863,79 @@ def _run_agent_task(store: dict, dry_run: bool):
 
     except Exception as e:
         print(f"❌ Agent failed for {store['shop_name']}: {e}")
+
+
+# ─── Store Health Check Endpoint ───────────────────────────────────────────
+
+@app.get("/api/stores/{store_id}/health")
+def get_store_health(store_id: str, request: Request):
+    """
+    Run a Store Health Check on a connected store and return a structured report.
+    Works for both Shopify and native Selora stores.
+    """
+    from database import get_store_by_id
+    from agent.health_check import StoreHealthAnalyzer
+    from adapters.base import StoreSnapshot, UniversalProduct
+
+    user_id = _get_user_id_from_token(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    store = get_store_by_id(store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    if store.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    try:
+        if store.get("platform") == "selora":
+            # Native store: build a snapshot from the database
+            from database import db as _db
+            prod_res = _db().table("selora_products").select("*").eq("store_id", store_id).execute()
+            products_list = prod_res.data or []
+
+            universal_products = [
+                UniversalProduct(
+                    id=str(p.get("id", "")),
+                    title=p.get("title", ""),
+                    description=p.get("description", "") or "",
+                    price=float(p.get("price", 0)),
+                    compare_at_price=None,
+                    inventory=int(p.get("inventory", 0)),
+                    sales_last_30_days=0,
+                    revenue_last_30_days=0.0,
+                    conversion_rate=0.0,
+                    views_last_30_days=0,
+                    platform="selora",
+                    image_url=p.get("image_url"),
+                    raw=p,
+                )
+                for p in products_list
+            ]
+
+            snapshot = StoreSnapshot(
+                platform="selora",
+                shop_name=store.get("shop_name", "My Store"),
+                total_revenue_30d=0.0,
+                total_orders_30d=0,
+                products=universal_products,
+                recent_orders=[],
+            )
+        else:
+            # Shopify: fetch live data
+            adapter = ShopifyAdapter(
+                shop_url=store["shop_url"],
+                access_token=store["access_token"],
+            )
+            snapshot = adapter.get_store_snapshot()
+
+        analyzer = StoreHealthAnalyzer(snapshot)
+        report = analyzer.analyze()
+        return {"success": True, "report": report.to_dict()}
+
+    except Exception as e:
+        print(f"❌ Health check failed for store {store_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {e}")
 
 
 # ─── Support and Demo Endpoints ──────────────────────────────────────────────

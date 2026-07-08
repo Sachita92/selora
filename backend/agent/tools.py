@@ -1,4 +1,5 @@
 from adapters.base import BaseAdapter, AgentAction
+from agent.health_check import StoreHealthAnalyzer
 
 def get_tools_definition() -> list:
     """
@@ -201,6 +202,28 @@ def get_tools_definition() -> list:
                 },
             },
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "store_health_check",
+                "description": (
+                    "Run a comprehensive Store Health Check on the merchant's catalog. "
+                    "Use this when the merchant asks: 'run a health check', 'how healthy is my store?', "
+                    "'what's wrong with my store?', 'analyze my catalog', 'find issues', or similar. "
+                    "Returns a structured health report with a score, issues, and recommendations."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "include_recommendations": {
+                            "type": "boolean",
+                            "description": "Whether to include AI recommendations in the report (default true)",
+                        },
+                    },
+                    "required": [],
+                },
+            },
+        },
     ]
 
 
@@ -218,6 +241,7 @@ def execute_tool(
     tool_args: dict,
     adapter: BaseAdapter,
     dry_run: bool = False,
+    snapshot=None,
 ) -> dict:
     """
     Execute a tool call from the AI agent.
@@ -319,6 +343,18 @@ def execute_tool(
             "tool": tool_name,
             "product_id": tool_args["product_id"],
         }
+
+    # ── store_health_check ─────────────────────────────────────────────────
+    elif tool_name == "store_health_check":
+        if snapshot is None:
+            return {"success": False, "error": "No store snapshot available for health check."}
+        analyzer = StoreHealthAnalyzer(snapshot)
+        report = analyzer.analyze()
+        result = report.to_dict()
+        result["success"] = True
+        result["tool"] = tool_name
+        print(f"   ✅ Health check complete — score: {result['score']}/100")
+        return result
 
     else:
         print(f"   ✗ Unknown tool: {tool_name}")

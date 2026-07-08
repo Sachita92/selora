@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useChat } from '../lib/ChatContext'
+import { useAppContext } from '../lib/AppContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -70,6 +72,8 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const widgetRef = useRef(null)
+  const navigate = useNavigate()
+  const { stores, activeStore, setActiveStore } = useAppContext()
 
   const [demoState, setDemoState] = useState('input') // 'input', 'loading', 'result', 'already_used', 'rate_limited', 'error', 'chat', 'refused'
   const [demoInput, setDemoInput] = useState('')
@@ -196,6 +200,23 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
   const handleSend = async () => {
     const text = input.trim()
     if (!text || loading || !storeId) return
+
+    // Auto-switch store if user mentions a different store by name
+    if (!isLandingPage && stores?.length > 1) {
+      const lowerText = text.toLowerCase()
+      const mentionedStore = stores.find(st => {
+        const name = (st.shop_name || '').toLowerCase().trim()
+        return name && name !== (activeStore?.shop_name || '').toLowerCase().trim() && lowerText.includes(name)
+      })
+      if (mentionedStore) {
+        setInput('')
+        setActiveStore(mentionedStore)
+        navigate('/dashboard')
+        await sendGlobalMessage(text, mentionedStore.id, isLandingPage)
+        return
+      }
+    }
+
     setInput('')
     await sendGlobalMessage(text, storeId, isLandingPage)
   }
@@ -209,9 +230,25 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
 
   const handleSuggestion = (text) => {
     setInput(text)
-    setTimeout(() => {
-      // Direct call to send message logic
+    setTimeout(async () => {
       if (!text.trim() || loading || !storeId) return
+
+      // Auto-switch store if suggestion mentions a different store
+      if (!isLandingPage && stores?.length > 1) {
+        const lowerText = text.toLowerCase()
+        const mentionedStore = stores.find(st => {
+          const name = (st.shop_name || '').toLowerCase().trim()
+          return name && name !== (activeStore?.shop_name || '').toLowerCase().trim() && lowerText.includes(name)
+        })
+        if (mentionedStore) {
+          setInput('')
+          setActiveStore(mentionedStore)
+          navigate('/dashboard')
+          await sendGlobalMessage(text, mentionedStore.id, isLandingPage)
+          return
+        }
+      }
+
       setInput('')
       sendGlobalMessage(text, storeId, isLandingPage)
     }, 50)

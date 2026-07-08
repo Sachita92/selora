@@ -1,6 +1,7 @@
 import os
 import threading
-from supabase import create_client, Client
+import httpx
+from supabase import create_client, Client, ClientOptions
 from dotenv import load_dotenv
 
 dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
@@ -8,15 +9,35 @@ load_dotenv(dotenv_path)
 
 # ─── Client ───────────────────────────────────────────────────────────────────
 
-_thread_local = threading.local()
+_client_lock = threading.Lock()
+_service_client: Client | None = None
+_anon_client: Client | None = None
+
+
+def _http1_client() -> httpx.Client:
+    """Return an httpx.Client with HTTP/2 explicitly disabled.
+    The venv has h2 installed so httpcore would negotiate HTTP/2 by default.
+    Cloudflare (Supabase edge) sends GOAWAY frames that corrupt cached
+    connections, so we force HTTP/1.1 to keep the singleton reliable.
+    """
+    return httpx.Client(http2=False)
+
 
 def get_client() -> Client:
-    """Get a Supabase client using the service role key (bypasses RLS for backend use)."""
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_SERVICE_KEY")  # service role — never expose in frontend
-    if not url or not key:
-        raise ValueError("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in .env")
-    return create_client(url, key)
+    """Get the shared Supabase service-role client (bypasses RLS for backend use)."""
+    global _service_client
+    if _service_client is None:
+        with _client_lock:
+            if _service_client is None:  # double-checked locking
+                url = os.getenv("SUPABASE_URL")
+                key = os.getenv("SUPABASE_SERVICE_KEY")
+                if not url or not key:
+                    raise ValueError("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in .env")
+                _service_client = create_client(
+                    url, key,
+                    options=ClientOptions(httpx_client=_http1_client())
+                )
+    return _service_client
 
 
 def db() -> Client:
@@ -24,12 +45,20 @@ def db() -> Client:
 
 
 def get_anon_client() -> Client:
-    """Get a Supabase client using the anon key (standard user permissions)."""
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_ANON_KEY")
-    if not url or not key:
-        raise ValueError("Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env")
-    return create_client(url, key)
+    """Get the shared Supabase anon client (standard user permissions)."""
+    global _anon_client
+    if _anon_client is None:
+        with _client_lock:
+            if _anon_client is None:
+                url = os.getenv("SUPABASE_URL")
+                key = os.getenv("SUPABASE_ANON_KEY")
+                if not url or not key:
+                    raise ValueError("Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env")
+                _anon_client = create_client(
+                    url, key,
+                    options=ClientOptions(httpx_client=_http1_client())
+                )
+    return _anon_client
 
 
 # ─── Users ────────────────────────────────────────────────────────────────────
@@ -572,4 +601,4 @@ def update_chat_session_metadata(store_id: str, session_id: str, title: str = No
             .execute()
             
     return result.data[0] if result.data else {}
-
+

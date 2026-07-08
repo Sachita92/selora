@@ -11,6 +11,7 @@ export function AppProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [authModal, setAuthModal] = useState({ open: false, mode: 'login', plan: null })
   const [nameModal, setNameModal] = useState({ open: false })
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const openAuthModal = useCallback((mode = 'login', plan = null) => setAuthModal({ open: true, mode, plan }), [])
   const closeAuthModal = useCallback(() => setAuthModal({ open: false, mode: 'login', plan: null }), [])
   const [products, setProducts] = useState([])
@@ -113,10 +114,12 @@ export function AppProvider({ children }) {
   }, [activeStore])
 
   const logout = async () => {
+    setIsLoggingOut(true)
     await supabase.auth.signOut()
     setUser(null)
     setStores([])
     setActiveStore(null)
+    setTimeout(() => setIsLoggingOut(false), 1500)
   }
 
   return (
@@ -131,7 +134,8 @@ export function AppProvider({ children }) {
       productsStats, setProductsStats,
       fetchProducts,
       authModal, openAuthModal, closeAuthModal,
-      nameModal, setNameModal
+      nameModal, setNameModal,
+      isLoggingOut, setIsLoggingOut
     }}>
       {children}
     </AppContext.Provider>

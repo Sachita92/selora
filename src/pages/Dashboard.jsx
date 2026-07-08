@@ -198,7 +198,7 @@ const IconX = () => (
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { user, stores, activeStore, setActiveStore, loading, products, fetchingProducts, fetchProducts } = useAppContext()
+  const { user, stores, activeStore, setActiveStore, loading, products, fetchingProducts, productsStats, fetchProducts } = useAppContext()
   const { sendMessage, setOpen } = useChat()
   const [logs, setLogs]         = useState([])
   const [reports, setReports]   = useState([])
@@ -688,12 +688,52 @@ export default function Dashboard() {
 
             {/* Last Agent Run card section removed (summary now displays in the marquee ticker at the top) */}
 
-            {/* ── STAT CARDS (1d: real data wired) ─────────────────────────── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+            {/* ── STAT CARDS ────────────────────────────────────────────────── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
 
+              {/* Revenue 30d */}
               <div style={s.mCard} className="selora-card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.4rem' }}>
-                  <div style={s.mLbl}>Actions Taken</div>
+                  <div style={s.mLbl}>Revenue (30d)</div>
+                  <span style={{ color: c.green }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="1" x2="12" y2="23"/>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                  </span>
+                </div>
+                <div style={s.mVal}>
+                  {fetchingProducts
+                    ? <div style={{ height: 28, background: 'var(--bg-2)', borderRadius: 4, width: 64 }} />
+                    : `$${(productsStats?.revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+                </div>
+                {(productsStats?.revenue || 0) > 0 && <div style={{ fontSize: '.65rem', color: c.green, fontWeight: 600, marginTop: '.2rem' }}>↑ Last 30 days</div>}
+              </div>
+
+              {/* Orders 30d */}
+              <div style={s.mCard} className="selora-card">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.4rem' }}>
+                  <div style={s.mLbl}>Orders (30d)</div>
+                  <span style={{ color: c.green }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                      <line x1="3" y1="6" x2="21" y2="6"/>
+                      <path d="M16 10a4 4 0 0 1-8 0"/>
+                    </svg>
+                  </span>
+                </div>
+                <div style={s.mVal}>
+                  {fetchingProducts
+                    ? <div style={{ height: 28, background: 'var(--bg-2)', borderRadius: 4, width: 40 }} />
+                    : (productsStats?.orders || 0).toLocaleString()}
+                </div>
+                {(productsStats?.orders || 0) > 0 && <div style={{ fontSize: '.65rem', color: c.green, fontWeight: 600, marginTop: '.2rem' }}>↑ Last 30 days</div>}
+              </div>
+
+              {/* Actions Taken */}
+              <div style={s.mCard} className="selora-card">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.4rem' }}>
+                  <div style={s.mLbl}>AI Actions</div>
                   <span style={{ color: c.green }}><IconSpark /></span>
                 </div>
                 <div style={s.mVal}>
@@ -703,6 +743,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {/* Wins */}
               <div style={s.mCard} className="selora-card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.4rem' }}>
                   <div style={s.mLbl}>Wins</div>
@@ -716,6 +757,7 @@ export default function Dashboard() {
                 {winsCount > 0 && <div style={{ fontSize: '.65rem', color: c.green, fontWeight: 600, marginTop: '.2rem' }}>↑ Growing</div>}
               </div>
 
+              {/* Concerns */}
               <div
                 style={{ ...s.mCard, ...(concernCount > 0 ? { background: 'var(--inventory-low-bg)', borderColor: 'var(--inventory-low-text)' } : {}) }}
                 className="selora-card"

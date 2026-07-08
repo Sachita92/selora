@@ -33,22 +33,9 @@ export function ChatProvider({ children }) {
       const data = await res.json()
       if (data.history && data.history.length > 0) {
         const mapped = data.history.map(msg => {
-          let assistantContent = msg.content
-          if (msg.actions && msg.actions.length > 0) {
-            const actionSummary = msg.actions
-              .map(a => {
-                if (a.tool === 'reprice_product') return `💰 Repriced product to $${a.args.new_price}`
-                if (a.tool === 'optimize_listing') return `✏️ Optimized listing`
-                if (a.tool === 'restock_alert') return `⚠️ Restock alert sent`
-                if (a.tool === 'generate_report') return `📊 Report generated`
-                return `🔧 ${a.tool}`
-              })
-              .join('\n')
-            assistantContent += `\n\n---\n**Actions taken:**\n${actionSummary}`
-          }
           return {
             role: msg.role,
-            content: assistantContent
+            content: msg.content
           }
         })
         // Prepend the initial greeting
@@ -129,21 +116,7 @@ export function ChatProvider({ children }) {
       }
 
       const data = await res.json()
-      let assistantContent = data.response || "I couldn't process that. Please try again."
-
-      // If actions were taken, add a small summary
-      if (data.actions?.length > 0) {
-        const actionSummary = data.actions
-          .map(a => {
-            if (a.tool === 'reprice_product') return `💰 Repriced product to $${a.args.new_price}`
-            if (a.tool === 'optimize_listing') return `✏️ Optimized listing`
-            if (a.tool === 'restock_alert') return `⚠️ Restock alert sent`
-            if (a.tool === 'generate_report') return `📊 Report generated`
-            return `🔧 ${a.tool}`
-          })
-          .join('\n')
-        assistantContent += `\n\n---\n**Actions taken:**\n${actionSummary}`
-      }
+      const assistantContent = data.response || "I couldn't process that. Please try again."
 
       setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }])
       if (!open) setHasNewMessage(true)

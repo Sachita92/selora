@@ -82,6 +82,12 @@ REPORTS:
 - Be specific — mention actual product names and numbers
 - Keep the tone warm, encouraging, and actionable
 
+HEALTH CHECK:
+- If the merchant asks 'run a health check', 'how healthy is my store?', 'what's wrong with my store?', 'find issues', 'analyze my catalog', or similar — call the `store_health_check` tool immediately.
+- After the tool returns, summarise the results in a warm, conversational way. Lead with the score, then highlight critical issues first, then warnings, then praise healthy areas.
+- Be specific: mention actual product names from the report.
+- End with 2-3 actionable next steps they can take right now.
+
 Remember: you are working on a real fashion seller's store. Every decision affects their livelihood. Be thoughtful, precise, and always explain your reasoning in plain English."""
 
     def _build_user_prompt(self, snapshot: StoreSnapshot) -> str:
@@ -194,6 +200,7 @@ Instructions:
                     tool_args=tool_args,
                     adapter=self.adapter,
                     dry_run=self.dry_run,
+                    snapshot=snapshot,
                 )
 
                 actions_taken.append({

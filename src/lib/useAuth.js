@@ -10,7 +10,7 @@ let justLoggedInFlag = false
 
 export function useAuth() {
   const { user, login, logout: privyLogout, authenticated, ready, getAccessToken } = usePrivy()
-  const { user: supabaseUser, setUser, setNameModal, setStores, setActiveStore } = useAppContext()
+  const { user: supabaseUser, setUser, setNameModal, setStores, setActiveStore, setIsLoggingOut } = useAppContext()
   const navigate = useNavigate()
   const location = useLocation()
   const [syncing, setSyncing] = useState(false)
@@ -113,6 +113,10 @@ export function useAuth() {
   // Reusable logout function that signs out of BOTH Privy and Supabase
   const logout = async () => {
     try {
+      if (setIsLoggingOut) {
+        setIsLoggingOut(true)
+        setTimeout(() => setIsLoggingOut(false), 1500)
+      }
       // 1. Force navigate to home page first so ProtectedRoutes unmount
       navigate('/')
 
