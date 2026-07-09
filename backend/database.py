@@ -366,10 +366,29 @@ def get_recent_reports(store_id: str, limit: int = 7) -> list:
 
 # ─── Chat Messages ───────────────────────────────────────────────────────────
 
+_selora_store_id_cache: set = set()
+
+def _is_selora_native_store(store_id: str) -> bool:
+    """Return True if store_id belongs to selora_stores (not the Shopify stores table)."""
+    if store_id in _selora_store_id_cache:
+        return True
+    res = db().table("selora_stores").select("id").eq("id", store_id).execute()
+    if res.data:
+        _selora_store_id_cache.add(store_id)
+        return True
+    return False
+
+
+def _chat_table(store_id: str) -> str:
+    """Return the correct chat messages table name for a given store_id."""
+    return "selora_chat_messages" if _is_selora_native_store(store_id) else "chat_messages"
+
+
 def save_chat_message(store_id: str, session_id: str, role: str, content: str, actions: list = None) -> dict:
-    """Save a chat message to the database."""
+    """Save a chat message to the database (routes to the correct table for native Selora stores)."""
     client = db()
-    result = client.table("chat_messages").insert({
+    table = _chat_table(store_id)
+    result = client.table(table).insert({
         "store_id": store_id,
         "session_id": session_id,
         "role": role,
@@ -382,7 +401,8 @@ def save_chat_message(store_id: str, session_id: str, role: str, content: str, a
 def get_chat_history(store_id: str, session_id: str, limit: int = 50) -> list:
     """Get chat history for a specific store and session."""
     client = db()
-    result = client.table("chat_messages")\
+    table = _chat_table(store_id)
+    result = client.table(table)\
         .select("*")\
         .eq("store_id", store_id)\
         .eq("session_id", session_id)\
@@ -396,7 +416,8 @@ def get_chat_history(store_id: str, session_id: str, limit: int = 50) -> list:
 def get_chat_sessions(store_id: str, limit: int = 20) -> list:
     """Get unique chat sessions (grouped, latest message timestamp) for a store."""
     client = db()
-    result = client.table("chat_messages")\
+    table = _chat_table(store_id)
+    result = client.table(table)\
         .select("session_id,role,content,created_at")\
         .eq("store_id", store_id)\
         .order("created_at", desc=True)\
@@ -545,7 +566,8 @@ def get_public_stats() -> dict:
 def delete_chat_session(store_id: str, session_id: str):
     """Delete all messages associated with a chat session from database."""
     client = db()
-    result = client.table("chat_messages")\
+    table = _chat_table(store_id)
+    result = client.table(table)\
         .delete()\
         .eq("store_id", store_id)\
         .eq("session_id", session_id)\
@@ -554,10 +576,11 @@ def delete_chat_session(store_id: str, session_id: str):
 
 
 def update_chat_session_metadata(store_id: str, session_id: str, title: str = None, pinned: bool = None):
-    """Create or update session metadata (custom title or pinned status) in chat_messages table."""
+    """Create or update session metadata (custom title or pinned status) in the correct chat_messages table."""
     client = db()
+    table = _chat_table(store_id)
     # Find all messages for session
-    res = client.table("chat_messages")\
+    res = client.table(table)\
         .select("*")\
         .eq("store_id", store_id)\
         .eq("session_id", session_id)\
@@ -586,12 +609,12 @@ def update_chat_session_metadata(store_id: str, session_id: str, title: str = No
     content_str = "__session_metadata__:" + json.dumps(meta)
     
     if msg_id:
-        result = client.table("chat_messages")\
+        result = client.table(table)\
             .update({"content": content_str})\
             .eq("id", msg_id)\
             .execute()
     else:
-        result = client.table("chat_messages")\
+        result = client.table(table)\
             .insert({
                 "store_id": store_id,
                 "session_id": session_id,
@@ -602,3 +625,34 @@ def update_chat_session_metadata(store_id: str, session_id: str, title: str = No
             
     return result.data[0] if result.data else {}
 
+
+def save_selora_agent_log(store_id: str, action_type: str, product_id: str = None, reason: str = None, data: dict = None, success: bool = True):
+    """Save a single agent action to the selora_agent_logs table (for native Selora stores)."""
+    try:
+        db().table("selora_agent_logs").insert({
+            "store_id": store_id,
+            "action_type": action_type,
+            "product_id": product_id,
+            "reason": reason,
+            "data": data or {},
+            "success": success,
+        }).execute()
+    except Exception as e:
+        print(f"⚠️ selora_agent_logs insert failed: {e}")
+
+
+def save_selora_agent_actions(store_id: str, actions: list):
+    """Save a batch of agent actions for a native Selora store."""
+    for action in actions:
+        tool = action.get("tool", "unknown")
+        args = action.get("args", {})
+        result = action.get("result", {})
+        save_selora_agent_log(
+            store_id=store_id,
+            action_type=tool,
+            product_id=str(args.get("product_id")) if args.get("product_id") else None,
+            reason=args.get("reason"),
+            data=args,
+            success=result.get("success", True),
+        )
+    print(f"✓ Saved {len(actions)} selora agent actions to database")

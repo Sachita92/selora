@@ -201,7 +201,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
     const text = input.trim()
     if (!text || loading || !storeId) return
 
-    // Auto-switch store if user mentions a different store by name
+    // Cross-store detection: if user mentions a different store by name, switch to it first
     if (!isLandingPage && stores?.length > 1) {
       const lowerText = text.toLowerCase()
       const mentionedStore = stores.find(st => {
@@ -210,8 +210,10 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
       })
       if (mentionedStore) {
         setInput('')
+        // Switch the active store first so UI reflects the change
         setActiveStore(mentionedStore)
         navigate('/dashboard')
+        // Send message to the MENTIONED store's ID, not the old storeId
         await sendGlobalMessage(text, mentionedStore.id, isLandingPage)
         return
       }
@@ -233,7 +235,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
     setTimeout(async () => {
       if (!text.trim() || loading || !storeId) return
 
-      // Auto-switch store if suggestion mentions a different store
+      // Cross-store detection for suggestions
       if (!isLandingPage && stores?.length > 1) {
         const lowerText = text.toLowerCase()
         const mentionedStore = stores.find(st => {

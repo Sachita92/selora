@@ -298,8 +298,18 @@ def get_store_products(store_id: str, force_refresh: bool = False):
             except Exception as e:
                 print(f"⚠️ Error loading native order metrics for dashboard: {e}")
                 
-            # Mapped native product output (with platform = 'selora' for consistency)
-            native_prods = [{**p, "platform": "selora"} for p in prod_res.data or []]
+            # Mapped native product output — normalize image_url from images array
+            native_prods = []
+            for p in (prod_res.data or []):
+                prod = {**p, "platform": "selora"}
+                # Derive a flat image_url from the images array for frontend compatibility
+                if not prod.get("image_url"):
+                    images = prod.get("images") or []
+                    if isinstance(images, list) and images:
+                        prod["image_url"] = images[0]
+                    elif isinstance(images, str) and images:
+                        prod["image_url"] = images
+                native_prods.append(prod)
             
             return {
                 "products": native_prods,
@@ -627,11 +637,13 @@ YOUR ROLE IN CHAT:
 CURRENT STORE DATA:
 {store_context}
 
-STORE SCOPE — CRITICAL:
+STORE SCOPE — ABSOLUTE RULE:
 - You are working EXCLUSIVELY on the store shown above: "{store['shop_name']}".
-- If the user asks you to work on, add products to, or modify a DIFFERENT store by name, do NOT take any action on any store.
-- Instead, tell the user: "To work on [store name], please switch to that store using the store selector in the sidebar — I'll be ready to help once you're there!"
-- NEVER add, edit, or delete products on a store that is not the one loaded in CURRENT STORE DATA.
+- UNDER NO CIRCUMSTANCES should you add, edit, reprice, delete, or modify anything on any store other than "{store['shop_name']}".
+- If the user's message mentions a DIFFERENT store name (any name that is not "{store['shop_name']}"), you MUST NOT call any tool. Instead, respond ONLY with: "To work on [that store name], please switch to it using the store selector in the sidebar — I'll be ready to help once you're there!"
+- Do NOT try to "help" by doing the work on the current store as a workaround.
+- Do NOT add products, change prices, or modify anything and then tell the user to move them later.
+- The ONLY correct response when another store is mentioned is to politely redirect the user to switch stores.
 
 GUIDELINES FOR CREATING/ADDING PRODUCTS:
 When calling the `add_product` tool, if you need to set an image URL, ALWAYS choose the single best match from these curated stock photo URLs. Read the product type and color carefully before choosing:
@@ -661,6 +673,63 @@ HEALTH CHECK:
 - After the tool returns, present the results warmly and clearly. Start with the score, then list critical issues, then warnings, then praise healthy areas.
 - Be specific: mention actual product names from the affected_products lists.
 - End with the top 2–3 action items they can take right now."""
+
+    # ── Cross-store guard (code-level, runs BEFORE the LLM) ─────────────────────
+    # If the user mentions a different store by name, refuse immediately.
+    # This is a hard guard — the LLM is never even called in this case.
+    if not body.is_guest:
+        try:
+            from database import db as _db_guard
+            # Fetch all stores belonging to this user
+            user_stores_res = (
+                _db_guard()
+                .table("stores")
+                .select("id,shop_name,shop_url")
+                .eq("user_id", store.get("user_id", ""))
+                .execute()
+            )
+            # Also check selora_stores for native storefronts
+            selora_stores_res = (
+                _db_guard()
+                .table("selora_stores")
+                .select("id,shop_name")
+                .eq("user_id", store.get("user_id", ""))
+                .execute()
+            )
+            all_user_stores = (user_stores_res.data or []) + (selora_stores_res.data or [])
+
+            current_store_name = (store.get("shop_name") or "").lower().strip()
+            msg_lower = body.message.lower()
+
+            for other_store in all_user_stores:
+                other_name = (other_store.get("shop_name") or "").lower().strip()
+                if not other_name:
+                    continue
+                if other_name == current_store_name:
+                    continue  # Same store — no cross-store issue
+                # Check if the user's message explicitly mentions this other store by name
+                if other_name in msg_lower:
+                    # Immediate refusal — do NOT call the LLM or any tools
+                    refusal = (
+                        f"I can see you're asking me to work on **{other_store['shop_name']}**, but I'm "
+                        f"currently connected to **{store['shop_name']}**. \n\n"
+                        f"To make changes to {other_store['shop_name']}, please switch to that store "
+                        f"using the store selector in the sidebar — I'll be ready to help as soon as you're there! 🏪"
+                    )
+                    try:
+                        save_chat_message(
+                            store_id=store_id,
+                            session_id=body.session_id,
+                            role="assistant",
+                            content=refusal,
+                            actions=[]
+                        )
+                    except Exception:
+                        pass
+                    return {"response": refusal, "actions": [], "cross_store_blocked": True}
+        except Exception as guard_err:
+            print(f"⚠️ Cross-store guard check failed (non-critical): {guard_err}")
+    # ─────────────────────────────────────────────────────────────────────────────
 
     # Build messages array
     messages = [{"role": "system", "content": system_prompt}]
@@ -734,6 +803,7 @@ HEALTH CHECK:
                 if body.is_guest:
                     result = {"success": False, "error": "Tool execution is not permitted in guest mode"}
                 elif adapter:
+                    # Shopify-connected store: use the Shopify adapter
                     result = execute_tool(
                         tool_name=tool_name,
                         tool_args=tool_args,
@@ -741,6 +811,51 @@ HEALTH CHECK:
                         dry_run=False,
                         snapshot=snapshot,
                     )
+                elif store.get("platform") == "selora":
+                    # Native Selora store: execute tools directly against the database
+                    from database import db as _dbt
+                    import uuid as _uuid
+                    try:
+                        if tool_name == "add_product":
+                            new_prod = {
+                                "id": str(_uuid.uuid4()),
+                                "store_id": store_id,
+                                "title": tool_args.get("title", "Untitled"),
+                                "price": float(tool_args.get("price", 0)),
+                                "description": tool_args.get("description", ""),
+                                "inventory": int(tool_args.get("inventory", 10)),
+                                "is_active": True,
+                                "images": [tool_args["image_url"]] if tool_args.get("image_url") else [],
+                            }
+                            _dbt().table("selora_products").insert(new_prod).execute()
+                            result = {"success": True, "tool": tool_name, "title": new_prod["title"], "price": new_prod["price"]}
+                        elif tool_name == "reprice_product":
+                            _dbt().table("selora_products").update({"price": float(tool_args["new_price"])}).eq("id", str(tool_args["product_id"])).eq("store_id", store_id).execute()
+                            result = {"success": True, "tool": tool_name, "product_id": tool_args["product_id"], "new_price": float(tool_args["new_price"])}
+                        elif tool_name == "optimize_listing":
+                            upd = {}
+                            if tool_args.get("new_title"):
+                                upd["title"] = tool_args["new_title"]
+                            if tool_args.get("new_description"):
+                                upd["description"] = tool_args["new_description"]
+                            if upd:
+                                _dbt().table("selora_products").update(upd).eq("id", str(tool_args["product_id"])).eq("store_id", store_id).execute()
+                            result = {"success": True, "tool": tool_name, "product_id": tool_args["product_id"]}
+                        elif tool_name == "delete_product":
+                            _dbt().table("selora_products").delete().eq("id", str(tool_args["product_id"])).eq("store_id", store_id).execute()
+                            result = {"success": True, "tool": tool_name, "product_id": tool_args["product_id"]}
+                        elif tool_name == "restock_alert":
+                            print(f"   ⚠️  RESTOCK ALERT (selora): Product {tool_args.get('product_id')} — {tool_args.get('current_inventory')} units left")
+                            result = {"success": True, "tool": tool_name, "alert": True, "product_id": tool_args.get("product_id")}
+                        elif tool_name == "generate_report":
+                            result = {"success": True, "tool": tool_name, "report": tool_args}
+                        elif tool_name == "store_health_check":
+                            result = {"success": False, "error": "Health check requires a live store snapshot."}
+                        else:
+                            result = {"success": False, "error": f"Unknown tool: {tool_name}"}
+                    except Exception as selora_tool_err:
+                        print(f"⚠️ Native Selora tool error ({tool_name}): {selora_tool_err}")
+                        result = {"success": False, "error": str(selora_tool_err)}
                 else:
                     result = {"success": False, "error": "No store adapter available"}
 
@@ -758,10 +873,14 @@ HEALTH CHECK:
 
             # After processing tools, continue to get the agent's text response
 
-        # Save actions if any were taken
-        if actions_taken and adapter:
+        # Save actions if any were taken — route to the correct log table
+        if actions_taken:
             try:
-                save_agent_actions(store_id=store["id"], actions=actions_taken)
+                if store.get("platform") == "selora":
+                    from database import save_selora_agent_actions
+                    save_selora_agent_actions(store_id=store["id"], actions=actions_taken)
+                else:
+                    save_agent_actions(store_id=store["id"], actions=actions_taken)
             except Exception as e:
                 print(f"⚠️ Failed to save chat actions: {e}")
 

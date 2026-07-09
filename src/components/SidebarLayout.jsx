@@ -90,11 +90,29 @@ export default function SidebarLayout() {
     }
   }, [messages])
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault()
     if (!inputText.trim() || chatLoading || !activeStore) return
-    sendMessage(inputText.trim(), activeStore.id)
+
+    const text = inputText.trim()
     setInputText('')
+
+    // Cross-store detection: if user mentions a different store by name, switch to it first
+    if (stores?.length > 1) {
+      const lowerText = text.toLowerCase()
+      const mentionedStore = stores.find(st => {
+        const name = (st.shop_name || '').toLowerCase().trim()
+        return name && name !== (activeStore?.shop_name || '').toLowerCase().trim() && lowerText.includes(name)
+      })
+      if (mentionedStore) {
+        setActiveStore(mentionedStore)
+        navigate('/dashboard')
+        await sendMessage(text, mentionedStore.id)
+        return
+      }
+    }
+
+    sendMessage(text, activeStore.id)
   }
 
   // Wait until user is loaded

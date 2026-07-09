@@ -74,8 +74,8 @@ export function useAuth() {
         if (data.needs_display_name) {
           setNameModal({ open: true })
         } else {
-          // Redirect to dashboard only if user is on dedicated auth pages, landing page, or just logged in
-          const authPaths = ['/', '/login', '/signup']
+          // Redirect to dashboard only if user is on dedicated auth pages or just logged in
+          const authPaths = ['/login', '/signup']
           if (authPaths.includes(location.pathname) || justLoggedInFlag) {
             justLoggedInFlag = false
             navigate('/dashboard')
@@ -102,9 +102,9 @@ export function useAuth() {
     }
   }, [ready, authenticated, user, supabaseUser, triggerSync])
 
-  // Redirect to dashboard if session is already active and user visits public auth routes
+  // Redirect to dashboard only if session is active and user is on a dedicated auth route
   useEffect(() => {
-    const authPaths = ['/', '/login', '/signup']
+    const authPaths = ['/login', '/signup']
     if (supabaseUser && authPaths.includes(location.pathname)) {
       navigate('/dashboard')
     }
