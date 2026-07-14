@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -35,44 +35,44 @@ function toBase64(file) {
 }
 
 const S = {
-  page:     { minHeight: '100vh', background: '#F8FAF8', fontFamily: 'Inter, sans-serif', color: '#2E3D30' },
+  page:     { minHeight: '100vh', background: 'var(--bg-0)', fontFamily: 'Inter, sans-serif', color: 'var(--text-secondary)', transition: 'background-color 0.3s, color 0.3s' },
   inner:    { maxWidth: 960, margin: '0 auto', padding: '2rem 1.5rem' },
-  pageTitle:{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 600, color: '#1A271C', margin: 0, letterSpacing: '-0.03em' },
-  pageSub:  { fontSize: '.875rem', color: '#7B907D', marginTop: '.35rem', marginBottom: '2rem' },
-  tabs:     { display: 'flex', gap: 0, marginBottom: '2rem', borderBottom: '2px solid #E4EBE5' },
-  tab:      (a) => ({ padding: '.6rem 1.25rem', fontSize: '.875rem', fontWeight: 600, cursor: 'pointer', border: 'none', background: 'none', color: a ? '#5A8A67' : '#7B907D', borderBottom: a ? '2px solid #5A8A67' : '2px solid transparent', marginBottom: -2, transition: 'all .15s', fontFamily: 'Inter, sans-serif' }),
-  card:     { background: '#fff', border: '1px solid #E4EBE5', borderRadius: 14, padding: '2rem', marginBottom: '1.5rem' },
-  cardTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 500, color: '#1A271C', marginTop: 0, marginBottom: '1.25rem' },
-  label:    { display: 'block', fontSize: '.75rem', fontWeight: 600, color: '#2E3D30', marginBottom: '.35rem', letterSpacing: '.04em', textTransform: 'uppercase' },
-  input:    { width: '100%', padding: '.7rem .9rem', border: '1px solid #E4EBE5', borderRadius: 8, fontSize: '.9rem', color: '#1A271C', fontFamily: 'Inter, sans-serif', outline: 'none', background: '#FAFAF8', boxSizing: 'border-box' },
-  textarea: { width: '100%', padding: '.7rem .9rem', border: '1px solid #E4EBE5', borderRadius: 8, fontSize: '.9rem', color: '#1A271C', fontFamily: 'Inter, sans-serif', outline: 'none', background: '#FAFAF8', boxSizing: 'border-box', resize: 'vertical', minHeight: 90 },
-  select:   { width: '100%', padding: '.7rem .9rem', border: '1px solid #E4EBE5', borderRadius: 8, fontSize: '.9rem', color: '#1A271C', fontFamily: 'Inter, sans-serif', outline: 'none', background: '#FAFAF8', boxSizing: 'border-box' },
-  hint:     { fontSize: '.75rem', color: '#7B907D', marginTop: '.3rem', marginBottom: 0 },
+  pageTitle:{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.03em' },
+  pageSub:  { fontSize: '.875rem', color: 'var(--text-muted)', marginTop: '.35rem', marginBottom: '2rem' },
+  tabs:     { display: 'flex', gap: 0, marginBottom: '2rem', borderBottom: '2px solid var(--border)' },
+  tab:      (a) => ({ padding: '.6rem 1.25rem', fontSize: '.875rem', fontWeight: 600, cursor: 'pointer', border: 'none', background: 'none', color: a ? 'var(--g)' : 'var(--text-muted)', borderBottom: a ? '2px solid var(--g)' : '2px solid transparent', marginBottom: -2, transition: 'all .15s', fontFamily: 'Inter, sans-serif' }),
+  card:     { background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '2rem', marginBottom: '1.5rem', boxShadow: 'var(--card-shadow)' },
+  cardTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 500, color: 'var(--text-primary)', marginTop: 0, marginBottom: '1.25rem' },
+  label:    { display: 'block', fontSize: '.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '.35rem', letterSpacing: '.04em', textTransform: 'uppercase' },
+  input:    { width: '100%', padding: '.7rem .9rem', border: '1px solid var(--border)', borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--bg-0)', boxSizing: 'border-box', transition: 'all 0.15s' },
+  textarea: { width: '100%', padding: '.7rem .9rem', border: '1px solid var(--border)', borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--bg-0)', boxSizing: 'border-box', resize: 'vertical', minHeight: 90, transition: 'all 0.15s' },
+  select:   { width: '100%', padding: '.7rem .9rem', border: '1px solid var(--border)', borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--bg-0)', boxSizing: 'border-box', transition: 'all 0.15s' },
+  hint:     { fontSize: '.75rem', color: 'var(--text-muted)', marginTop: '.3rem', marginBottom: 0 },
   field:    { marginBottom: '1.2rem' },
   row2:     { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' },
-  btn:      { padding: '.72rem 1.5rem', background: '#5A8A67', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.875rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .2s' },
-  btnGhost: { padding: '.72rem 1.5rem', background: 'transparent', color: '#5A8A67', border: '1.5px solid #5A8A67', borderRadius: 8, fontSize: '.875rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' },
-  btnSm:    { padding: '.4rem .8rem', fontSize: '.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', borderRadius: 7, border: '1.5px solid #5A8A67', background: 'transparent', color: '#5A8A67' },
-  btnDanger:{ padding: '.4rem .8rem', background: 'transparent', color: '#DC2626', border: '1.5px solid #FECACA', borderRadius: 7, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' },
+  btn:      { padding: '.72rem 1.5rem', background: 'var(--g)', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.875rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .2s' },
+  btnGhost: { padding: '.72rem 1.5rem', background: 'transparent', color: 'var(--g)', border: '1.5px solid var(--g)', borderRadius: 8, fontSize: '.875rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .2s' },
+  btnSm:    { padding: '.4rem .8rem', fontSize: '.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', borderRadius: 7, border: '1.5px solid var(--g)', background: 'transparent', color: 'var(--g)', transition: 'all .2s' },
+  btnDanger:{ padding: '.4rem .8rem', background: 'transparent', color: 'var(--danger)', border: '1.5px solid var(--mr-undo-border)', borderRadius: 7, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .2s' },
   toggle:   { display: 'flex', alignItems: 'center', gap: '.75rem', marginTop: '.3rem' },
-  handlePrev:{ fontSize: '.82rem', color: '#5A8A67', marginTop: '.3rem', fontWeight: 500 },
+  handlePrev:{ fontSize: '.82rem', color: 'var(--g)', marginTop: '.3rem', fontWeight: 500 },
   grid:     { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '1rem' },
-  prodCard: { background: '#fff', border: '1px solid #E4EBE5', borderRadius: 12, overflow: 'hidden', transition: 'box-shadow .2s, transform .2s' },
-  prodImg:  { width: '100%', aspectRatio: '4/5', objectFit: 'cover', background: '#EDF3EE', display: 'block' },
+  prodCard: { background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', transition: 'all .2s' },
+  prodImg:  { width: '100%', aspectRatio: '4/5', objectFit: 'cover', background: 'var(--bg-2)', display: 'block' },
   prodBody: { padding: '1rem' },
-  prodTitle:{ fontWeight: 600, fontSize: '.875rem', color: '#1A271C', marginBottom: '.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  prodPrice:{ fontSize: '.85rem', color: '#5A8A67', fontWeight: 700, marginBottom: '.15rem' },
-  prodMeta: { fontSize: '.72rem', color: '#7B907D' },
+  prodTitle:{ fontWeight: 600, fontSize: '.875rem', color: 'var(--text-primary)', marginBottom: '.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  prodPrice:{ fontSize: '.85rem', color: 'var(--g)', fontWeight: 700, marginBottom: '.15rem' },
+  prodMeta: { fontSize: '.72rem', color: 'var(--text-muted)' },
   prodActs: { display: 'flex', gap: '.5rem', marginTop: '.75rem' },
-  overlay:  { position: 'fixed', inset: 0, background: 'rgba(26,39,28,.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
-  modal:    { background: '#fff', borderRadius: 16, width: '100%', maxWidth: 580, maxHeight: '90vh', overflowY: 'auto', padding: '2rem' },
-  modalTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', fontWeight: 500, color: '#1A271C', marginTop: 0, marginBottom: '1.5rem' },
-  dropzone: (drag) => ({ border: `2px dashed ${drag ? '#5A8A67' : '#E4EBE5'}`, borderRadius: 10, padding: '2rem', textAlign: 'center', cursor: 'pointer', background: drag ? '#EDF3EE' : '#FAFAF8', transition: 'all .15s' }),
+  overlay:  { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
+  modal:    { background: 'var(--bg-1)', borderRadius: 16, width: '100%', maxWidth: 580, maxHeight: '90vh', overflowY: 'auto', padding: '2rem', border: '1px solid var(--border)', boxShadow: 'var(--card-shadow)' },
+  modalTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-primary)', marginTop: 0, marginBottom: '1.5rem' },
+  dropzone: (drag) => ({ border: `2px dashed ${drag ? 'var(--g)' : 'var(--border)'}`, borderRadius: 10, padding: '2rem', textAlign: 'center', cursor: 'pointer', background: drag ? 'var(--bg-2)' : 'var(--bg-0)', transition: 'all .15s' }),
   thumbRow: { display: 'flex', flexWrap: 'wrap', gap: '.5rem', marginTop: '.75rem' },
-  thumb:    { width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid #E4EBE5' },
-  alert:    (t) => ({ padding: '.75rem 1rem', borderRadius: 8, fontSize: '.85rem', marginBottom: '1rem', background: t==='error'?'#FEF2F2':'#F0FDF4', border:`1px solid ${t==='error'?'#FECACA':'#BBF7D0'}`, color: t==='error'?'#DC2626':'#166534' }),
-  spinner:  { display: 'inline-block', width: 20, height: 20, border: '2px solid #E4EBE5', borderTop: '2px solid #5A8A67', borderRadius: '50%', animation: 'spin .7s linear infinite' },
-  empty:    { textAlign: 'center', padding: '3.5rem 1rem', color: '#7B907D' },
+  thumb:    { width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' },
+  alert:    (t) => ({ padding: '.75rem 1rem', borderRadius: 8, fontSize: '.85rem', marginBottom: '1rem', background: t==='error'?'var(--mr-undo-bg)':'var(--badge-success-bg)', border:`1px solid ${t==='error'?'var(--mr-undo-border)':'var(--border-strong)'}`, color: t==='error'?'var(--mr-undo-color)':'var(--badge-success-text)' }),
+  spinner:  { display: 'inline-block', width: 20, height: 20, border: '2px solid var(--border)', borderTop: '2px solid var(--g)', borderRadius: '50%', animation: 'spin .7s linear infinite' },
+  empty:    { textAlign: 'center', padding: '3.5rem 1rem', color: 'var(--text-muted)' },
 }
 
 export default function StoreBuilder() {
@@ -151,17 +151,17 @@ export default function StoreBuilder() {
     <div style={S.page}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
-        input:focus, textarea:focus, select:focus { border-color: #5A8A67 !important; box-shadow: 0 0 0 3px rgba(90,138,103,.12); }
-        .sb-prod-card:hover { box-shadow: 0 6px 24px rgba(90,138,103,.14); transform: translateY(-2px); }
-        .sb-btn-primary:hover { background: #4a7a57 !important; }
-        .sb-btn-ghost:hover { background: #EDF3EE !important; }
+        input:focus, textarea:focus, select:focus { border-color: var(--g) !important; box-shadow: 0 0 0 3px var(--input-focus-shadow) !important; }
+        .sb-prod-card:hover { box-shadow: var(--card-shadow-hover) !important; transform: translateY(-2px); }
+        .sb-btn-primary:hover { background: var(--g2) !important; }
+        .sb-btn-ghost:hover { background: var(--bg-2) !important; }
         @media (max-width: 640px) { .sb-row2 { grid-template-columns: 1fr !important; } }
       `}</style>
       <div style={S.inner}>
         <h1 style={S.pageTitle}>Store Builder</h1>
         <p style={S.pageSub}>
           {store
-            ? <>Live at <a href={`/store/${store.handle}`} target="_blank" rel="noreferrer" style={{ color:'#5A8A67', fontWeight:600, textDecoration:'none' }}>selora.fashion/store/{store.handle}</a> · <a href={`/store/${store.handle}`} target="_blank" rel="noreferrer" style={{ color:'#7B907D', fontSize:'.8rem', textDecoration:'none' }}>Open storefront →</a></>
+            ? <>Live at <a href={`/store/${store.handle}`} target="_blank" rel="noreferrer" style={{ color:'var(--g)', fontWeight:600, textDecoration:'none' }}>selora.fashion/store/{store.handle}</a> · <a href={`/store/${store.handle}`} target="_blank" rel="noreferrer" style={{ color:'var(--text-muted)', fontSize:'.8rem', textDecoration:'none' }}>Open storefront →</a></>
             : 'Set up your store in seconds. Your public storefront goes live instantly.'
           }
         </p>
@@ -213,8 +213,8 @@ export default function StoreBuilder() {
                 <div style={{ ...S.field }}>
                   <label style={S.label}>Visibility</label>
                   <div style={S.toggle}>
-                    <input type="checkbox" id="sb_public" checked={form.is_public} onChange={e => setForm(f => ({ ...f, is_public:e.target.checked }))} style={{ width:18, height:18, accentColor:'#5A8A67', cursor:'pointer' }} />
-                    <label htmlFor="sb_public" style={{ fontSize:'.875rem', cursor:'pointer', color:'#2E3D30' }}>Make store publicly visible</label>
+                    <input type="checkbox" id="sb_public" checked={form.is_public} onChange={e => setForm(f => ({ ...f, is_public:e.target.checked }))} style={{ width:18, height:18, accentColor:'var(--g)', cursor:'pointer' }} />
+                    <label htmlFor="sb_public" style={{ fontSize:'.875rem', cursor:'pointer', color:'var(--text-secondary)' }}>Make store publicly visible</label>
                   </div>
                 </div>
               </div>
@@ -230,19 +230,19 @@ export default function StoreBuilder() {
           <div>
             {!store ? (
               <div style={S.card}>
-                <p style={{ color:'#7B907D', fontSize:'.9rem', margin:0 }}>💡 Create your store in the Settings tab first, then come back to add products.</p>
+                <p style={{ color:'var(--text-muted)', fontSize:'.9rem', margin:0 }}>💡 Create your store in the Settings tab first, then come back to add products.</p>
               </div>
             ) : (
               <>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.25rem' }}>
-                  <p style={{ color:'#7B907D', fontSize:'.875rem', margin:0 }}>{products.length} product{products.length!==1?'s':''}</p>
+                  <p style={{ color:'var(--text-muted)', fontSize:'.875rem', margin:0 }}>{products.length} product{products.length!==1?'s':''}</p>
                   <button className="sb-btn-primary" style={S.btn} onClick={() => { setEditProd(null); setShowModal(true) }}>+ Add Product</button>
                 </div>
 
                 {products.length === 0 ? (
                   <div style={S.empty}>
                     <div style={{ fontSize:'2.5rem', marginBottom:'.75rem' }}>🛍️</div>
-                    <p style={{ fontWeight:600, color:'#1A271C', marginBottom:'.4rem' }}>No products yet</p>
+                    <p style={{ fontWeight:600, color:'var(--text-primary)', marginBottom:'.4rem' }}>No products yet</p>
                     <p style={{ fontSize:'.875rem', margin:0 }}>Click "Add Product" to list your first item.</p>
                   </div>
                 ) : (
@@ -376,8 +376,8 @@ function ProductModal({ storeId, currency, initial, onSave, onClose }) {
             <div style={S.field}>
               <label style={S.label}>Status</label>
               <div style={S.toggle}>
-                <input type="checkbox" checked={form.is_active} onChange={e => setForm(f=>({...f,is_active:e.target.checked}))} style={{ width:16,height:16,accentColor:'#5A8A67',cursor:'pointer' }} />
-                <span style={{ fontSize:'.875rem' }}>Active (visible in store)</span>
+                <input type="checkbox" checked={form.is_active} onChange={e => setForm(f=>({...f,is_active:e.target.checked}))} style={{ width:16,height:16,accentColor:'var(--g)',cursor:'pointer' }} />
+                <span style={{ fontSize:'.875rem', color: 'var(--text-secondary)' }}>Active (visible in store)</span>
               </div>
             </div>
           </div>
@@ -398,8 +398,8 @@ function ProductModal({ storeId, currency, initial, onSave, onClose }) {
             >
               <input ref={fileInput} type="file" multiple accept="image/*" style={{ display:'none' }} onChange={e => uploadFiles(e.target.files)} />
               {uploading
-                ? <><div style={{ ...S.spinner, margin:'0 auto .5rem' }} /><p style={{ fontSize:'.85rem', color:'#7B907D', margin:0 }}>Uploading...</p></>
-                : <><p style={{ fontSize:'.9rem', color:'#7B907D', margin:0 }}>📷 Drop images here or click to browse</p><p style={{ fontSize:'.75rem', color:'#7B907D', marginTop:'.25rem', marginBottom:0 }}>Multiple images supported</p></>
+                ? <><div style={{ ...S.spinner, margin:'0 auto .5rem' }} /><p style={{ fontSize:'.85rem', color:'var(--text-muted)', margin:0 }}>Uploading...</p></>
+                : <><p style={{ fontSize:'.9rem', color:'var(--text-muted)', margin:0 }}>📷 Drop images here or click to browse</p><p style={{ fontSize:'.75rem', color:'var(--text-muted)', marginTop:'.25rem', marginBottom:0 }}>Multiple images supported</p></>
               }
             </div>
             {form.images.length > 0 && (

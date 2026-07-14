@@ -552,6 +552,26 @@ export default function Dashboard() {
                     <span>Visit Storefront</span>
                     <span>↗</span>
                   </a>
+                  <Link
+                    to="/store-builder"
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid var(--border-strong)',
+                      color: 'var(--text-primary)',
+                      padding: '.55rem 1.1rem',
+                      borderRadius: 8,
+                      fontSize: '.8rem',
+                      fontWeight: 500,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '.4rem',
+                      transition: 'all 0.15s',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Edit Storefront
+                  </Link>
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(window.location.origin + activeStore.shop_url);

@@ -602,25 +602,10 @@ export default function SidebarLayout() {
             </button>
           )}
 
-          {/* Store status pill */}
-          {activeStore ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.45rem', background: 'var(--bg-2)', border: `1px solid ${c.border}`, borderRadius: 999, padding: '.28rem .85rem', flexShrink: 0 }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.green, display: 'inline-block' }} className="pdot" />
-              <span style={{ fontSize: '.78rem', fontWeight: 500, color: c.dark, whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {activeStore.shop_name}
-              </span>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.45rem', background: 'var(--bg-2)', border: `1px solid ${c.border}`, borderRadius: 999, padding: '.28rem .85rem', flexShrink: 0 }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#D97706', display: 'inline-block' }} />
-              <span style={{ fontSize: '.78rem', fontWeight: 500, color: c.muted, whiteSpace: 'nowrap' }}>No store connected</span>
-            </div>
-          )}
-
           {/* Spacer */}
           <div style={{ flex: 1 }} />
 
-          {/* Agent panel toggle — left of bell (matching left sidebar toggle style) */}
+          {/* Agent panel toggle — Replaced arrow with agent avatar */}
           <button
             onClick={() => {
               setRightPanelOpen(!rightPanelOpen);
@@ -632,27 +617,30 @@ export default function SidebarLayout() {
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: c.muted,
               display: 'flex',
               alignItems: 'center',
               padding: '.25rem',
-              borderRadius: '4px',
+              borderRadius: '50%',
               transition: 'background 0.2s',
               flexShrink: 0,
             }}
             title={rightPanelOpen ? "Close agent panel" : "Open agent panel"}
-            onMouseEnter={(e) => e.currentTarget.style.background = c.bg2}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
           >
-            {rightPanelOpen ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6"></polyline>
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 18 9 12 15 6"></polyline>
-              </svg>
-            )}
+            <div style={{
+              width: 34,
+              height: 34,
+              borderRadius: '50%',
+              background: rightPanelOpen ? 'rgba(90, 138, 103, 0.18)' : 'var(--bg-2)',
+              border: `1px solid ${rightPanelOpen ? 'var(--g)' : 'var(--border)'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.05rem',
+              transition: 'all 0.2s',
+              boxShadow: rightPanelOpen ? '0 0 8px rgba(90, 138, 103, 0.25)' : 'none',
+            }}>
+              🤖
+            </div>
           </button>
 
           {/* Notification bell */}
@@ -739,6 +727,21 @@ export default function SidebarLayout() {
               </>
             )}
           </div>
+
+          {/* Store status pill (moved to right after profile avatar) */}
+          {activeStore ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.45rem', background: 'var(--bg-2)', border: `1px solid ${c.border}`, borderRadius: 999, padding: '.28rem .85rem', flexShrink: 0 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.green, display: 'inline-block' }} className="pdot" />
+              <span style={{ fontSize: '.78rem', fontWeight: 500, color: c.dark, whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {activeStore.shop_name}
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.45rem', background: 'var(--bg-2)', border: `1px solid ${c.border}`, borderRadius: 999, padding: '.28rem .85rem', flexShrink: 0 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#D97706', display: 'inline-block' }} />
+              <span style={{ fontSize: '.78rem', fontWeight: 500, color: c.muted, whiteSpace: 'nowrap' }}>No store connected</span>
+            </div>
+          )}
         </header>
 
         {/* ── OUTLET ────────────────────────────────────────────────────────── */}
