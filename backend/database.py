@@ -92,6 +92,27 @@ def get_or_create_user(email: str) -> dict:
     return result.data[0]
 
 
+def get_or_create_user_by_auth(user_id: str, email: str) -> dict:
+    """Get a user by their Supabase UUID (id), or create them idempotently if they don't exist."""
+    client = db()
+
+    # Try to find user by their Auth UUID (id)
+    result = client.table("users").select("*").eq("id", user_id).execute()
+    if result.data:
+        # User exists, check if email has changed or needs synchronization
+        user = result.data[0]
+        if user.get("email") != email:
+            sync_res = client.table("users").update({"email": email}).eq("id", user_id).execute()
+            if sync_res.data:
+                return sync_res.data[0]
+        return user
+
+    # If the user doesn't exist, insert a new row
+    user_data = {"id": user_id, "email": email}
+    result = client.table("users").insert(user_data).execute()
+    return result.data[0] if result.data else None
+
+
 def get_user_by_id(user_id: str) -> dict:
     """Get a user by their UUID."""
     result = db().table("users").select("*").eq("id", user_id).execute()

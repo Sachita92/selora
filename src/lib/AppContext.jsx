@@ -19,31 +19,30 @@ export function AppProvider({ children }) {
   const [productsStats, setProductsStats] = useState({ revenue: 0, orders: 0 })
   // Ref to prevent duplicate auth subscriptions in React Strict Mode
   const authSubscriptionRef = useRef(null)
+  const initialFetchTriggered = useRef(false)
 
   // Auth check & store fetch
   useEffect(() => {
     let mounted = true
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return
-      if (session) {
-        setUser(session.user)
-        fetchStores(session.user.email)
-      } else {
-        setLoading(false)
-      }
-    })
-
     // Only subscribe once — guard against React Strict Mode double-invoke
     if (!authSubscriptionRef.current) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (!mounted) return
         if (!session) {
           setUser(null)
           setStores([])
           setActiveStore(null)
+          setLoading(false)
         } else {
           setUser(session.user)
-          fetchStores(session.user.email)
+          // Deduplicate parallel initial fetch
+          if (!initialFetchTriggered.current) {
+            initialFetchTriggered.current = true
+            fetchStores()
+          } else if (event !== 'INITIAL_SESSION') {
+            fetchStores()
+          }
         }
       })
       authSubscriptionRef.current = subscription
@@ -58,9 +57,26 @@ export function AppProvider({ children }) {
     }
   }, [])
 
-  const fetchStores = async (email) => {
+  const fetchStores = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/stores?email=${encodeURIComponent(email)}`)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setLoading(false)
+        return
+      }
+      const token = session.access_token
+      const res = await fetch(`${API_URL}/api/stores`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (res.status === 401) {
+        console.warn('Unauthorized request to stores API, clearing local store state.')
+        setStores([])
+        setActiveStore(null)
+        setLoading(false)
+        return
+      }
       const data = await res.json()
       setStores(data.stores || [])
       if (data.user) {

@@ -146,11 +146,12 @@ def get_public_stats_endpoint():
 
 
 @app.get("/api/stores")
-def get_stores(email: str = Query(..., description="User email")):
+def get_stores(request: Request):
     """Get all connected stores for a user."""
-    from database import get_or_create_user, get_stores_for_user
+    from database import get_or_create_user_by_auth, get_stores_for_user
 
-    user = get_or_create_user(email)
+    user_id, email = _get_user_id_from_token(request)
+    user = get_or_create_user_by_auth(user_id, email)
 
     # Self-healing Stripe plan synchronization on dashboard store list retrieval
     customer_id = user.get("stripe_customer_id")
@@ -515,7 +516,7 @@ def chat_with_agent(store_id: str, body: ChatRequest, request: Request):
         _guest_chat_ip_limits[ip] = ip_history
     else:
         # Authenticated owner chat: verify their token and ownership
-        user_id = _get_user_id_from_token(request)
+        user_id, _ = _get_user_id_from_token(request)
         if store.get("user_id") != user_id:
             raise HTTPException(status_code=403, detail="Forbidden")
 
@@ -995,8 +996,9 @@ def get_store_health(store_id: str, request: Request):
     from database import get_store_by_id
     from agent.health_check import StoreHealthAnalyzer
     from adapters.base import StoreSnapshot, UniversalProduct
+    from adapters.shopify import ShopifyAdapter
 
-    user_id = _get_user_id_from_token(request)
+    user_id, _ = _get_user_id_from_token(request)
     if not user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -1985,22 +1987,47 @@ def privy_sync(body: PrivySyncRequest, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def _get_user_id_from_token(request: Request) -> str:
-    """Extract and verify user_id from Supabase JWT in Authorization header."""
+def _get_user_id_from_token(request: Request) -> tuple[str, str]:
+    """Extract and verify user_id and email from Supabase JWT in Authorization header."""
     auth = request.headers.get('Authorization', '')
     if not auth.startswith('Bearer '):
         raise HTTPException(status_code=401, detail='Missing or invalid Authorization header')
-    token = auth[7:]
+    token = auth[7:].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail='Token missing from Bearer prefix')
     try:
+        import httpx
         from database import get_anon_client
         user_res = get_anon_client().auth.get_user(token)
         user = user_res.user if hasattr(user_res, "user") else user_res
         user_id = user.id if hasattr(user, "id") else user.get("id")
-        if not user_id:
-            raise HTTPException(status_code=401, detail='Invalid token: user ID not found')
-        return user_id
+        email = user.email if hasattr(user, "email") else user.get("email")
+        if not user_id or not email:
+            print("❌ Invalid token content: user_id or email missing")
+            raise HTTPException(status_code=401, detail='Invalid or expired token')
+        return user_id, email
+    except httpx.RequestError as e:
+        print(f"❌ Auth service connection error: {e}")
+        raise HTTPException(status_code=503, detail='Authentication service temporarily unavailable')
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f'Token verification failed: {e}')
+        if isinstance(e, HTTPException):
+            raise e
+        status_code = getattr(e, 'status', None) or getattr(e, 'status_code', None)
+        if status_code is not None:
+            if status_code >= 500:
+                print(f"❌ Auth service returned 5xx server error: {e}")
+                raise HTTPException(status_code=503, detail='Authentication service temporarily unavailable')
+            elif 400 <= status_code < 500:
+                print(f"❌ Auth service returned 4xx client error: {e}")
+                raise HTTPException(status_code=401, detail='Invalid or expired token')
+        
+        class_name = e.__class__.__name__
+        if "Auth" in class_name or "APIError" in class_name or "Token" in class_name:
+            print(f"❌ Token verification exception: {e}")
+            raise HTTPException(status_code=401, detail='Invalid or expired token')
+            
+        print(f"❌ Unexpected system exception during token verification: {e}")
+        raise HTTPException(status_code=500, detail='Internal server error during token verification')
 
 
 @app.patch('/api/auth/profile')
@@ -2009,7 +2036,7 @@ def update_profile(body: ProfileUpdateRequest, request: Request):
     Update the authenticated user's profile display name.
     Syncs the display name to the users table and Supabase Auth user_metadata.
     """
-    user_id = _get_user_id_from_token(request)
+    user_id, _ = _get_user_id_from_token(request)
     display_name = body.display_name.strip()
     
     if not display_name or len(display_name) < 2 or len(display_name) > 50:
@@ -2049,7 +2076,7 @@ def create_selora_store(body: StoreCreateRequest, request: Request):
     """Create a new Selora native store for the authenticated user."""
     from database import db as _db
     import re
-    user_id = _get_user_id_from_token(request)
+    user_id, _ = _get_user_id_from_token(request)
     handle = re.sub(r'[^a-z0-9-]', '', body.handle.lower().replace(' ', '-'))
     if not handle:
         raise HTTPException(status_code=400, detail='Invalid handle')
@@ -2075,7 +2102,7 @@ def create_selora_store(body: StoreCreateRequest, request: Request):
 def get_my_selora_store(request: Request):
     """Get the current user's Selora store."""
     from database import db as _db
-    user_id = _get_user_id_from_token(request)
+    user_id, _ = _get_user_id_from_token(request)
     result = _db().table('selora_stores').select('*').eq('user_id', user_id).execute()
     if not result.data:
         return {'store': None}
@@ -2114,7 +2141,7 @@ def update_selora_store(store_id: str, body: StoreUpdateRequest, request: Reques
     """Update store details (owner only)."""
     from database import db as _db
     import re
-    user_id = _get_user_id_from_token(request)
+    user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
         raise HTTPException(status_code=404, detail='Store not found')
@@ -2133,7 +2160,7 @@ def update_selora_store(store_id: str, body: StoreUpdateRequest, request: Reques
 async def add_product_to_store(store_id: str, request: Request):
     """Add a product to a store."""
     from database import db as _db
-    user_id = _get_user_id_from_token(request)
+    user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
         raise HTTPException(status_code=404, detail='Store not found')
@@ -2166,7 +2193,7 @@ async def add_product_to_store(store_id: str, request: Request):
 def list_store_products(store_id: str, request: Request):
     """List all products in a store."""
     from database import db as _db
-    user_id = _get_user_id_from_token(request)
+    user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
         raise HTTPException(status_code=404, detail='Store not found')
@@ -2181,7 +2208,7 @@ def list_store_products(store_id: str, request: Request):
 async def update_product(store_id: str, product_id: str, request: Request):
     """Edit a product."""
     from database import db as _db
-    user_id = _get_user_id_from_token(request)
+    user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
         raise HTTPException(status_code=404, detail='Store not found')
@@ -2204,7 +2231,7 @@ async def update_product(store_id: str, product_id: str, request: Request):
 def delete_product(store_id: str, product_id: str, request: Request):
     """Delete a product."""
     from database import db as _db
-    user_id = _get_user_id_from_token(request)
+    user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
         raise HTTPException(status_code=404, detail='Store not found')
@@ -2236,7 +2263,7 @@ async def upload_product_image(store_id: str, request: Request):
     """Upload a product image to Supabase Storage and return the public URL."""
     import uuid, base64
     from database import db as _db
-    user_id = _get_user_id_from_token(request)
+    user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
         raise HTTPException(status_code=404, detail='Store not found')
