@@ -64,6 +64,8 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
     startNewSession,
     sendMessage: sendGlobalMessage,
     retryLastMessage,
+    pendingDelete,
+    setPendingDelete,
   } = useChat()
 
   const [input, setInput] = useState('')
@@ -882,7 +884,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                   const isUser = msg.role?.toLowerCase().trim() === 'user'
                   let content = msg.content
                   if (i === 0 && isLandingPage && msg.role === 'assistant') {
-                    content = "👋 Welcome to Selora! I'm your AI fashion growth agent.\n\nI automatically optimize pricing, list products, manage inventory, and grow sales. I've loaded a demo store context for you so you can see what I can do!\n\nTry asking me:\n• 'Which products are selling the best?'\n• 'How can I improve my store's pricing?'\n• 'Rewrite a listing for a dress'"
+                    content = "Welcome to Selora! I'm your AI fashion growth agent.\n\nI automatically optimize pricing, list products, manage inventory, and grow sales. I've loaded a demo store context for you so you can see what I can do!\n\nTry asking me:\n• 'Which products are selling the best?'\n• 'How can I improve my store's pricing?'\n• 'Rewrite a listing for a dress'"
                   }
 
                   const hasRewriteRedirect = !isUser && content && content.includes('[TRY_REWRITE_DEMO]')
@@ -943,7 +945,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                                 boxShadow: '0 2px 6px rgba(90, 138, 103, 0.15)',
                               }}
                             >
-                              👗 Try Listing Rewriter Demo
+                              Try Listing Rewriter Demo
                             </button>
                           </div>
                         )}
@@ -967,7 +969,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                                 boxShadow: '0 2px 6px rgba(90, 138, 103, 0.15)',
                               }}
                             >
-                              🔄 Retry
+                              Retry
                             </button>
                           </div>
                         )}
@@ -1028,6 +1030,42 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                       {s}
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* Delete Confirmation Banner */}
+              {pendingDelete && (
+                <div style={{
+                  margin: '0 1rem 0.5rem',
+                  padding: '0.75rem 1rem',
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  borderRadius: 10,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                  flexShrink: 0,
+                }}>
+                  <div style={{ fontSize: '.78rem', fontWeight: 600, color: '#EF4444' }}>
+                    Confirm deletion
+                  </div>
+                  <div style={{ fontSize: '.76rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                    Are you sure you want to permanently delete this product? This cannot be undone.
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+                    <button
+                      onClick={() => { setPendingDelete(null); setInput('yes, delete it'); setTimeout(() => handleSend(), 50) }}
+                      style={{ flex: 1, padding: '.45rem', borderRadius: 7, border: 'none', background: '#EF4444', color: '#fff', fontSize: '.75rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Yes, Delete It
+                    </button>
+                    <button
+                      onClick={() => { setPendingDelete(null); sendGlobalMessage('cancel', storeId, isLandingPage) }}
+                      style={{ flex: 1, padding: '.45rem', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-primary)', fontSize: '.75rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
 

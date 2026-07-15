@@ -94,6 +94,185 @@ const S = {
   errTitle:  { fontFamily: 'Fraunces, serif', fontSize: '2rem', color: '#1A271C', margin: 0 },
 }
 
+// --- SVG Icons for Template ---
+const LeafIcon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 0 8.5C17 15 15 18 11 20Z" />
+    <path d="M19 2c-2.26 4.33-5.27 7.14-8 10" />
+  </svg>
+)
+
+const TruckIcon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1" y="3" width="15" height="13" rx="2" ry="2" />
+    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+    <circle cx="5.5" cy="18.5" r="2.5" />
+    <circle cx="18.5" cy="18.5" r="2.5" />
+  </svg>
+)
+
+const ArrowPathIcon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+  </svg>
+)
+
+const ShieldIcon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+)
+
+const BagIcon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+    <line x1="3" y1="6" x2="21" y2="6" />
+    <path d="M16 10a4 4 0 0 1-8 0" />
+  </svg>
+)
+
+function renderIcon(name, size = 20, color = "currentColor") {
+  switch (name) {
+    case 'leaf': return <LeafIcon size={size} color={color} />;
+    case 'truck': return <TruckIcon size={size} color={color} />;
+    case 'arrow-path': return <ArrowPathIcon size={size} color={color} />;
+    case 'shield': return <ShieldIcon size={size} color={color} />;
+    case 'bag': return <BagIcon size={size} color={color} />;
+    default: return <LeafIcon size={size} color={color} />;
+  }
+}
+
+// --- Default Template Data (easily swappable/overridden by seller settings) ---
+const defaultTemplateData = {
+  header: {
+    logoName: "Selora",
+    navLinks: [
+      { label: "Home", url: "#" },
+      { label: "Collections", url: "#" },
+      { label: "New In", url: "#" },
+      { label: "About", url: "#" }
+    ]
+  },
+  hero: {
+    eyebrow: "NEW SEASON ARRIVALS",
+    title: "Dress Like the\nPerson You're\nBecoming",
+    subtitle: "Curated fashion, AI-optimized for you — discover pieces that sell themselves.",
+    ctaPrimaryText: "Shop the Collection",
+    ctaPrimaryUrl: "#new-arrivals",
+    ctaSecondaryText: "Explore Lookbook",
+    ctaSecondaryUrl: "#brand-story",
+    image: "/hero-dress.png", // fallback or default image from public
+    trustBar: [
+      { icon: "leaf", label: "Sustainably Curated" },
+      { icon: "truck", label: "Free Shipping over $75" },
+      { icon: "arrow-path", label: "Easy 30-Day Returns" },
+      { icon: "shield", label: "Secure Checkout" }
+    ]
+  },
+  categories: {
+    eyebrow: "EXPLORE",
+    title: "Shop by Category",
+    items: [
+      { name: "Tops & Blouses", color: "#1A271C", textColor: "#ffffff", image: null, url: "#" },
+      { name: "Dresses", color: "#E5D9C4", textColor: "#1A271C", image: null, url: "#" },
+      { name: "Outerwear", color: "#82A996", textColor: "#ffffff", image: null, url: "#" },
+      { name: "Accessories", color: "#3B5A44", textColor: "#ffffff", image: null, url: "#" }
+    ]
+  },
+  newArrivals: {
+    eyebrow: "HANDPICKED FOR YOU",
+    title: "New Arrivals",
+    viewAllText: "View All Products",
+    viewAllUrl: "#",
+    items: [
+      { id: "sample-1", title: "Linen Wrap Dress", category: "DRESSES", price: 89.00, images: [] },
+      { id: "sample-2", title: "Cotton Blazer", category: "OUTERWEAR", price: 145.00, images: [] },
+      { id: "sample-3", title: "Silk Midi Skirt", category: "BOTTOMS", price: 112.00, images: [] },
+      { id: "sample-4", title: "Knit Cardigan", category: "TOPS", price: 78.00, images: [] }
+    ]
+  },
+  brandStory: {
+    eyebrow: "OUR STORY",
+    title: "Timeless designs, sustainably crafted",
+    subtitle: "We curate timeless, high-quality essentials designed to elevate your everyday. Crafted with sustainable materials and attention to detail, each piece is selected to last.",
+    ctaText: "Learn About Us",
+    ctaUrl: "#",
+    image: null, // slot for brand photo
+    aiBadgeText: "SELORA AI OPTIMIZED"
+  },
+  newsletter: {
+    eyebrow: "STAY IN THE LOOP",
+    title: "Get first access to new drops",
+    subtitle: "New arrivals, exclusive pieces, and styling tips — delivered to your inbox.",
+    buttonText: "Subscribe",
+    inputPlaceholder: "Enter your email address"
+  }
+}
+
+// --- Reusable ProductGrid Component ---
+function ProductGrid({ products, isSample = false, onProductClick, currency = 'USD' }) {
+  return (
+    <div className="sf-product-grid">
+      {products.map((p) => {
+        const hasImage = p.images && p.images.length > 0;
+        return (
+          <div
+            key={p.id}
+            onClick={() => !isSample && onProductClick(p)}
+            style={{
+              cursor: isSample ? 'default' : 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: 16,
+              overflow: 'hidden',
+              background: '#ffffff',
+              border: '1px solid #E4EBE5',
+              transition: 'all 0.3s ease',
+            }}
+            className={isSample ? "" : "sf-prod-card"}
+          >
+            {/* Image Wrapper */}
+            <div style={{ position: 'relative', aspectRatio: '3/4', background: '#F8FAF8', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {hasImage ? (
+                <img
+                  src={p.images[0]}
+                  alt={p.title}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }}
+                  className="sf-prod-img"
+                />
+              ) : (
+                <div style={{ color: '#5A8A67', opacity: 0.45 }}>
+                  <LeafIcon size={48} color="#5A8A67" />
+                </div>
+              )}
+
+              {/* Sample Badge */}
+              {isSample && (
+                <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10 }}>
+                  SAMPLE
+                </div>
+              )}
+            </div>
+
+            {/* Product Info */}
+            <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                {p.category || (p.tags && p.tags[0]) || 'FASHION'}
+              </span>
+              <h4 style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.05rem', fontWeight: 500, color: '#1A271C' }}>
+                {p.title}
+              </h4>
+              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1A271C' }}>
+                {currency} {Number(p.price).toFixed(2)}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Storefront() {
   const { handle } = useParams()
   const { openAuthModal } = useAppContext()
@@ -356,19 +535,179 @@ export default function Storefront() {
   )
 
   const currency = store.currency || 'USD'
+  const template = {
+    ...defaultTemplateData,
+    ...store?.template_data
+  }
 
   return (
     <div style={S.page}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
-        .sf-prod-card:hover { box-shadow: 0 12px 40px rgba(26,39,28,.12); transform: translateY(-4px); }
-        .sf-prod-card:hover .sf-prod-img { transform: scale(1.04); }
-        .sf-cart-btn:hover { background: #4a7a57 !important; }
-        @media (max-width: 700px) {
-          .sf-modal-inner { flex-direction: column !important; }
-          .sf-modal-img { border-radius: 20px 20px 0 0 !important; }
+        .sf-prod-card {
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        .sf-prod-card:hover {
+          box-shadow: 0 12px 30px rgba(26,39,28,0.08) !important;
+          transform: translateY(-4px);
+        }
+        .sf-prod-card:hover .sf-prod-img {
+          transform: scale(1.04);
+        }
+        .sf-cat-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 30px rgba(26,39,28,0.12);
+        }
+        .sf-bag-btn:hover {
+          background-color: #EDF3EE !important;
+        }
+        .sf-hero-btn-primary:hover {
+          background-color: #719683 !important;
+          transform: translateY(-1px);
+        }
+        .sf-hero-btn-secondary:hover {
+          background-color: rgba(255, 255, 255, 0.08) !important;
+          border-color: rgba(255, 255, 255, 0.7) !important;
+        }
+        .sf-nav-link:hover {
+          color: #1A271C !important;
+        }
+        .sf-newsletter-btn:hover {
+          background-color: #9EC0AF !important;
         }
         
+        /* Grid definitions & Responsive breakpoints */
+        .sf-trust-bar {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          background-color: #F8FAF8;
+          border-bottom: 1px solid #E4EBE5;
+          padding: 1.5rem 1rem;
+        }
+        .sf-trust-item {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.75rem;
+          padding: 0.5rem 1.5rem;
+        }
+        .sf-trust-item:not(:last-child) {
+          border-right: 1px solid #E4EBE5;
+        }
+        @media (max-width: 768px) {
+          .sf-trust-bar {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+          }
+          .sf-trust-item {
+            border-right: none !important;
+          }
+          .sf-trust-item:nth-child(odd) {
+            border-right: 1px solid #E4EBE5 !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .sf-trust-bar {
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+          }
+          .sf-trust-item {
+            border-right: none !important;
+          }
+        }
+
+        .sf-hero-section {
+          display: grid;
+          grid-template-columns: 1.1fr 0.9fr;
+          background-color: #1A271C;
+          color: #ffffff;
+        }
+        .sf-hero-left {
+          padding: 5rem 4rem;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 1.5rem;
+        }
+        .sf-hero-right {
+          position: relative;
+          min-height: 400px;
+        }
+        .sf-hero-image-container {
+          width: 100%;
+          height: 100%;
+          position: relative;
+        }
+        .sf-hero-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        @media (max-width: 768px) {
+          .sf-hero-section {
+            grid-template-columns: 1fr;
+          }
+          .sf-hero-left {
+            padding: 4rem 1.5rem;
+            gap: 1.25rem;
+          }
+          .sf-hero-right {
+            min-height: 350px;
+            height: 350px;
+          }
+        }
+
+        .sf-category-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1.5rem;
+        }
+        @media (max-width: 640px) {
+          .sf-category-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .sf-product-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 1.5rem;
+        }
+        @media (max-width: 768px) {
+          .sf-product-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+        @media (max-width: 480px) {
+          .sf-product-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .sf-brand-story {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 4rem;
+          align-items: center;
+        }
+        @media (max-width: 768px) {
+          .sf-brand-story {
+            grid-template-columns: 1fr;
+            gap: 2.5rem;
+          }
+        }
+
+        @media (max-width: 500px) {
+          .sf-newsletter-form {
+            flex-direction: column !important;
+            gap: 0.75rem !important;
+          }
+          .sf-newsletter-input, .sf-newsletter-btn {
+            width: 100% !important;
+          }
+        }
+
         /* Drawer styles */
         .sf-drawer-overlay {
           position: fixed;
@@ -406,153 +745,326 @@ export default function Storefront() {
           -ms-overflow-style: none;
           scrollbar-width: none;
         }
+        @media (max-width: 640px) {
+          .sf-nav-links {
+            display: none !important;
+          }
+        }
       `}</style>
 
-      {/* Nav */}
-      <nav style={S.nav}>
-        <div style={S.navInner}>
-          <a href="/" style={S.brand}>Se<span style={{ color:'#5A8A67' }}>lo</span>ra</a>
-          <div style={S.navRight}>
-            {/* Cart Button */}
-            <button 
+      {/* HEADER */}
+      <nav style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(248, 250, 248, 0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #E4EBE5', padding: '0 2rem' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', height: 70, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* Left: logo/name + Powered badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <a href="#" style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 700, color: '#1A271C', textDecoration: 'none', letterSpacing: '-0.02em' }}>
+              {template.header.logoName}
+            </a>
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, background: '#EDF3EE', color: '#5A8A67', padding: '0.25rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              POWERED BY SELORA AI
+            </span>
+          </div>
+
+          {/* Center: nav links */}
+          <div style={{ display: 'flex', gap: '2rem' }} className="sf-nav-links">
+            {template.header.navLinks.map((link, idx) => (
+              <a
+                key={idx}
+                href={link.url}
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  color: '#3B5A44',
+                  textDecoration: 'none',
+                  transition: 'color 0.2s',
+                }}
+                className="sf-nav-link"
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+
+          {/* Right: Bag */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <button
               onClick={() => setIsCartOpen(true)}
               style={{
-                background: 'var(--gpale)',
-                border: '1px solid var(--border-strong)',
+                background: 'none',
+                border: 'none',
                 cursor: 'pointer',
-                color: 'var(--g)',
-                fontSize: '.82rem',
-                fontWeight: 600,
+                color: '#1A271C',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '.45rem',
+                gap: '0.5rem',
                 fontFamily: 'Inter, sans-serif',
-                padding: '.4rem .85rem',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                padding: '0.5rem 1rem',
                 borderRadius: 8,
-                marginRight: '.5rem',
-                transition: 'all 0.15s'
+                transition: 'all 0.2s',
               }}
+              className="sf-bag-btn"
             >
-              <span>🛒</span>
+              <BagIcon size={18} color="#1A271C" />
               <span>Bag ({cart.reduce((sum, item) => sum + item.quantity, 0)})</span>
             </button>
-            <span style={S.badge}>✦ Selora Store</span>
-            {walletAddress ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span style={{ fontSize: '.82rem', color: '#7B907D', fontWeight: 500 }}>
-                  {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
-                </span>
-                <button 
-                  onClick={disconnectWallet}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#DC2626',
-                    fontSize: '.82rem',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    padding: 0
-                  }}
-                >
-                  Disconnect
-                </button>
-              </div>
-            ) : (
-              <button 
-                onClick={connectWallet}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#7B907D',
-                  fontSize: '.82rem',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  padding: 0,
-                  fontFamily: 'Inter, sans-serif'
-                }}
-              >
-                Connect Wallet
-              </button>
-            )}
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      {store.cover_image ? (
-        <div style={S.hero}>
-          <img src={store.cover_image} alt={store.name} style={S.heroBg} />
-          <div style={S.heroOverlay} />
-          <div style={S.heroContent}>
-            <h1 style={S.heroTitle}>{store.name}</h1>
-            {store.description && <p style={S.heroSub}>{store.description}</p>}
+      {/* HERO SECTION */}
+      <div className="sf-hero-section">
+        {/* Left Half: Headline, Paragraph, CTAs */}
+        <div className="sf-hero-left">
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#82A996', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            {template.hero.eyebrow}
+          </span>
+          <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2rem, 4.5vw, 3.5rem)', fontWeight: 500, color: '#ffffff', margin: 0, lineHeight: 1.1, whiteSpace: 'pre-line' }}>
+            {template.hero.title}
+          </h1>
+          <p style={{ fontSize: '1rem', color: '#B8BCB8', lineHeight: 1.6, margin: '0.5rem 0 1rem' }}>
+            {template.hero.subtitle}
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+            <a
+              href={template.hero.ctaPrimaryUrl}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.85rem 1.75rem',
+                backgroundColor: '#82A996',
+                color: '#1A271C',
+                borderRadius: 30,
+                textDecoration: 'none',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                transition: 'all 0.2s ease',
+              }}
+              className="sf-hero-btn-primary"
+            >
+              {template.hero.ctaPrimaryText} &rarr;
+            </a>
+            <a
+              href={template.hero.ctaSecondaryUrl}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.85rem 1.75rem',
+                backgroundColor: 'transparent',
+                color: '#ffffff',
+                borderRadius: 30,
+                border: '1.5px solid rgba(255,255,255,0.4)',
+                textDecoration: 'none',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                transition: 'all 0.2s ease',
+              }}
+              className="sf-hero-btn-secondary"
+            >
+              {template.hero.ctaSecondaryText}
+            </a>
           </div>
         </div>
-      ) : (
-        <div style={S.heroPlaceholder}>
-          <div>
-            <h1 style={S.heroTitleDark}>{store.name}</h1>
-            {store.description && <p style={{ ...S.heroSub, color:'rgba(255,255,255,.75)', marginTop:'.75rem' }}>{store.description}</p>}
+
+        {/* Right Half: Image Slot */}
+        <div className="sf-hero-right">
+          <div className="sf-hero-image-container">
+            <img
+              src={store.cover_image || template.hero.image}
+              alt={store.name}
+              className="sf-hero-image"
+            />
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Products */}
-      <main style={S.main}>
-        <h2 style={S.sectionTitle}>Collection</h2>
-
-        {products.length === 0 ? (
-          <div style={{ textAlign:'center', padding:'4rem 1rem', color:'#7B907D' }}>
-            <div style={{ fontSize:'2.5rem', marginBottom:'1rem' }}>🌿</div>
-            <p style={{ fontWeight:600, color:'#1A271C', fontSize:'1.1rem', marginBottom:'.5rem' }}>Coming soon</p>
-            <p style={{ fontSize:'.9rem', margin:0 }}>This store hasn't added any products yet.</p>
+      {/* TRUST BAR */}
+      <div className="sf-trust-bar">
+        {template.hero.trustBar.map((item, idx) => (
+          <div key={idx} className="sf-trust-item">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5A8A67' }}>
+              {renderIcon(item.icon, 20, '#5A8A67')}
+            </div>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1A271C', fontFamily: 'Inter, sans-serif' }}>
+              {item.label}
+            </span>
           </div>
-        ) : (
-          <div style={S.grid}>
-            {products.map(p => {
-              const disc = pct(p.price, p.compare_at_price)
+        ))}
+      </div>
+
+      {/* MAIN CONTAINER */}
+      <main style={{ maxWidth: 1200, margin: '0 auto', padding: '5rem 1.5rem' }}>
+        
+        {/* SHOP BY CATEGORY */}
+        <section style={{ marginBottom: '6rem' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
+            {template.categories.eyebrow}
+          </span>
+          <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 500, color: '#1A271C', margin: '0 0 2rem' }}>
+            {template.categories.title}
+          </h2>
+
+          <div className="sf-category-grid">
+            {template.categories.items.map((item, idx) => {
+              const catTextColor = item.image ? "#ffffff" : (item.textColor || "#ffffff");
               return (
                 <div
-                  key={p.id}
-                  style={S.prodCard}
-                  className="sf-prod-card"
-                  onClick={() => openProduct(p)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={e => e.key==='Enter' && openProduct(p)}
+                  key={idx}
+                  style={{
+                    backgroundColor: item.color,
+                    backgroundImage: item.image ? `url(${item.image})` : 'none',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    position: 'relative',
+                    borderRadius: 16,
+                    aspectRatio: '4/3',
+                    padding: '2.5rem 2rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-end',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                  }}
+                  className="sf-cat-card"
                 >
-                  <div style={S.imgWrap}>
-                    {p.images?.[0]
-                      ? <img src={p.images[0]} alt={p.title} style={S.prodImg} className="sf-prod-img" />
-                      : <div style={S.imgPlaceholder}>👗</div>
-                    }
-                    {disc && <span style={S.discBadge}>-{disc}%</span>}
-                    {p.inventory === 0 && <span style={S.soldBadge}>Sold out</span>}
-                  </div>
-                  <div style={S.prodBody}>
-                    <p style={S.prodName}>{p.title}</p>
-                    <div style={S.priceRow}>
-                      <span style={S.price}>{currency} {Number(p.price).toFixed(2)}</span>
-                      {p.compare_at_price && <span style={S.compareAt}>{currency} {Number(p.compare_at_price).toFixed(2)}</span>}
-                    </div>
-                    {p.tags?.length > 0 && (
-                      <div style={S.tags}>
-                        {p.tags.slice(0,3).map(t => <span key={t} style={S.tag}>{t}</span>)}
-                      </div>
-                    )}
+                  {item.image && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', borderRadius: 16, zIndex: 1 }} />
+                  )}
+                  <div style={{ position: 'relative', zIndex: 2 }}>
+                    <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.6rem', color: catTextColor, margin: '0 0 0.5rem', fontWeight: 400 }}>
+                      {item.name}
+                    </h3>
+                    <span style={{ color: catTextColor, opacity: 0.85, fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      Browse &rarr;
+                    </span>
                   </div>
                 </div>
               )
             })}
           </div>
-        )}
+        </section>
+
+        {/* NEW ARRIVALS / PRODUCT GRID */}
+        <section id="new-arrivals" style={{ marginBottom: '6rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '2.5rem' }}>
+            <div>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
+                {template.newArrivals.eyebrow}
+              </span>
+              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 500, color: '#1A271C', margin: 0 }}>
+                {template.newArrivals.title}
+              </h2>
+            </div>
+            <a href={template.newArrivals.viewAllUrl} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', fontWeight: 600, color: '#5A8A67', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              {template.newArrivals.viewAllText} &rarr;
+            </a>
+          </div>
+
+          <ProductGrid
+            products={products.length > 0 ? products.slice(0, 4) : template.newArrivals.items}
+            isSample={products.length === 0}
+            onProductClick={openProduct}
+            currency={currency}
+          />
+        </section>
+
+        {/* BRAND STORY */}
+        <section id="brand-story" className="sf-brand-story" style={{ marginBottom: '2rem' }}>
+          {/* Left half: Brand Photo */}
+          <div style={{ position: 'relative', width: '100%', aspectRatio: '1.1/1', background: '#F5F3E9', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            {template.brandStory.image ? (
+              <img src={template.brandStory.image} alt="Brand Story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ textAlign: 'center', color: '#7B907D' }}>
+                <LeafIcon size={40} color="#7B907D" />
+                <p style={{ margin: '0.5rem 0 0', fontWeight: 500, fontSize: '0.9rem' }}>Brand Photo</p>
+              </div>
+            )}
+            {/* Small Optimized Badge */}
+            <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.65rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10 }}>
+              ✨ {template.brandStory.aiBadgeText}
+            </div>
+          </div>
+
+          {/* Right half: Text */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', justifyContent: 'center' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              {template.brandStory.eyebrow}
+            </span>
+            <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: '#1A271C', margin: 0, lineHeight: 1.15 }}>
+              {template.brandStory.title}
+            </h2>
+            <p style={{ fontSize: '0.95rem', color: '#7B907D', lineHeight: 1.7, margin: '0.5rem 0' }}>
+              {template.brandStory.subtitle}
+            </p>
+            <a href={template.brandStory.ctaUrl} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.9rem', fontWeight: 600, color: '#5A8A67', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              {template.brandStory.ctaText} &rarr;
+            </a>
+          </div>
+        </section>
+
       </main>
 
-      {/* Footer */}
-      <footer style={S.footer}>
-        <p style={S.footerText}>
-          Powered by <a href="/" style={{ color:'#5A8A67', textDecoration:'none', fontWeight:600 }}>Selora</a>
-          {' '}· <a href="/login" onClick={e => { e.preventDefault(); openAuthModal('signup') }} style={{ color:'#7B907D', textDecoration:'none', cursor:'pointer' }}>Start your store free</a>
+      {/* NEWSLETTER / FOOTER BAND */}
+      <section style={{ backgroundColor: '#1A271C', color: '#ffffff', padding: '5rem 2rem', textAlign: 'center', width: '100%', boxSizing: 'border-box' }} className="sf-newsletter-section">
+        <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#82A996', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            {template.newsletter.eyebrow}
+          </span>
+          <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.2rem', fontWeight: 500, color: '#ffffff', margin: 0 }}>
+            {template.newsletter.title}
+          </h2>
+          <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, margin: '0 0 1rem' }}>
+            {template.newsletter.subtitle}
+          </p>
+          <form onSubmit={(e) => { e.preventDefault(); alert("Subscribed!"); }} style={{ display: 'flex', width: '100%', maxWidth: 500, gap: '0.75rem', marginTop: '0.5rem' }} className="sf-newsletter-form">
+            <input
+              type="email"
+              placeholder={template.newsletter.inputPlaceholder}
+              required
+              style={{
+                flex: 1,
+                padding: '0.85rem 1.25rem',
+                borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.15)',
+                background: 'rgba(255,255,255,0.06)',
+                color: '#ffffff',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '0.9rem',
+                outline: 'none',
+              }}
+              className="sf-newsletter-input"
+            />
+            <button
+              type="submit"
+              style={{
+                padding: '0.85rem 2rem',
+                borderRadius: 8,
+                background: '#82A996',
+                color: '#1A271C',
+                border: 'none',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '0.9rem',
+                transition: 'background-color 0.2s',
+              }}
+              className="sf-newsletter-btn"
+            >
+              {template.newsletter.buttonText}
+            </button>
+          </form>
+        </div>
+      </section>
+
+      {/* Platform Attribution Footer */}
+      <footer style={{ borderTop: '1px solid #E4EBE5', padding: '2.5rem 1.5rem', textAlign: 'center', backgroundColor: '#F8FAF8' }}>
+        <p style={{ fontSize: '0.8rem', color: '#7B907D', margin: 0 }}>
+          Powered by <a href="/" style={{ color: '#5A8A67', textDecoration: 'none', fontWeight: 600 }}>Selora</a> · <a href="/login" onClick={e => { e.preventDefault(); openAuthModal('signup') }} style={{ color: '#7B907D', textDecoration: 'none', cursor: 'pointer', fontWeight: 500 }}>Start your store free</a>
         </p>
       </footer>
 

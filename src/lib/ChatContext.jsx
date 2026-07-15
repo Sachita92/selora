@@ -8,7 +8,7 @@ export function ChatProvider({ children }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: "👋 Hey! I'm Selora, your AI growth assistant. I can see your store's live data right now.\n\nAsk me anything — about your products, pricing, sales trends — or tell me to take action like repricing or optimizing listings!",
+      content: "Hey! I'm Selora, your AI growth assistant. I can see your store's live data right now.\n\nAsk me anything — about your products, pricing, sales trends — or tell me to take action like repricing or optimizing listings!",
     },
   ])
   const [sessionId, setSessionId] = useState(() => {
@@ -24,6 +24,9 @@ export function ChatProvider({ children }) {
   const [open, setOpen] = useState(false)
   const [hasNewMessage, setHasNewMessage] = useState(false)
   const [sessions, setSessions] = useState([])
+  // Tracks a pending delete action waiting for user confirmation
+  // Shape: { product_id: string, title: string } | null
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   // Load chat history for the store when sessionId or storeId changes
   const loadHistory = async (storeId, sid = sessionId) => {
@@ -42,7 +45,7 @@ export function ChatProvider({ children }) {
         setMessages([
           {
             role: 'assistant',
-            content: "👋 Hey! I'm Selora, your AI growth assistant. I can see your store's live data right now.\n\nAsk me anything — about your products, pricing, sales trends — or tell me to take action like repricing or optimizing listings!",
+            content: "Hey! I'm Selora, your AI growth assistant. I can see your store's live data right now.\n\nAsk me anything — about your products, pricing, sales trends — or tell me to take action like repricing or optimizing listings!",
           },
           ...mapped
         ])
@@ -51,7 +54,7 @@ export function ChatProvider({ children }) {
         setMessages([
           {
             role: 'assistant',
-            content: "👋 Hey! I'm Selora, your AI growth assistant. I can see your store's live data right now.\n\nAsk me anything — about your products, pricing, sales trends — or tell me to take action like repricing or optimizing listings!",
+            content: "Hey! I'm Selora, your AI growth assistant. I can see your store's live data right now.\n\nAsk me anything — about your products, pricing, sales trends — or tell me to take action like repricing or optimizing listings!",
           },
         ])
       }
@@ -86,6 +89,10 @@ export function ChatProvider({ children }) {
     selectSession(newId, storeId)
   }
 
+  // Phrases that count as a delete confirmation from the user
+  const CONFIRM_PHRASES = ['yes', 'confirm', 'delete it', 'go ahead', 'proceed', 'sure', 'do it', 'yes delete', 'delete', 'remove it', 'remove']
+  const CANCEL_PHRASES  = ['no', 'cancel', 'stop', 'keep it', 'never mind', 'nevermind', 'abort', 'don\'t']
+
   const sendMessage = async (text, storeId, isGuest = false) => {
     if (!text.trim() || loading || !storeId) return
 
@@ -105,10 +112,41 @@ export function ChatProvider({ children }) {
         }
       }
 
+      // --- Delete confirmation detection ---
+      const lowerText = text.toLowerCase().trim()
+      let confirmDelete = false
+      let cancelDelete  = false
+      if (pendingDelete) {
+        if (CONFIRM_PHRASES.some(p => lowerText.includes(p))) {
+          confirmDelete = true
+        } else if (CANCEL_PHRASES.some(p => lowerText.includes(p))) {
+          cancelDelete = true
+        }
+      }
+      // If user cancelled, clear pending state and tell the agent
+      if (cancelDelete) {
+        setPendingDelete(null)
+        setMessages(prev => [
+          ...prev,
+          { role: 'assistant', content: `Got it — **${pendingDelete?.title || 'that product'}** has been kept. No changes were made.` },
+        ])
+        setLoading(false)
+        return
+      }
+      // --- End delete confirmation detection ---
+
+      const body = {
+        message: text,
+        session_id: sessionId,
+        history,
+        is_guest: isGuest,
+        ...(confirmDelete && { confirm_delete: true }),
+      }
+
       const res = await fetch(`${API_URL}/api/chat/${storeId}`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ message: text, session_id: sessionId, history, is_guest: isGuest }),
+        body: JSON.stringify(body),
       })
 
       if (!res.ok) {
@@ -117,6 +155,21 @@ export function ChatProvider({ children }) {
 
       const data = await res.json()
       const assistantContent = data.response || "I couldn't process that. Please try again."
+
+      // --- Track pending delete from backend response ---
+      // If any action has pending_confirmation: true, store it so the next
+      // user message can carry confirm_delete: true automatically.
+      const pendingAction = (data.actions || []).find(a => a.result?.pending_confirmation)
+      if (pendingAction) {
+        setPendingDelete({
+          product_id: pendingAction.result.product_id,
+          title: pendingAction.result.title || 'this product',
+        })
+      } else if (confirmDelete) {
+        // Delete was confirmed and executed — clear pending state
+        setPendingDelete(null)
+      }
+      // --- End pending delete tracking ---
 
       setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }])
       if (!open) setHasNewMessage(true)
@@ -225,6 +278,8 @@ export function ChatProvider({ children }) {
         hasNewMessage,
         setHasNewMessage,
         sessions,
+        pendingDelete,
+        setPendingDelete,
         loadHistory,
         loadSessions,
         selectSession,

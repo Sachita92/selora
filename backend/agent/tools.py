@@ -227,15 +227,6 @@ def get_tools_definition() -> list:
     ]
 
 
-def execute_tool(tool_name, tool_args, adapter, dry_run=False):
-    # Force numeric types in case model returns strings
-    for key in ["new_price", "confidence", "current_inventory", "days_until_stockout"]:
-        if key in tool_args and isinstance(tool_args[key], str):
-            try:
-                tool_args[key] = float(tool_args[key])
-            except ValueError:
-                pass
-
 def execute_tool(
     tool_name: str,
     tool_args: dict,

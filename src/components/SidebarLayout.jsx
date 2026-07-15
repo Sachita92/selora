@@ -16,7 +16,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 export default function SidebarLayout() {
   const { user, stores, activeStore, setActiveStore } = useAppContext()
   const { logout } = useAuth()
-  const { messages, loading: chatLoading, sendMessage, loadHistory, loadSessions, sessionId, sessions, selectSession, setOpen, startNewSession, deleteSession, renameSession, pinSession } = useChat()
+  const { messages, loading: chatLoading, sendMessage, loadHistory, loadSessions, sessionId, sessions, selectSession, setOpen, startNewSession, deleteSession, renameSession, pinSession, pendingDelete, setPendingDelete } = useChat()
   const navigate = useNavigate()
   const location = useLocation()
   const [darkMode, toggleTheme] = useDarkMode()
@@ -1136,8 +1136,44 @@ export default function SidebarLayout() {
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* Delete Confirmation Banner */}
+              {pendingDelete && (
+                <div style={{
+                  margin: '0 1rem 0.5rem',
+                  padding: '0.75rem 1rem',
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  borderRadius: 10,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                  flexShrink: 0,
+                }}>
+                  <div style={{ fontSize: '.78rem', fontWeight: 600, color: '#EF4444' }}>
+                    Confirm deletion
+                  </div>
+                  <div style={{ fontSize: '.76rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                    Are you sure you want to permanently delete this product? This cannot be undone.
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+                    <button
+                      onClick={() => { setPendingDelete(null); setInputText('yes, delete it'); setTimeout(() => document.getElementById('sidebar-chat-form')?.requestSubmit(), 50) }}
+                      style={{ flex: 1, padding: '.45rem', borderRadius: 7, border: 'none', background: '#EF4444', color: '#fff', fontSize: '.75rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Yes, Delete It
+                    </button>
+                    <button
+                      onClick={() => { setPendingDelete(null); sendMessage('cancel', activeStore?.id) }}
+                      style={{ flex: 1, padding: '.45rem', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-primary)', fontSize: '.75rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Chat Input Bar */}
-              <form onSubmit={handleSend} style={{ padding: '.85rem 1rem', borderTop: `1px solid ${c.border}`, display: 'flex', gap: '.5rem', alignItems: 'center', width: '100%', boxSizing: 'border-box', background: c.card, flexShrink: 0 }}>
+              <form id="sidebar-chat-form" onSubmit={handleSend} style={{ padding: '.85rem 1rem', borderTop: `1px solid ${c.border}`, display: 'flex', gap: '.5rem', alignItems: 'center', width: '100%', boxSizing: 'border-box', background: c.card, flexShrink: 0 }}>
                 <input
                   type="text"
                   value={inputText}
