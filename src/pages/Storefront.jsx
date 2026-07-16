@@ -210,11 +210,29 @@ const defaultTemplateData = {
 }
 
 // --- Reusable ProductGrid Component ---
-function ProductGrid({ products, isSample = false, onProductClick, currency = 'USD' }) {
+function ProductGrid({ products, isSample = false, onProductClick, onAddToCart, currency = 'USD', categories = [] }) {
+  const [addedMap, setAddedMap] = useState({})
+
   return (
     <div className="sf-product-grid">
       {products.map((p) => {
         const hasImage = p.images && p.images.length > 0;
+        const isAdded = !!addedMap[p.id];
+
+        const resolvedCategoryName = isSample
+          ? (p.category || 'FASHION')
+          : (categories?.find(c => c.id === p.category_id)?.name || 'FASHION');
+
+        const handleAddClick = (e, prod) => {
+          e.stopPropagation();
+          if (isSample) return;
+          if (onAddToCart) onAddToCart(prod);
+          setAddedMap(prev => ({ ...prev, [prod.id]: true }));
+          setTimeout(() => {
+            setAddedMap(prev => ({ ...prev, [prod.id]: false }));
+          }, 1500);
+        };
+
         return (
           <div
             key={p.id}
@@ -255,16 +273,69 @@ function ProductGrid({ products, isSample = false, onProductClick, currency = 'U
             </div>
 
             {/* Product Info */}
-            <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                {p.category || (p.tags && p.tags[0]) || 'FASHION'}
-              </span>
-              <h4 style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.05rem', fontWeight: 500, color: '#1A271C' }}>
-                {p.title}
-              </h4>
-              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1A271C' }}>
-                {currency} {Number(p.price).toFixed(2)}
-              </span>
+            <div style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {resolvedCategoryName}
+                </span>
+                <h4 style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.05rem', fontWeight: 500, color: '#1A271C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {p.title}
+                </h4>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1A271C' }}>
+                  {currency} {Number(p.price).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Add to Bag Button */}
+              {isSample ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: '#EDF3EE',
+                    color: '#8D9B8E',
+                    borderRadius: '50%',
+                    width: 32,
+                    height: 32,
+                    cursor: 'not-allowed',
+                    opacity: 0.6,
+                    flexShrink: 0
+                  }}
+                  title="Sample product"
+                >
+                  <BagIcon size={14} color="#8D9B8E" />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => handleAddClick(e, p)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: isAdded ? '#1E3A2F' : '#5A8A67',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: isAdded ? '8px' : '50%',
+                    width: isAdded ? 'auto' : 32,
+                    height: 32,
+                    padding: isAdded ? '0 0.75rem' : 0,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    flexShrink: 0
+                  }}
+                >
+                  {isAdded ? (
+                    <span>Added ✓</span>
+                  ) : (
+                    <BagIcon size={14} color="#ffffff" />
+                  )}
+                </button>
+              )}
             </div>
           </div>
         );
@@ -525,8 +596,9 @@ export default function Storefront() {
   if (error) return (
     <div style={S.page}>
       <div style={S.errPage}>
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-        <div style={{ fontSize:'3rem' }}>🔍</div>
+        <div style={{ color: '#5A8A67', marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
         <h1 style={S.errTitle}>Store not found</h1>
         <p style={{ color:'#7B907D', fontSize:'.95rem' }}>{error}</p>
         <Link to="/" style={{ color:'#5A8A67', fontWeight:600, textDecoration:'none', fontSize:'.9rem' }}>← Back to Selora</Link>
@@ -539,6 +611,11 @@ export default function Storefront() {
     ...defaultTemplateData,
     ...store?.template_data
   }
+
+  const imgMain = store.hero_image_main
+  const imgLeft = store.hero_image_left
+  const imgRight = store.hero_image_right
+  const hasAnyHero = !!(imgMain || imgLeft || imgRight)
 
   return (
     <div style={S.page}>
@@ -644,6 +721,97 @@ export default function Storefront() {
           object-fit: cover;
           display: block;
         }
+        .sf-hero-stack-container {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #131d15;
+          overflow: hidden;
+          padding: 2rem;
+        }
+        .sf-hero-stack {
+          position: relative;
+          width: 250px;
+          height: 333px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .sf-hero-card {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          border-radius: 12px;
+          overflow: hidden;
+          background-color: #EAE5D9;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          transform-origin: bottom center;
+        }
+        .sf-hero-card-left {
+          --base-rot: -10deg;
+          --base-tx: -65px;
+          z-index: 1;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+          background-color: #1E3A2F;
+          animation: sway-left 6s ease-in-out infinite;
+        }
+        .sf-hero-card-right {
+          --base-rot: 10deg;
+          --base-tx: 65px;
+          z-index: 1;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+          background-color: #284E39;
+          animation: sway-right 6.5s ease-in-out infinite;
+        }
+        .sf-hero-card-main {
+          z-index: 2;
+          box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+          background-color: #EAE5D9;
+          animation: float-main 5s ease-in-out infinite;
+        }
+        .sf-hero-card img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .sf-hero-placeholder {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 1rem;
+          background: rgba(255,255,255,0.02);
+          border: 2px dashed rgba(255,255,255,0.12);
+          margin: 2rem;
+          border-radius: 16px;
+          color: rgba(255,255,255,0.4);
+          text-align: center;
+          padding: 1.5rem;
+        }
+        .sf-hero-placeholder-icon {
+          font-size: 3rem;
+          color: rgba(255,255,255,0.2);
+        }
+
+        @keyframes sway-left {
+          0%, 100% { transform: rotate(var(--base-rot)) translateX(var(--base-tx)) scale(0.92); }
+          50% { transform: rotate(calc(var(--base-rot) - 2.5deg)) translateX(var(--base-tx)) scale(0.92); }
+        }
+        @keyframes sway-right {
+          0%, 100% { transform: rotate(var(--base-rot)) translateX(var(--base-tx)) scale(0.92); }
+          50% { transform: rotate(calc(var(--base-rot) + 2.5deg)) translateX(var(--base-tx)) scale(0.92); }
+        }
+        @keyframes float-main {
+          0%, 100% { transform: rotate(0deg) translateY(0) scale(1); }
+          50% { transform: rotate(1.5deg) translateY(-5px) scale(1.01); }
+        }
+
         @media (max-width: 768px) {
           .sf-hero-section {
             grid-template-columns: 1fr;
@@ -656,17 +824,24 @@ export default function Storefront() {
             min-height: 350px;
             height: 350px;
           }
+          .sf-hero-stack {
+            width: 170px;
+            height: 227px;
+          }
+          .sf-hero-card-left {
+            --base-rot: -8deg;
+            --base-tx: -45px;
+          }
+          .sf-hero-card-right {
+            --base-rot: 8deg;
+            --base-tx: 45px;
+          }
         }
 
         .sf-category-grid {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
           gap: 1.5rem;
-        }
-        @media (max-width: 640px) {
-          .sf-category-grid {
-            grid-template-columns: 1fr;
-          }
         }
 
         .sf-product-grid {
@@ -870,15 +1045,40 @@ export default function Storefront() {
           </div>
         </div>
 
-        {/* Right Half: Image Slot */}
+        {/* Right Half: Stacked Card Composition or Placeholder */}
         <div className="sf-hero-right">
-          <div className="sf-hero-image-container">
-            <img
-              src={store.cover_image || template.hero.image}
-              alt={store.name}
-              className="sf-hero-image"
-            />
-          </div>
+          {hasAnyHero ? (
+            <div className="sf-hero-stack-container">
+              <div className="sf-hero-stack">
+                {/* Left Card */}
+                {imgLeft && (
+                  <div className="sf-hero-card sf-hero-card-left">
+                    <img src={imgLeft} alt="" />
+                  </div>
+                )}
+                {/* Right Card */}
+                {imgRight && (
+                  <div className="sf-hero-card sf-hero-card-right">
+                    <img src={imgRight} alt="" />
+                  </div>
+                )}
+                {/* Main Card */}
+                {imgMain && (
+                  <div className="sf-hero-card sf-hero-card-main">
+                    <img src={imgMain} alt="" />
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="sf-hero-placeholder">
+              <div className="sf-hero-placeholder-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}><LeafIcon size={48} color="rgba(255,255,255,0.2)" /></div>
+              <p style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 500 }}>Add your hero images</p>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'Inter, sans-serif' }}>
+                Go to the store builder settings tab to complete onboarding
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -886,10 +1086,10 @@ export default function Storefront() {
       <div className="sf-trust-bar">
         {template.hero.trustBar.map((item, idx) => (
           <div key={idx} className="sf-trust-item">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5A8A67' }}>
-              {renderIcon(item.icon, 20, '#5A8A67')}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1E3A2F' }}>
+              {renderIcon(item.icon, 20, '#1E3A2F')}
             </div>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1A271C', fontFamily: 'Inter, sans-serif' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1E3A2F', fontFamily: 'Inter, sans-serif' }}>
               {item.label}
             </span>
           </div>
@@ -909,42 +1109,59 @@ export default function Storefront() {
           </h2>
 
           <div className="sf-category-grid">
-            {template.categories.items.map((item, idx) => {
-              const catTextColor = item.image ? "#ffffff" : (item.textColor || "#ffffff");
-              return (
-                <div
-                  key={idx}
-                  style={{
-                    backgroundColor: item.color,
-                    backgroundImage: item.image ? `url(${item.image})` : 'none',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    position: 'relative',
-                    borderRadius: 16,
-                    aspectRatio: '4/3',
-                    padding: '2.5rem 2rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'flex-end',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                  }}
-                  className="sf-cat-card"
-                >
-                  {item.image && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', borderRadius: 16, zIndex: 1 }} />
-                  )}
-                  <div style={{ position: 'relative', zIndex: 2 }}>
-                    <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.6rem', color: catTextColor, margin: '0 0 0.5rem', fontWeight: 400 }}>
-                      {item.name}
-                    </h3>
-                    <span style={{ color: catTextColor, opacity: 0.85, fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      Browse &rarr;
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
+            {(() => {
+              const isCustom = store && store.categories && store.categories.length > 0;
+              const items = isCustom ? store.categories : template.categories.items;
+              const dynamicColors = [
+                { bg: '#1A271C', text: '#EAE5D9' },
+                { bg: '#EAE5D9', text: '#1A271C' },
+                { bg: '#8D9B8E', text: '#1E3A2F' },
+                { bg: '#3D4A3E', text: '#EAE5D9' }
+              ];
+              return items.map((item, idx) => {
+                const imageUrl = isCustom ? item.image_url : item.image;
+                const colorIndex = idx % dynamicColors.length;
+                const fallbackBg = isCustom ? dynamicColors[colorIndex].bg : (item.color || '#EAE5D9');
+                const catTextColor = imageUrl ? '#ffffff' : (isCustom ? dynamicColors[colorIndex].text : (item.textColor || '#ffffff'));
+                const linkTarget = isCustom ? item.link_target : item.link;
+
+                return (
+                  <a
+                    key={item.id || idx}
+                    href={linkTarget || '#'}
+                    style={{
+                      backgroundColor: fallbackBg,
+                      backgroundImage: imageUrl ? `url(${imageUrl})` : 'none',
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      position: 'relative',
+                      borderRadius: 16,
+                      aspectRatio: '4/3',
+                      padding: '2.5rem 2rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'flex-end',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      textDecoration: 'none'
+                    }}
+                    className="sf-cat-card"
+                  >
+                    {imageUrl && (
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', borderRadius: 16, zIndex: 1 }} />
+                    )}
+                    <div style={{ position: 'relative', zIndex: 2 }}>
+                      <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.6rem', color: catTextColor, margin: '0 0 0.5rem', fontWeight: 400 }}>
+                        {item.name}
+                      </h3>
+                      <span style={{ color: catTextColor, opacity: 0.85, fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        Browse &rarr;
+                      </span>
+                    </div>
+                  </a>
+                )
+              });
+            })()}
           </div>
         </section>
 
@@ -967,7 +1184,18 @@ export default function Storefront() {
           <ProductGrid
             products={products.length > 0 ? products.slice(0, 4) : template.newArrivals.items}
             isSample={products.length === 0}
+            categories={store?.categories}
             onProductClick={openProduct}
+            onAddToCart={(prod) => {
+              if (store?.id) trackEvent(store.id, prod.id, 'add_to_cart');
+              setCart(prev => {
+                const existing = prev.find(item => item.product.id === prod.id);
+                if (existing) {
+                  return prev.map(item => item.product.id === prod.id ? { ...item, quantity: item.quantity + 1 } : item);
+                }
+                return [...prev, { product: prod, quantity: 1 }];
+              });
+            }}
             currency={currency}
           />
         </section>
@@ -985,8 +1213,9 @@ export default function Storefront() {
               </div>
             )}
             {/* Small Optimized Badge */}
-            <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.65rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10 }}>
-              ✨ {template.brandStory.aiBadgeText}
+            <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.65rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block' }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              {template.brandStory.aiBadgeText}
             </div>
           </div>
 
@@ -1075,9 +1304,13 @@ export default function Storefront() {
             <div style={{ position:'relative' }}>
               {selected.images?.[0]
                 ? <img src={selected.images[0]} alt={selected.title} style={S.modalImg} className="sf-modal-img" />
-                : <div style={{ ...S.modalImg, background:'linear-gradient(135deg,#EDF3EE,#C8DCC9)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'5rem' }}>👗</div>
+                : (
+                  <div style={{ ...S.modalImg, background:'linear-gradient(135deg,#EDF3EE,#C8DCC9)', display:'flex', alignItems:'center', justifyContent:'center', color: '#5A8A67' }}>
+                    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                  </div>
+                )
               }
-              <button style={S.closeBtn} onClick={() => setSelected(null)} aria-label="Close">✕</button>
+              <button style={S.closeBtn} onClick={() => setSelected(null)} aria-label="Close">X</button>
             </div>
             <div style={S.modalBody}>
               <h2 style={S.modalTitle}>{selected.title}</h2>
@@ -1101,7 +1334,17 @@ export default function Storefront() {
               )}
 
               <p style={{ fontSize:'.82rem', color:'#7B907D', marginBottom:'1.25rem' }}>
-                {selected.inventory > 0 ? `✅ ${selected.inventory} in stock` : '❌ Currently out of stock'}
+                {selected.inventory > 0 ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
+                    {selected.inventory} in stock
+                  </span>
+                ) : (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
+                    Currently out of stock
+                  </span>
+                )}
               </p>
 
               <button
@@ -1110,7 +1353,7 @@ export default function Storefront() {
                 onClick={handleAddToCart}
                 disabled={selected.inventory === 0}
               >
-                {addedToCart ? '✓ Added to Cart' : selected.inventory === 0 ? 'Out of Stock' : 'Add to Cart'}
+                {addedToCart ? 'Added to Cart' : selected.inventory === 0 ? 'Out of Stock' : 'Add to Cart'}
               </button>
 
               {selected.images?.length > 1 && (
@@ -1156,15 +1399,17 @@ export default function Storefront() {
                   }
                 }}
                 disabled={paymentStatus === 'pending'}
-                style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: paymentStatus === 'pending' ? 'not-allowed' : 'pointer', color: 'var(--text-muted)' }}
+                style={{ background: 'none', border: 'none', fontSize: '1rem', cursor: paymentStatus === 'pending' ? 'not-allowed' : 'pointer', color: 'var(--text-muted)' }}
               >
-                ✕
+                X
               </button>
             </div>
 
             {cart.length === 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center', color: 'var(--text-muted)' }}>
-                <span style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌿</span>
+                <div style={{ color: '#5A8A67', marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                </div>
                 <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '.25rem' }}>Your bag is empty</p>
                 <p style={{ fontSize: '.85rem', margin: 0 }}>Browse the collection and add some items to get started.</p>
               </div>
@@ -1177,7 +1422,9 @@ export default function Storefront() {
                       {item.product.images?.[0] ? (
                         <img src={item.product.images[0]} alt={item.product.title} style={{ width: 70, height: 85, objectFit: 'cover', borderRadius: 8 }} />
                       ) : (
-                        <div style={{ width: 70, height: 85, background: 'var(--bg-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, fontSize: '1.5rem' }}>👗</div>
+                        <div style={{ width: 70, height: 85, background: 'var(--bg-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, color: '#5A8A67' }}>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                        </div>
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontWeight: 600, fontSize: '.9rem', margin: '0 0 .25rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product.title}</p>
@@ -1345,7 +1592,9 @@ export default function Storefront() {
 
                       {paymentStatus === 'confirmed' && (
                         <div style={{ padding: '1rem 0' }}>
-                          <div style={{ fontSize: '3rem', color: 'var(--g)', marginBottom: '.5rem' }}>✓</div>
+                          <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--g)', marginBottom: '1rem' }}>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
                           <p style={{ fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 .25rem' }}>Payment Confirmed!</p>
                           <p style={{ fontSize: '.8rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>Your order has been placed successfully.</p>
                           <button

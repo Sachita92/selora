@@ -1876,6 +1876,10 @@ class StoreCreateRequest(BaseModel):
     cover_image: Optional[str] = None
     currency: str = 'USD'
     is_public: bool = True
+    hero_image_main: Optional[str] = None
+    hero_image_left: Optional[str] = None
+    hero_image_right: Optional[str] = None
+    categories: Optional[List] = None
 
 class StoreUpdateRequest(BaseModel):
     name: Optional[str] = None
@@ -1884,6 +1888,10 @@ class StoreUpdateRequest(BaseModel):
     cover_image: Optional[str] = None
     currency: Optional[str] = None
     is_public: Optional[bool] = None
+    hero_image_main: Optional[str] = None
+    hero_image_left: Optional[str] = None
+    hero_image_right: Optional[str] = None
+    categories: Optional[List] = None
 
 class ProductCreateRequest(BaseModel):
     title: str
@@ -1894,6 +1902,7 @@ class ProductCreateRequest(BaseModel):
     images: Optional[List[str]] = []
     tags: Optional[List[str]] = []
     is_active: bool = True
+    category_id: Optional[str] = None
 
 class ProductUpdateRequest(BaseModel):
     title: Optional[str] = None
@@ -1904,6 +1913,7 @@ class ProductUpdateRequest(BaseModel):
     images: Optional[List[str]] = None
     tags: Optional[List[str]] = None
     is_active: Optional[bool] = None
+    category_id: Optional[str] = None
 
 
 class PrivySyncRequest(BaseModel):
@@ -2295,6 +2305,7 @@ async def add_product_to_store(store_id: str, request: Request):
         'images': body_json.get('images', []),
         'tags': body_json.get('tags', []),
         'is_active': body_json.get('is_active', True),
+        'category_id': body_json.get('category_id'),
     }).execute()
     res_data = result.data[0]
     res_data["platform"] = "selora"
@@ -2327,7 +2338,7 @@ async def update_product(store_id: str, product_id: str, request: Request):
     if existing.data[0]['user_id'] != user_id:
         raise HTTPException(status_code=403, detail='Forbidden')
     body_json = await request.json()
-    allowed = ['title', 'description', 'price', 'compare_at_price', 'inventory', 'images', 'tags', 'is_active']
+    allowed = ['title', 'description', 'price', 'compare_at_price', 'inventory', 'images', 'tags', 'is_active', 'category_id']
     update_data = {k: v for k, v in body_json.items() if k in allowed}
     if not update_data:
         raise HTTPException(status_code=400, detail='No valid fields to update')
@@ -2391,6 +2402,83 @@ async def upload_product_image(store_id: str, request: Request):
     bucket = 'selora-products'
     storage = _db().storage.from_(bucket)
     storage.upload(path, file_bytes, {'content-type': content_type, 'upsert': 'true'})
+    public_url = f'{supabase_url}/storage/v1/object/public/{bucket}/{path}'
+    return {'url': public_url}
+
+
+@app.post('/selora-stores/{store_id}/upload-hero-image/{role}')
+async def upload_hero_image(store_id: str, role: str, request: Request):
+    """Upload a cropped store hero image (main, left, or right) to Supabase Storage and save to settings."""
+    if role not in ('main', 'left', 'right'):
+        raise HTTPException(status_code=400, detail='Invalid role. Must be main, left, or right.')
+    import base64
+    from database import db as _db
+    user_id, _ = _get_user_id_from_token(request)
+    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail='Store not found')
+    if existing.data[0]['user_id'] != user_id:
+        raise HTTPException(status_code=403, detail='Forbidden')
+        
+    body_json = await request.json()
+    file_data_b64 = body_json.get('file_data', '')
+    content_type = body_json.get('content_type', 'image/jpeg')
+    file_bytes = base64.b64decode(file_data_b64)
+    
+    path = f'hero-images/{store_id}/{role}.jpg'
+    supabase_url = os.getenv('SUPABASE_URL')
+    bucket = 'selora-products'
+    storage = _db().storage.from_(bucket)
+    
+    try:
+        try:
+            storage.remove(path)
+        except Exception:
+            pass
+        storage.upload(path, file_bytes, {'content-type': content_type, 'upsert': 'true'})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Storage upload failed: {str(e)}")
+        
+    public_url = f'{supabase_url}/storage/v1/object/public/{bucket}/{path}'
+    
+    # Save the public URL into store settings database
+    db_field = f"hero_image_{role}"
+    _db().table('selora_stores').update({db_field: public_url}).eq('id', store_id).execute()
+    
+    return {'url': public_url}
+
+
+@app.post('/selora-stores/{store_id}/upload-category-image/{category_id}')
+async def upload_category_image(store_id: str, category_id: str, request: Request):
+    """Upload a category image to Supabase Storage and return the URL."""
+    import base64
+    from database import db as _db
+    user_id, _ = _get_user_id_from_token(request)
+    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail='Store not found')
+    if existing.data[0]['user_id'] != user_id:
+        raise HTTPException(status_code=403, detail='Forbidden')
+        
+    body_json = await request.json()
+    file_data_b64 = body_json.get('file_data', '')
+    content_type = body_json.get('content_type', 'image/jpeg')
+    file_bytes = base64.b64decode(file_data_b64)
+    
+    path = f'category-images/{store_id}/{category_id}.jpg'
+    supabase_url = os.getenv('SUPABASE_URL')
+    bucket = 'selora-products'
+    storage = _db().storage.from_(bucket)
+    
+    try:
+        try:
+            storage.remove(path)
+        except Exception:
+            pass
+        storage.upload(path, file_bytes, {'content-type': content_type, 'upsert': 'true'})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Storage upload failed: {str(e)}")
+        
     public_url = f'{supabase_url}/storage/v1/object/public/{bucket}/{path}'
     return {'url': public_url}
 

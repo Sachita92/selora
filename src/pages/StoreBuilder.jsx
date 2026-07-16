@@ -1,7 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
+import Cropper from 'react-easy-crop'
 import { supabase } from '../lib/supabase'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+const defaultCategories = [
+  { id: 'cat_tops', name: 'Tops', image_url: '', link_target: '#category-tops' },
+  { id: 'cat_bottoms', name: 'Bottoms', image_url: '', link_target: '#category-bottoms' },
+  { id: 'cat_accessories', name: 'Accessories', image_url: '', link_target: '#category-accessories' },
+  { id: 'cat_shoes', name: 'Shoes', image_url: '', link_target: '#category-shoes' }
+]
 
 // helpers
 function slugify(str) {
@@ -31,6 +39,41 @@ function toBase64(file) {
     reader.onload = () => resolve(reader.result.split(',')[1])
     reader.onerror = reject
     reader.readAsDataURL(file)
+  })
+}
+
+function getCroppedImg(imageSrc, pixelCrop) {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.src = imageSrc
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+
+      canvas.width = pixelCrop.width
+      canvas.height = pixelCrop.height
+
+      ctx.drawImage(
+        image,
+        pixelCrop.x,
+        pixelCrop.y,
+        pixelCrop.width,
+        pixelCrop.height,
+        0,
+        0,
+        pixelCrop.width,
+        pixelCrop.height
+      )
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('Canvas is empty'))
+          return
+        }
+        resolve(blob)
+      }, 'image/jpeg', 0.9)
+    }
+    image.onerror = (e) => reject(e)
   })
 }
 
@@ -85,8 +128,19 @@ export default function StoreBuilder() {
   const [showModal, setShowModal] = useState(false)
   const [editProd, setEditProd]   = useState(null)
 
-  const [form, setForm] = useState({ name:'', handle:'', description:'', cover_image:'', currency:'USD', is_public:true })
+  const [form, setForm] = useState({ name:'', handle:'', description:'', cover_image:'', currency:'USD', is_public:true, categories: defaultCategories })
   const [handleEdited, setHandleEdited] = useState(false)
+
+  const [heroSlots, setHeroSlots] = useState({
+    main: { url: '', croppedUrl: '', croppedBlob: null, error: '', savedUrl: '' },
+    left: { url: '', croppedUrl: '', croppedBlob: null, error: '', savedUrl: '' },
+    right: { url: '', croppedUrl: '', croppedBlob: null, error: '', savedUrl: '' }
+  })
+  const [croppingRole, setCroppingRole] = useState(null)
+  const [croppingUrl, setCroppingUrl] = useState(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
 
   useEffect(() => { loadData() }, [])
 
@@ -96,7 +150,20 @@ export default function StoreBuilder() {
       const res = await api('GET', '/selora-stores/me')
       if (res.store) {
         setStore(res.store)
-        setForm({ name:res.store.name, handle:res.store.handle, description:res.store.description||'', cover_image:res.store.cover_image||'', currency:res.store.currency, is_public:res.store.is_public })
+        setForm({
+          name: res.store.name,
+          handle: res.store.handle,
+          description: res.store.description || '',
+          cover_image: res.store.cover_image || '',
+          currency: res.store.currency,
+          is_public: res.store.is_public,
+          categories: (res.store.categories && res.store.categories.length > 0) ? res.store.categories : defaultCategories
+        })
+        setHeroSlots({
+          main: { url: '', croppedUrl: res.store.hero_image_main || '', croppedBlob: null, error: '', savedUrl: res.store.hero_image_main || '' },
+          left: { url: '', croppedUrl: res.store.hero_image_left || '', croppedBlob: null, error: '', savedUrl: res.store.hero_image_left || '' },
+          right: { url: '', croppedUrl: res.store.hero_image_right || '', croppedBlob: null, error: '', savedUrl: res.store.hero_image_right || '' }
+        })
         const pr = await api('GET', `/selora-stores/${res.store.id}/products`)
         setProducts(pr.products || [])
       }
@@ -108,19 +175,271 @@ export default function StoreBuilder() {
     setForm(f => ({ ...f, name:val, handle: handleEdited ? f.handle : slugify(val) }))
   }
 
+  const hasAllHeroImages = !!(heroSlots.main.croppedUrl && heroSlots.left.croppedUrl && heroSlots.right.croppedUrl)
+
+  function handleFileSelect(file, role) {
+    if (!file) return
+
+    setHeroSlots(prev => ({
+      ...prev,
+      [role]: { ...prev[role], error: '' }
+    }))
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      setHeroSlots(prev => ({
+        ...prev,
+        [role]: { ...prev[role], error: 'Please upload a JPG, PNG, or WEBP image.' }
+      }))
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setHeroSlots(prev => ({
+        ...prev,
+        [role]: { ...prev[role], error: 'This image is too large. Please upload something under 10MB.' }
+      }))
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setCroppingRole(role)
+      setCroppingUrl(reader.result)
+      setCrop({ x: 0, y: 0 })
+      setZoom(1)
+    }
+    reader.onerror = () => {
+      setHeroSlots(prev => ({
+        ...prev,
+        [role]: { ...prev[role], error: 'Something went wrong reading that image. Please try again.' }
+      }))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleSaveCrop = async () => {
+    if (!croppingRole) return
+    try {
+      const croppedBlob = await getCroppedImg(croppingUrl, croppedAreaPixels)
+      const croppedUrl = URL.createObjectURL(croppedBlob)
+      
+      setHeroSlots(prev => ({
+        ...prev,
+        [croppingRole]: {
+          ...prev[croppingRole],
+          croppedUrl,
+          croppedBlob,
+          error: ''
+        }
+      }))
+      
+      setCroppingRole(null)
+      setCroppingUrl(null)
+    } catch (e) {
+      setHeroSlots(prev => ({
+        ...prev,
+        [croppingRole]: {
+          ...prev[croppingRole],
+          error: 'Something went wrong reading that image. Please try again.'
+        }
+      }))
+      setCroppingRole(null)
+      setCroppingUrl(null)
+    }
+  }
+
+  function addCategory() {
+    const newCat = {
+      id: `cat_${Math.random().toString(36).substring(2, 9)}_${Date.now()}`,
+      name: '',
+      image_url: '',
+      link_target: ''
+    }
+    newCat.link_target = `#category-${newCat.id}`
+    setForm(f => ({ ...f, categories: [...(f.categories || []), newCat] }))
+  }
+
+  function removeCategory(id) {
+    setForm(f => ({ ...f, categories: (f.categories || []).filter(c => c.id !== id) }))
+  }
+
+  function updateCategoryField(id, field, value) {
+    setForm(f => ({
+      ...f,
+      categories: (f.categories || []).map(c => {
+        if (c.id === id) {
+          const updated = { ...c, [field]: value }
+          if (field === 'name' && (!c.link_target || c.link_target.startsWith('#category-'))) {
+            updated.link_target = `#category-${slugify(value)}`
+          }
+          return updated
+        }
+        return c
+      })
+    }))
+  }
+
+  function moveCategory(index, direction) {
+    const list = [...(form.categories || [])]
+    const targetIndex = index + direction
+    if (targetIndex < 0 || targetIndex >= list.length) return
+    const temp = list[index]
+    list[index] = list[targetIndex]
+    list[targetIndex] = temp
+    setForm(f => ({ ...f, categories: list }))
+  }
+
+  async function handleCategoryImageSelect(file, catId) {
+    if (!file) return
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      alert('Please upload a JPG, PNG, or WEBP image.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('This image is too large. Please upload something under 10MB.')
+      return
+    }
+    
+    setSaving(true)
+    try {
+      // 1. Immediately persist categories array to DB first
+      const currentCategories = [...form.categories]
+      const updatedStore = await api('PUT', `/selora-stores/${store.id}`, { ...form, categories: currentCategories })
+      setStore(updatedStore)
+      
+      // 2. Upload the file
+      const reader = new FileReader()
+      const b64Promise = new Promise((resolve) => {
+        reader.onload = () => resolve(reader.result.split(',')[1])
+        reader.readAsDataURL(file)
+      })
+      const b64 = await b64Promise
+      
+      const uploadRes = await api('POST', `/selora-stores/${store.id}/upload-category-image/${catId}`, {
+        file_data: b64,
+        content_type: file.type || 'image/jpeg'
+      })
+      
+      // 3. Update categories with url and save again
+      const nextCategories = currentCategories.map(c => c.id === catId ? { ...c, image_url: uploadRes.url } : c)
+      setForm(f => ({ ...f, categories: nextCategories }))
+      const finalStore = await api('PUT', `/selora-stores/${store.id}`, { ...form, categories: nextCategories })
+      setStore(finalStore)
+      
+      setMsg({ type: 'ok', text: 'Category image uploaded successfully!' })
+    } catch (err) {
+      setMsg({ type: 'error', text: `Upload failed: ${err.message}` })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function saveSettings(e) {
     e.preventDefault()
-    setSaving(true); setMsg(null)
+    if (!store && !hasAllHeroImages) {
+      return
+    }
+    if ((form.categories || []).length < 4) {
+      setMsg({ type: 'error', text: 'You must configure at least 4 categories to save store settings.' })
+      return
+    }
+    
+    setSaving(true)
+    setMsg(null)
+    
     try {
       if (store) {
+        // --- Store Update ---
         const u = await api('PUT', `/selora-stores/${store.id}`, form)
-        setStore(u); setMsg({ type:'ok', text:'Store settings saved!' })
+        setStore(u)
+        
+        let uploadErrorMsg = ''
+        const rolesToUpload = ['main', 'left', 'right'].filter(r => heroSlots[r].croppedBlob)
+        
+        for (const role of rolesToUpload) {
+          try {
+            const blob = heroSlots[role].croppedBlob
+            const reader = new FileReader()
+            const b64Promise = new Promise((resolve) => {
+              reader.onload = () => resolve(reader.result.split(',')[1])
+              reader.readAsDataURL(blob)
+            })
+            const b64 = await b64Promise
+            
+            const res = await api('POST', `/selora-stores/${store.id}/upload-hero-image/${role}`, {
+              file_data: b64,
+              content_type: 'image/jpeg'
+            })
+            
+            setHeroSlots(prev => ({
+              ...prev,
+              [role]: { ...prev[role], savedUrl: res.url, croppedBlob: null }
+            }))
+          } catch (err) {
+            uploadErrorMsg += `Failed to upload ${role} hero image. `
+          }
+        }
+        
+        if (uploadErrorMsg) {
+          setMsg({ type: 'error', text: `Store identity saved, but: ${uploadErrorMsg}` })
+        } else {
+          setMsg({ type: 'ok', text: 'Store settings saved!' })
+        }
+        
       } else {
+        // --- Store Onboarding / Creation ---
         const c = await api('POST', '/selora-stores', form)
-        setStore(c); setMsg({ type:'ok', text:'Store created! Your storefront is now live.' })
+        
+        const roles = ['main', 'left', 'right']
+        let uploadFailedRole = null
+        
+        for (const role of roles) {
+          try {
+            const blob = heroSlots[role].croppedBlob
+            const reader = new FileReader()
+            const b64Promise = new Promise((resolve) => {
+              reader.onload = () => resolve(reader.result.split(',')[1])
+              reader.readAsDataURL(blob)
+            })
+            const b64 = await b64Promise
+            
+            const res = await api('POST', `/selora-stores/${c.id}/upload-hero-image/${role}`, {
+              file_data: b64,
+              content_type: 'image/jpeg'
+            })
+            
+            setHeroSlots(prev => ({
+              ...prev,
+              [role]: { ...prev[role], savedUrl: res.url, croppedBlob: null }
+            }))
+          } catch (err) {
+            uploadFailedRole = role
+            break
+          }
+        }
+        
+        if (uploadFailedRole) {
+          setStore(c)
+          const roleLabel = uploadFailedRole === 'main' ? 'Main' : uploadFailedRole === 'left' ? 'Left' : 'Right'
+          setMsg({
+            type: 'error',
+            text: `Your store was created, but ${roleLabel} image didn't upload. You can add it now or fix it later in Store Settings.`
+          })
+        } else {
+          setStore(c)
+          setMsg({ type: 'ok', text: 'Store created successfully!' })
+          setTimeout(() => {
+            window.location.href = `/store/${c.handle}`
+          }, 1500)
+        }
       }
-    } catch(e) { setMsg({ type:'error', text:e.message }) }
-    finally { setSaving(false) }
+    } catch (e) {
+      setMsg({ type: 'error', text: e.message })
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function deleteProd(id) {
@@ -169,7 +488,7 @@ export default function StoreBuilder() {
         {msg && <div style={S.alert(msg.type)}>{msg.text}</div>}
 
         <div style={S.tabs}>
-          {[['settings','⚙️  Store Settings'],['products','🛍️  Products']].map(([k,l]) => (
+          {[['settings','Store Settings'],['products','Products']].map(([k,l]) => (
             <button key={k} style={S.tab(tab===k)} onClick={() => setTab(k)}>{l}</button>
           ))}
         </div>
@@ -192,7 +511,7 @@ export default function StoreBuilder() {
                   placeholder="luna-mode"
                   required
                 />
-                <p style={S.handlePrev}>🔗 {storeUrl}</p>
+                <p style={S.handlePrev}>Link Preview: {storeUrl}</p>
               </div>
               <div style={S.field}>
                 <label style={S.label}>Tagline / Description</label>
@@ -203,6 +522,240 @@ export default function StoreBuilder() {
                 <input style={S.input} value={form.cover_image} onChange={e => setForm(f => ({ ...f, cover_image:e.target.value }))} placeholder="https://..." />
                 <p style={S.hint}>Paste any image URL for your store banner.</p>
               </div>
+
+              {/* Hero Stack Images Section */}
+              <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+                <p style={{ ...S.cardTitle, marginBottom: '0.5rem' }}>Hero Stack Images *</p>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                  Selora's native storefront uses a premium 3-card stacked composition. Upload and crop exactly 3 images below.
+                </p>
+
+                {/* Inline Validation Warning for onboarding */}
+                {!store && !hasAllHeroImages && (
+                  <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#B45309', borderRadius: 8, padding: '0.75rem 1rem', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    Upload and crop all 3 hero images to launch your store.
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                  {/* Slot 1: Main */}
+                  <HeroImageSlot
+                    role="main"
+                    label="Main Image (Center)"
+                    description="Front-facing card, straight-on focal point."
+                    slotState={heroSlots.main}
+                    onSelectFile={handleFileSelect}
+                    onRemove={() => setHeroSlots(prev => ({ ...prev, main: { ...prev.main, url: '', croppedUrl: '', croppedBlob: null, error: '' } }))}
+                  />
+                  
+                  {/* Slot 2: Left Accent */}
+                  <HeroImageSlot
+                    role="left"
+                    label="Left Accent"
+                    description="Rotated card placed behind-left."
+                    slotState={heroSlots.left}
+                    onSelectFile={handleFileSelect}
+                    onRemove={() => setHeroSlots(prev => ({ ...prev, left: { ...prev.left, url: '', croppedUrl: '', croppedBlob: null, error: '' } }))}
+                  />
+
+                  {/* Slot 3: Right Accent */}
+                  <HeroImageSlot
+                    role="right"
+                    label="Right Accent"
+                    description="Rotated card placed behind-right."
+                    slotState={heroSlots.right}
+                    onSelectFile={handleFileSelect}
+                    onRemove={() => setHeroSlots(prev => ({ ...prev, right: { ...prev.right, url: '', croppedUrl: '', croppedBlob: null, error: '' } }))}
+                  />
+                </div>
+
+                {/* Live Stacked Preview */}
+                {(heroSlots.main.croppedUrl || heroSlots.left.croppedUrl || heroSlots.right.croppedUrl) && (
+                  <div style={{ background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: 12, padding: '2rem', marginBottom: '2rem' }}>
+                    <p style={{ ...S.label, marginBottom: '1rem', textAlign: 'center' }}>Live Hero Composition Preview</p>
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 260, position: 'relative', overflow: 'hidden' }}>
+                      <div style={{ position: 'relative', width: 140, height: 186 }}>
+                              {/* Left Card */}
+                        {heroSlots.left.croppedUrl && (
+                          <div style={{
+                            position: 'absolute',
+                            inset: 0,
+                            borderRadius: 10,
+                            overflow: 'hidden',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            transform: 'rotate(-8deg) translateX(-40px) scale(0.92)',
+                            transformOrigin: 'bottom center',
+                            zIndex: 1,
+                            background: '#1E3A2F'
+                          }}>
+                            <img src={heroSlots.left.croppedUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                        )}
+
+                        {/* Right Card */}
+                        {heroSlots.right.croppedUrl && (
+                          <div style={{
+                            position: 'absolute',
+                            inset: 0,
+                            borderRadius: 10,
+                            overflow: 'hidden',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            transform: 'rotate(8deg) translateX(40px) scale(0.92)',
+                            transformOrigin: 'bottom center',
+                            zIndex: 1,
+                            background: '#284E39'
+                          }}>
+                            <img src={heroSlots.right.croppedUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                        )}
+
+                        {/* Main Card */}
+                        {heroSlots.main.croppedUrl && (
+                          <div style={{
+                            position: 'absolute',
+                            inset: 0,
+                            borderRadius: 10,
+                            overflow: 'hidden',
+                            boxShadow: '0 8px 24px rgba(26,39,28,0.25)',
+                            zIndex: 2,
+                            background: '#EAE5D9'
+                          }}>
+                            <img src={heroSlots.main.croppedUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                        )}
+
+                        {/* If none, empty stack preview */}
+                        {!heroSlots.main.croppedUrl && !heroSlots.left.croppedUrl && !heroSlots.right.croppedUrl && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', border: '2px dashed var(--border)', borderRadius: 10, color: 'var(--text-muted)' }}>
+                            Empty
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Dynamic Categories Section */}
+              <div style={{ marginTop: '2.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem', marginBottom: '2rem' }}>
+                <p style={{ ...S.cardTitle, marginBottom: '0.5rem' }}>Shop by Category</p>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                  Manage store categories. Add as many as you'd like, drag or sort their display order, and optionally add images.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                  {(form.categories || []).map((cat, idx) => (
+                    <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: 10 }}>
+                      
+                      {/* Reorder Up/Down */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => moveCategory(idx, -1)}
+                          style={{ background: 'none', border: 'none', color: idx === 0 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: idx === 0 ? 'not-allowed' : 'pointer', padding: 2, fontSize: '0.8rem' }}
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === (form.categories.length - 1)}
+                          onClick={() => moveCategory(idx, 1)}
+                          style={{ background: 'none', border: 'none', color: idx === (form.categories.length - 1) ? 'var(--text-muted)' : 'var(--text-primary)', cursor: idx === (form.categories.length - 1) ? 'not-allowed' : 'pointer', padding: 2, fontSize: '0.8rem' }}
+                        >
+                          ▼
+                        </button>
+                      </div>
+
+                      {/* Image Thumbnail / Overlay Upload */}
+                      <div
+                        onMouseEnter={e => { const overlay = e.currentTarget.querySelector('.cat-img-overlay'); if (overlay) overlay.style.opacity = '1' }}
+                        onMouseLeave={e => { const overlay = e.currentTarget.querySelector('.cat-img-overlay'); if (overlay) overlay.style.opacity = '0' }}
+                        style={{ position: 'relative', width: 50, height: 50, borderRadius: 8, overflow: 'hidden', background: 'var(--bg-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                      >
+                        {cat.image_url ? (
+                          <img src={cat.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                          </span>
+                        )}
+
+                        {store ? (
+                          <label className="cat-img-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '0.6rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s' }}>
+                            UPLOAD
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              style={{ display: 'none' }}
+                              onChange={e => { if (e.target.files?.[0]) handleCategoryImageSelect(e.target.files[0], cat.id) }}
+                            />
+                          </label>
+                        ) : (
+                          <div className="cat-img-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '0.5rem', padding: '2px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s' }}>
+                            Save first
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Category Name */}
+                      <div style={{ flex: 1 }}>
+                        <input
+                          style={{ ...S.input, padding: '0.5rem 0.75rem' }}
+                          value={cat.name}
+                          onChange={e => updateCategoryField(cat.id, 'name', e.target.value)}
+                          placeholder="Category Name (e.g. Linen Dresses)"
+                          required
+                        />
+                      </div>
+
+                      {/* Browse Link Target */}
+                      <div style={{ flex: 1 }}>
+                        <input
+                          style={{ ...S.input, padding: '0.5rem 0.75rem' }}
+                          value={cat.link_target}
+                          onChange={e => updateCategoryField(cat.id, 'link_target', e.target.value)}
+                          placeholder="Link Target (e.g. #dresses)"
+                          required
+                        />
+                      </div>
+
+                      {/* Delete */}
+                      <button
+                        type="button"
+                        onClick={() => removeCategory(cat.id)}
+                        style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '1rem', cursor: 'pointer', padding: 4 }}
+                        title="Delete"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                      </button>
+
+                    </div>
+                  ))}
+
+                  {(form.categories || []).length === 0 && (
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>No categories added yet.</p>
+                  )}
+
+                  {(form.categories || []).length < 4 && (
+                    <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#B45309', borderRadius: 8, padding: '0.75rem 1rem', fontSize: '0.85rem', fontWeight: 600, marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                      Please configure at least 4 categories (currently: {(form.categories || []).length}).
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addCategory}
+                  className="sb-btn-ghost"
+                  style={{ ...S.btnGhost, padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                >
+                  + Add Category
+                </button>
+              </div>
+
               <div style={{ ...S.row2 }} className="sb-row2">
                 <div style={S.field}>
                   <label style={S.label}>Currency</label>
@@ -220,7 +773,7 @@ export default function StoreBuilder() {
               </div>
             </div>
             <button className="sb-btn-primary" style={S.btn} type="submit" disabled={saving}>
-              {saving ? 'Saving...' : (store ? 'Save Changes' : '✨ Create My Store')}
+              {saving ? 'Saving...' : (store ? 'Save Changes' : 'Create My Store')}
             </button>
           </form>
         )}
@@ -230,7 +783,7 @@ export default function StoreBuilder() {
           <div>
             {!store ? (
               <div style={S.card}>
-                <p style={{ color:'var(--text-muted)', fontSize:'.9rem', margin:0 }}>💡 Create your store in the Settings tab first, then come back to add products.</p>
+                <p style={{ color:'var(--text-muted)', fontSize:'.9rem', margin:0 }}>Create your store in the Settings tab first, then come back to add products.</p>
               </div>
             ) : (
               <>
@@ -241,7 +794,9 @@ export default function StoreBuilder() {
 
                 {products.length === 0 ? (
                   <div style={S.empty}>
-                    <div style={{ fontSize:'2.5rem', marginBottom:'.75rem' }}>🛍️</div>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '.75rem', color: 'var(--text-muted)' }}>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    </div>
                     <p style={{ fontWeight:600, color:'var(--text-primary)', marginBottom:'.4rem' }}>No products yet</p>
                     <p style={{ fontSize:'.875rem', margin:0 }}>Click "Add Product" to list your first item.</p>
                   </div>
@@ -251,12 +806,20 @@ export default function StoreBuilder() {
                       <div key={p.id} style={S.prodCard} className="sb-prod-card">
                         {p.images?.[0]
                           ? <img src={p.images[0]} alt={p.title} style={S.prodImg} />
-                          : <div style={{ ...S.prodImg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'2.5rem' }}>👗</div>
+                          : (
+                            <div style={{ ...S.prodImg, display:'flex', alignItems:'center', justifyContent:'center', color: 'var(--text-muted)' }}>
+                              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                            </div>
+                          )
                         }
                         <div style={S.prodBody}>
                           <p style={S.prodTitle}>{p.title}</p>
                           <p style={S.prodPrice}>{form.currency} {Number(p.price).toFixed(2)}</p>
-                          <p style={S.prodMeta}>{p.inventory} in stock · {p.is_active ? '✅ Active' : '⏸ Inactive'}</p>
+                          <p style={S.prodMeta}>
+                             {p.inventory} in stock · {p.is_active ? 'Active' : 'Inactive'}
+                             <br />
+                             Category: {form.categories?.find(c => c.id === p.category_id)?.name || 'Uncategorized'}
+                          </p>
                           <div style={S.prodActs}>
                             <button className="sb-btn-ghost" style={S.btnSm} onClick={() => { setEditProd(p); setShowModal(true) }}>Edit</button>
                             <button style={S.btnDanger} onClick={() => deleteProd(p.id)}>Delete</button>
@@ -277,15 +840,163 @@ export default function StoreBuilder() {
           storeId={store?.id}
           currency={form.currency}
           initial={editProd}
+          categories={form.categories}
           onSave={onProductSaved}
           onClose={() => { setShowModal(false); setEditProd(null) }}
         />
+      )}
+
+      {croppingRole && (
+        <div style={S.overlay} onClick={() => {
+          setCroppingRole(null)
+          setCroppingUrl(null)
+        }}>
+          <div style={{ ...S.modal, maxWidth: 500 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ ...S.modalTitle, margin: 0 }}>Crop {croppingRole === 'main' ? 'Main' : croppingRole === 'left' ? 'Left' : 'Right'} Image</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setCroppingRole(null)
+                  setCroppingUrl(null)
+                }}
+                style={{ background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', color: 'var(--text-muted)' }}
+              >
+                X
+              </button>
+            </div>
+            
+            <div style={{ position: 'relative', width: '100%', height: 350, background: '#111', borderRadius: 8, overflow: 'hidden', marginBottom: '1.25rem' }}>
+              <Cropper
+                image={croppingUrl}
+                crop={crop}
+                zoom={zoom}
+                aspect={3 / 4}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={(croppedArea, croppedAreaPixels) => setCroppedAreaPixels(croppedAreaPixels)}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ ...S.label, marginBottom: '0.35rem' }}>Zoom: {zoom.toFixed(1)}x</label>
+              <input
+                type="range"
+                min="1"
+                max="3"
+                step="0.1"
+                value={zoom}
+                onChange={e => setZoom(parseFloat(e.target.value))}
+                style={{ width: '100%', accentColor: 'var(--g)' }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="sb-btn-primary"
+                style={{ ...S.btn, flex: 1 }}
+                onClick={handleSaveCrop}
+              >
+                Save Crop
+              </button>
+              <button
+                type="button"
+                className="sb-btn-ghost"
+                style={{ ...S.btnGhost, flex: 1 }}
+                onClick={() => {
+                  setCroppingRole(null)
+                  setCroppingUrl(null)
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
 }
 
-function ProductModal({ storeId, currency, initial, onSave, onClose }) {
+function HeroImageSlot({ role, label, description, slotState, onSelectFile, onRemove }) {
+  const fileRef = useRef()
+  const [drag, setDrag] = useState(false)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</label>
+      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>{description}</p>
+      
+      <div
+        onDragOver={e => { e.preventDefault(); setDrag(true) }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={e => { e.preventDefault(); setDrag(false); if (e.dataTransfer.files?.[0]) onSelectFile(e.dataTransfer.files[0], role) }}
+        onClick={() => { if (!slotState.croppedUrl) fileRef.current.click() }}
+        style={{
+          border: `2px dashed ${drag ? 'var(--g)' : 'var(--border)'}`,
+          borderRadius: 10,
+          aspectRatio: '3/4',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: slotState.croppedUrl ? 'default' : 'pointer',
+          background: drag ? 'var(--bg-2)' : 'var(--bg-0)',
+          position: 'relative',
+          overflow: 'hidden',
+          transition: 'all 0.15s'
+        }}
+      >
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) onSelectFile(e.target.files[0], role) }} />
+        
+        {slotState.croppedUrl ? (
+          <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+            <img src={slotState.croppedUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onRemove() }}
+              style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                background: '#DC2626',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '50%',
+                width: 24,
+                height: 24,
+                cursor: 'pointer',
+                fontSize: 12,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+              }}
+            >
+              X
+            </button>
+          </div>
+        ) : (
+          <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <span style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            </span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Click or drag image</span>
+          </div>
+        )}
+      </div>
+      
+      {slotState.error && (
+        <span style={{ color: '#DC2626', fontSize: '0.75rem', fontWeight: 500, lineHeight: 1.3 }}>
+          {slotState.error}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function ProductModal({ storeId, currency, initial, onSave, onClose, categories = [] }) {
   const isEdit = !!initial
   const [form, setForm] = useState({
     title: initial?.title || '',
@@ -296,6 +1007,7 @@ function ProductModal({ storeId, currency, initial, onSave, onClose }) {
     tags: (initial?.tags || []).join(', '),
     is_active: initial?.is_active ?? true,
     images: initial?.images || [],
+    category_id: initial?.category_id || '',
   })
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving]       = useState(false)
@@ -335,6 +1047,7 @@ function ProductModal({ storeId, currency, initial, onSave, onClose }) {
         images: form.images,
         tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
         is_active: form.is_active,
+        category_id: form.category_id || null,
       }
       const result = isEdit
         ? await api('PUT', `/selora-stores/${storeId}/products/${initial.id}`, payload)
@@ -357,6 +1070,22 @@ function ProductModal({ storeId, currency, initial, onSave, onClose }) {
           <div style={S.field}>
             <label style={S.label}>Description</label>
             <textarea style={S.textarea} value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))} placeholder="Describe this product..." />
+          </div>
+          <div style={S.field}>
+            <label style={S.label}>Category</label>
+            {categories.length === 0 ? (
+                <div style={{ ...S.input, background: 'var(--bg-2)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  No categories configured. Go to settings tab to create one.
+                </div>
+            ) : (
+              <select style={S.select} value={form.category_id} onChange={e => setForm(f=>({...f,category_id:e.target.value}))}>
+                <option value="">Uncategorized</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name || 'Unnamed Category'}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div style={{ ...S.row2 }} className="sb-row2">
             <div style={S.field}>
@@ -399,7 +1128,7 @@ function ProductModal({ storeId, currency, initial, onSave, onClose }) {
               <input ref={fileInput} type="file" multiple accept="image/*" style={{ display:'none' }} onChange={e => uploadFiles(e.target.files)} />
               {uploading
                 ? <><div style={{ ...S.spinner, margin:'0 auto .5rem' }} /><p style={{ fontSize:'.85rem', color:'var(--text-muted)', margin:0 }}>Uploading...</p></>
-                : <><p style={{ fontSize:'.9rem', color:'var(--text-muted)', margin:0 }}>📷 Drop images here or click to browse</p><p style={{ fontSize:'.75rem', color:'var(--text-muted)', marginTop:'.25rem', marginBottom:0 }}>Multiple images supported</p></>
+                : <><p style={{ fontSize:'.9rem', color:'var(--text-muted)', margin:0 }}>Drop images here or click to browse</p><p style={{ fontSize:'.75rem', color:'var(--text-muted)', marginTop:'.25rem', marginBottom:0 }}>Multiple images supported</p></>
               }
             </div>
             {form.images.length > 0 && (
@@ -408,7 +1137,7 @@ function ProductModal({ storeId, currency, initial, onSave, onClose }) {
                   <div key={i} style={{ position:'relative' }}>
                     <img src={url} alt="" style={S.thumb} />
                     <button type="button" onClick={() => setForm(f=>({...f,images:f.images.filter((_,j)=>j!==i)}))}
-                      style={{ position:'absolute', top:-6, right:-6, background:'#DC2626', color:'#fff', border:'none', borderRadius:'50%', width:18, height:18, cursor:'pointer', fontSize:11, lineHeight:'18px', padding:0 }}>✕</button>
+                      style={{ position:'absolute', top:-6, right:-6, background:'#DC2626', color:'#fff', border:'none', borderRadius:'50%', width:18, height:18, cursor:'pointer', fontSize:11, lineHeight:'18px', padding:0 }}>X</button>
                   </div>
                 ))}
               </div>
