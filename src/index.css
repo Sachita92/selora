@@ -446,3 +446,23 @@ html.dark, :root.dark, .dark {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Modal specific light scrollbar styling */
+.sf-modal-scrollable::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.sf-modal-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sf-modal-scrollable::-webkit-scrollbar-thumb {
+  background: #C7DACB;
+  border-radius: 9999px;
+}
+.sf-modal-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #A0B9A4;
+}
+.sf-modal-scrollable {
+  scrollbar-width: thin;
+  scrollbar-color: #C7DACB transparent;
+}

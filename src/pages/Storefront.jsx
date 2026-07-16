@@ -39,6 +39,19 @@ async function trackEvent(storeId, productId, eventType) {
   } catch (_) {}
 }
 
+function deepMerge(target, source) {
+  if (!source) return target;
+  const result = { ...target };
+  for (const key in source) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      result[key] = deepMerge(target[key] || {}, source[key]);
+    } else {
+      result[key] = source[key];
+    }
+  }
+  return result;
+}
+
 const S = {
   page:      { minHeight: '100vh', background: '#F8FAF8', fontFamily: 'Inter, sans-serif', color: '#2E3D30' },
   nav:       { position: 'sticky', top: 0, zIndex: 100, background: 'rgba(248,250,248,.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #E4EBE5', padding: '0 2rem' },
@@ -76,8 +89,8 @@ const S = {
 
   // Product modal
   overlay:   { position: 'fixed', inset: 0, background: 'rgba(26,39,28,.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
-  modal:     { background: '#fff', borderRadius: 20, width: '100%', maxWidth: 800, maxHeight: '92vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' },
-  modalImg:  { width: '100%', aspectRatio: '4/3', objectFit: 'cover', flexShrink: 0, borderRadius: '20px 20px 0 0' },
+  modal:     { background: '#fff', borderRadius: 20, width: '100%', maxWidth: 800, maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' },
+  modalImg:  { width: '100%', maxHeight: '60vh', objectFit: 'contain', display: 'block' },
   modalBody: { padding: '2rem' },
   modalTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.75rem', fontWeight: 500, color: '#1A271C', marginTop: 0, marginBottom: '.5rem', letterSpacing: '-0.03em' },
   modalDesc: { fontSize: '.9rem', color: '#7B907D', lineHeight: 1.7, marginBottom: '1.25rem' },
@@ -209,151 +222,172 @@ const defaultTemplateData = {
   }
 }
 
+// --- Reusable ProductCard Component ---
+function ProductCard({ product, isSample = false, isAdded = false, onProductClick, onAddToCart, resolvedCategoryName, currency = 'USD' }) {
+  const hasImage = product.images && product.images.length > 0;
+
+  return (
+    <div
+      onClick={() => !isSample && onProductClick && onProductClick(product)}
+      style={{
+        cursor: isSample ? 'default' : 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: 16,
+        overflow: 'hidden',
+        background: '#ffffff',
+        border: '1px solid #E4EBE5',
+        transition: 'all 0.3s ease',
+      }}
+      className={isSample ? "" : "sf-prod-card"}
+    >
+      {/* Image Wrapper */}
+      <div style={{ position: 'relative', aspectRatio: '3/4', background: '#F8FAF8', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {hasImage ? (
+          <img
+            src={product.images[0]}
+            alt={product.title}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }}
+            className="sf-prod-img"
+          />
+        ) : (
+          <div style={{ color: '#5A8A67', opacity: 0.45 }}>
+            <LeafIcon size={48} color="#5A8A67" />
+          </div>
+        )}
+
+        {/* Sample Badge */}
+        {isSample && (
+          <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10 }}>
+            SAMPLE
+          </div>
+        )}
+      </div>
+
+      {/* Product Info */}
+      <div style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: 0 }}>
+          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {resolvedCategoryName}
+          </span>
+          <h4 style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.05rem', fontWeight: 500, color: '#1A271C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {product.title}
+          </h4>
+          <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1A271C' }}>
+            {currency} {Number(product.price).toFixed(2)}
+          </span>
+        </div>
+
+        {/* Add to Bag Button / Sample Badge */}
+        {isSample ? (
+          <div
+            style={{
+              background: '#EDF3EE',
+              color: '#5A8A67',
+              border: '1px solid #C7DACB',
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              padding: '0.2rem 0.5rem',
+              borderRadius: 4,
+              letterSpacing: '0.04em',
+              flexShrink: 0,
+              textTransform: 'uppercase'
+            }}
+          >
+            Sample
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onAddToCart) onAddToCart(product);
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: isAdded ? '#1E3A2F' : '#5A8A67',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: isAdded ? '8px' : '50%',
+              width: isAdded ? 'auto' : 32,
+              height: 32,
+              padding: isAdded ? '0 0.75rem' : 0,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              flexShrink: 0
+            }}
+          >
+            {isAdded ? (
+              <span>Added ✓</span>
+            ) : (
+              <BagIcon size={14} color="#ffffff" />
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // --- Reusable ProductGrid Component ---
 function ProductGrid({ products, isSample = false, onProductClick, onAddToCart, currency = 'USD', categories = [] }) {
   const [addedMap, setAddedMap] = useState({})
 
+  const handleAddClick = (prod) => {
+    if (isSample) return;
+    if (onAddToCart) onAddToCart(prod);
+    setAddedMap(prev => ({ ...prev, [prod.id]: true }));
+    setTimeout(() => {
+      setAddedMap(prev => ({ ...prev, [prod.id]: false }));
+    }, 1500);
+  };
+
   return (
     <div className="sf-product-grid">
       {products.map((p) => {
-        const hasImage = p.images && p.images.length > 0;
         const isAdded = !!addedMap[p.id];
-
         const resolvedCategoryName = isSample
-          ? (p.category || 'FASHION')
-          : (categories?.find(c => c.id === p.category_id)?.name || 'FASHION');
-
-        const handleAddClick = (e, prod) => {
-          e.stopPropagation();
-          if (isSample) return;
-          if (onAddToCart) onAddToCart(prod);
-          setAddedMap(prev => ({ ...prev, [prod.id]: true }));
-          setTimeout(() => {
-            setAddedMap(prev => ({ ...prev, [prod.id]: false }));
-          }, 1500);
-        };
+          ? (p.category || 'FASHION').toUpperCase()
+          : (categories?.find(c => c.id === p.category_id)?.name || 'Uncategorized').toUpperCase();
 
         return (
-          <div
+          <ProductCard
             key={p.id}
-            onClick={() => !isSample && onProductClick(p)}
-            style={{
-              cursor: isSample ? 'default' : 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              borderRadius: 16,
-              overflow: 'hidden',
-              background: '#ffffff',
-              border: '1px solid #E4EBE5',
-              transition: 'all 0.3s ease',
-            }}
-            className={isSample ? "" : "sf-prod-card"}
-          >
-            {/* Image Wrapper */}
-            <div style={{ position: 'relative', aspectRatio: '3/4', background: '#F8FAF8', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {hasImage ? (
-                <img
-                  src={p.images[0]}
-                  alt={p.title}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }}
-                  className="sf-prod-img"
-                />
-              ) : (
-                <div style={{ color: '#5A8A67', opacity: 0.45 }}>
-                  <LeafIcon size={48} color="#5A8A67" />
-                </div>
-              )}
-
-              {/* Sample Badge */}
-              {isSample && (
-                <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10 }}>
-                  SAMPLE
-                </div>
-              )}
-            </div>
-
-            {/* Product Info */}
-            <div style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {resolvedCategoryName}
-                </span>
-                <h4 style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.05rem', fontWeight: 500, color: '#1A271C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {p.title}
-                </h4>
-                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1A271C' }}>
-                  {currency} {Number(p.price).toFixed(2)}
-                </span>
-              </div>
-
-              {/* Add to Bag Button */}
-              {isSample ? (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: '#EDF3EE',
-                    color: '#8D9B8E',
-                    borderRadius: '50%',
-                    width: 32,
-                    height: 32,
-                    cursor: 'not-allowed',
-                    opacity: 0.6,
-                    flexShrink: 0
-                  }}
-                  title="Sample product"
-                >
-                  <BagIcon size={14} color="#8D9B8E" />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={(e) => handleAddClick(e, p)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: isAdded ? '#1E3A2F' : '#5A8A67',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: isAdded ? '8px' : '50%',
-                    width: isAdded ? 'auto' : 32,
-                    height: 32,
-                    padding: isAdded ? '0 0.75rem' : 0,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    flexShrink: 0
-                  }}
-                >
-                  {isAdded ? (
-                    <span>Added ✓</span>
-                  ) : (
-                    <BagIcon size={14} color="#ffffff" />
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
+            product={p}
+            isSample={isSample}
+            isAdded={isAdded}
+            onProductClick={onProductClick}
+            onAddToCart={handleAddClick}
+            resolvedCategoryName={resolvedCategoryName}
+            currency={currency}
+          />
         );
       })}
     </div>
   );
 }
 
-export default function Storefront() {
+export default function Storefront({ previewData = null }) {
   const { handle } = useParams()
   const { openAuthModal } = useAppContext()
   const [store, setStore]     = useState(null)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState('')
+  const trackedViews = useRef(new Set())
+
+  const triggerEvent = (prodId, type) => {
+    if (previewData) return;
+    if (store?.id) trackEvent(store.id, prodId, type);
+  };
   const [selected, setSelected] = useState(null)
   const [addedToCart, setAddedToCart] = useState(false)
-  const trackedViews = useRef(new Set())
+  const [activeImageIdx, setActiveImageIdx] = useState(0)
 
   const { wallets } = useWallets()
   const { signAndSendTransaction } = useSignAndSendTransaction()
@@ -386,7 +420,7 @@ export default function Storefront() {
           clearInterval(interval)
           setPaymentStatus('confirmed')
           setCart([])
-          trackEvent(store.id, null, 'purchase')
+          triggerEvent(null, 'purchase')
         } else if (data.status === 'failed') {
           clearInterval(interval)
           setPaymentStatus('failed')
@@ -408,6 +442,12 @@ export default function Storefront() {
   }, [pollingInterval])
 
   useEffect(() => {
+    if (previewData) {
+      setStore(previewData.store)
+      setProducts(previewData.products || [])
+      setLoading(false)
+      return
+    }
     async function load() {
       try {
         const res = await fetch(`${API}/selora-stores/public/${handle}`)
@@ -419,20 +459,30 @@ export default function Storefront() {
       finally { setLoading(false) }
     }
     load()
-  }, [handle])
+  }, [handle, previewData])
+
+  useEffect(() => {
+    if (store) {
+      document.title = store.name || "Selora Store"
+      if (!previewData) {
+        trackEvent(store.id, null, 'view')
+      }
+    }
+  }, [store, previewData])
 
   function openProduct(p) {
     setSelected(p)
     setAddedToCart(false)
+    setActiveImageIdx(0)
     if (!trackedViews.current.has(p.id)) {
       trackedViews.current.add(p.id)
-      trackEvent(store.id, p.id, 'view')
+      triggerEvent(p.id, 'view')
     }
   }
 
   function handleAddToCart() {
     if (!selected) return
-    trackEvent(store.id, selected.id, 'add_to_cart')
+    triggerEvent(selected.id, 'add_to_cart')
     
     setCart(prev => {
       const existing = prev.find(item => item.product.id === selected.id)
@@ -451,6 +501,10 @@ export default function Storefront() {
   }
 
   const handleCheckoutInitiate = async () => {
+    if (previewData) {
+      alert("Checkout is disabled in preview mode");
+      return;
+    }
     setCheckoutLoading(true)
     setPaymentError('')
     setPaymentStatus('pending')
@@ -607,10 +661,7 @@ export default function Storefront() {
   )
 
   const currency = store.currency || 'USD'
-  const template = {
-    ...defaultTemplateData,
-    ...store?.template_data
-  }
+  const template = deepMerge(defaultTemplateData, store?.template_data)
 
   const imgMain = store.hero_image_main
   const imgLeft = store.hero_image_left
@@ -667,6 +718,10 @@ export default function Storefront() {
           justify-content: center;
           gap: 0.75rem;
           padding: 0.5rem 1.5rem;
+          transition: background-color 0.2s ease;
+        }
+        .sf-trust-item:hover {
+          background-color: rgba(90, 138, 103, 0.05);
         }
         .sf-trust-item:not(:last-child) {
           border-right: 1px solid #E4EBE5;
@@ -930,14 +985,11 @@ export default function Storefront() {
       {/* HEADER */}
       <nav style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(248, 250, 248, 0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #E4EBE5', padding: '0 2rem' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', height: 70, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {/* Left: logo/name + Powered badge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <a href="#" style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 700, color: '#1A271C', textDecoration: 'none', letterSpacing: '-0.02em' }}>
-              {template.header.logoName}
+          {/* Left: logo/name */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <a href="#" style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(1.1rem, 3vw, 1.4rem)', fontWeight: 700, color: '#1A271C', textDecoration: 'none', letterSpacing: '-0.02em', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block' }} title={store.name || "Selora"}>
+              {store.name || "Selora"}
             </a>
-            <span style={{ fontSize: '0.68rem', fontWeight: 700, background: '#EDF3EE', color: '#5A8A67', padding: '0.25rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-              POWERED BY SELORA AI
-            </span>
           </div>
 
           {/* Center: nav links */}
@@ -1000,7 +1052,7 @@ export default function Storefront() {
             {template.hero.title}
           </h1>
           <p style={{ fontSize: '1rem', color: '#B8BCB8', lineHeight: 1.6, margin: '0.5rem 0 1rem' }}>
-            {template.hero.subtitle}
+            {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
             <a
@@ -1110,7 +1162,7 @@ export default function Storefront() {
 
           <div className="sf-category-grid">
             {(() => {
-              const isCustom = store && store.categories && store.categories.length > 0;
+              const isCustom = store && store.categories !== null && store.categories !== undefined;
               const items = isCustom ? store.categories : template.categories.items;
               const dynamicColors = [
                 { bg: '#1A271C', text: '#EAE5D9' },
@@ -1187,7 +1239,7 @@ export default function Storefront() {
             categories={store?.categories}
             onProductClick={openProduct}
             onAddToCart={(prod) => {
-              if (store?.id) trackEvent(store.id, prod.id, 'add_to_cart');
+              triggerEvent(prod.id, 'add_to_cart');
               setCart(prev => {
                 const existing = prev.find(item => item.product.id === prod.id);
                 if (existing) {
@@ -1204,8 +1256,8 @@ export default function Storefront() {
         <section id="brand-story" className="sf-brand-story" style={{ marginBottom: '2rem' }}>
           {/* Left half: Brand Photo */}
           <div style={{ position: 'relative', width: '100%', aspectRatio: '1.1/1', background: '#F5F3E9', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            {template.brandStory.image ? (
-              <img src={template.brandStory.image} alt="Brand Story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {(store.cover_image || template.brandStory.image) ? (
+              <img src={store.cover_image || template.brandStory.image} alt="Brand Story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               <div style={{ textAlign: 'center', color: '#7B907D' }}>
                 <LeafIcon size={40} color="#7B907D" />
@@ -1213,10 +1265,12 @@ export default function Storefront() {
               </div>
             )}
             {/* Small Optimized Badge */}
-            <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.65rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block' }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              {template.brandStory.aiBadgeText}
-            </div>
+            {template.brandStory.showAiBadge !== false && (
+              <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.65rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block' }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                {template.brandStory.aiBadgeText || "SELORA AI OPTIMIZED"}
+              </div>
+            )}
           </div>
 
           {/* Right half: Text */}
@@ -1292,8 +1346,11 @@ export default function Storefront() {
 
       {/* Platform Attribution Footer */}
       <footer style={{ borderTop: '1px solid #E4EBE5', padding: '2.5rem 1.5rem', textAlign: 'center', backgroundColor: '#F8FAF8' }}>
-        <p style={{ fontSize: '0.8rem', color: '#7B907D', margin: 0 }}>
-          Powered by <a href="/" style={{ color: '#5A8A67', textDecoration: 'none', fontWeight: 600 }}>Selora</a> · <a href="/login" onClick={e => { e.preventDefault(); openAuthModal('signup') }} style={{ color: '#7B907D', textDecoration: 'none', cursor: 'pointer', fontWeight: 500 }}>Start your store free</a>
+        <p style={{ fontSize: '0.8rem', color: '#7B907D', margin: '0 0 0.5rem' }}>
+          &copy; {new Date().getFullYear()} {store.name || "Selora Store"}. All rights reserved.
+        </p>
+        <p style={{ fontSize: '0.72rem', color: '#9AB49D', margin: 0 }}>
+          Powered by <a href="/" style={{ color: '#7B907D', textDecoration: 'none', fontWeight: 600 }}>Selora AI</a>
         </p>
       </footer>
 
@@ -1301,75 +1358,110 @@ export default function Storefront() {
       {selected && (
         <div style={S.overlay} onClick={e => { if(e.target===e.currentTarget) setSelected(null) }}>
           <div style={S.modal}>
-            <div style={{ position:'relative' }}>
-              {selected.images?.[0]
-                ? <img src={selected.images[0]} alt={selected.title} style={S.modalImg} className="sf-modal-img" />
-                : (
-                  <div style={{ ...S.modalImg, background:'linear-gradient(135deg,#EDF3EE,#C8DCC9)', display:'flex', alignItems:'center', justifyContent:'center', color: '#5A8A67' }}>
+            {/* Pinned Close Button */}
+            <button style={{ ...S.closeBtn, position: 'absolute', top: '1rem', right: '1rem', zIndex: 100 }} onClick={() => setSelected(null)} aria-label="Close">X</button>
+            
+            {/* Scrollable Container */}
+            <div className="sf-modal-scrollable" style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
+              {/* Image Area with Centering & Aspect Fit */}
+              <div style={{ position:'relative', width: '100%', background: '#F8FAF8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {selected.images?.[activeImageIdx] || selected.images?.[0] ? (
+                  <img
+                    src={selected.images[activeImageIdx] || selected.images[0]}
+                    alt={selected.title}
+                    style={{
+                      width: '100%',
+                      maxHeight: '60vh',
+                      objectFit: 'contain',
+                      display: 'block'
+                    }}
+                    className="sf-modal-img"
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '40vh', minHeight: 250, maxHeight: '60vh', background:'linear-gradient(135deg,#EDF3EE,#C8DCC9)', display:'flex', alignItems:'center', justifyContent:'center', color: '#5A8A67' }}>
                     <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                   </div>
-                )
-              }
-              <button style={S.closeBtn} onClick={() => setSelected(null)} aria-label="Close">X</button>
-            </div>
-            <div style={S.modalBody}>
-              <h2 style={S.modalTitle}>{selected.title}</h2>
-              {selected.description && <p style={S.modalDesc}>{selected.description}</p>}
-              <div style={{ ...S.priceRow, marginBottom:'1.5rem' }}>
-                <span style={{ ...S.price, fontSize:'1.5rem' }}>{currency} {Number(selected.price).toFixed(2)}</span>
-                {selected.compare_at_price && (
-                  <span style={{ ...S.compareAt, fontSize:'1rem' }}>{currency} {Number(selected.compare_at_price).toFixed(2)}</span>
-                )}
-                {pct(selected.price, selected.compare_at_price) && (
-                  <span style={{ ...S.discBadge, position:'static', fontSize:'.78rem', verticalAlign:'middle' }}>
-                    -{pct(selected.price, selected.compare_at_price)}% off
-                  </span>
                 )}
               </div>
 
-              {selected.tags?.length > 0 && (
-                <div style={{ ...S.tags, marginBottom:'1.5rem' }}>
-                  {selected.tags.map(t => <span key={t} style={S.tag}>{t}</span>)}
+              {/* Scrollable Modal Info Body */}
+              <div style={S.modalBody}>
+                <h2 style={S.modalTitle}>{selected.title}</h2>
+                
+                <div style={{ ...S.priceRow, marginBottom:'1.25rem' }}>
+                  <span style={{ ...S.price, fontSize:'1.5rem' }}>{currency} {Number(selected.price).toFixed(2)}</span>
+                  {selected.compare_at_price && (
+                    <span style={{ ...S.compareAt, fontSize:'1rem' }}>{currency} {Number(selected.compare_at_price).toFixed(2)}</span>
+                  )}
+                  {pct(selected.price, selected.compare_at_price) && (
+                    <span style={{ ...S.discBadge, position:'static', fontSize:'.78rem', verticalAlign:'middle' }}>
+                      -{pct(selected.price, selected.compare_at_price)}% off
+                    </span>
+                  )}
                 </div>
-              )}
 
-              <p style={{ fontSize:'.82rem', color:'#7B907D', marginBottom:'1.25rem' }}>
-                {selected.inventory > 0 ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
-                    {selected.inventory} in stock
-                  </span>
-                ) : (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
-                    Currently out of stock
-                  </span>
+                {selected.description && <p style={S.modalDesc}>{selected.description}</p>}
+
+                {selected.tags?.length > 0 && (
+                  <div style={{ ...S.tags, marginBottom:'1.5rem' }}>
+                    {selected.tags.map(t => <span key={t} style={S.tag}>{t}</span>)}
+                  </div>
                 )}
-              </p>
+
+                {/* Multiple Image Variant Selection */}
+                {selected.images?.length > 1 && (
+                  <div style={{ display:'flex', gap:'.5rem', marginTop:'.5rem', marginBottom: '.5rem', flexWrap:'wrap' }}>
+                    {selected.images.map((url, i) => (
+                      <img
+                        key={i}
+                        src={url}
+                        alt={`${selected.title} ${i+1}`}
+                        style={{
+                          width: 64,
+                          height: 64,
+                          objectFit: 'cover',
+                          borderRadius: 8,
+                          border: `2px solid ${activeImageIdx === i ? '#5A8A67' : 'transparent'}`,
+                          cursor: 'pointer',
+                          transition: 'border-color .15s'
+                        }}
+                        onClick={() => setActiveImageIdx(i)}
+                        onMouseOver={e => { if (activeImageIdx !== i) e.target.style.borderColor='#C7DACB' }}
+                        onMouseOut={e => { if (activeImageIdx !== i) e.target.style.borderColor='transparent' }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Pinned Action Footer Bar */}
+            <div style={{ borderTop: '1px solid #E4EBE5', padding: '1.25rem 2rem', background: '#fff', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.85rem', color: '#1A271C', fontWeight: 600 }}>Stock Availability</span>
+                <p style={{ fontSize:'.82rem', color:'#7B907D', margin: 0 }}>
+                  {selected.inventory > 0 ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
+                      {selected.inventory} in stock
+                    </span>
+                  ) : (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
+                      Currently out of stock
+                    </span>
+                  )}
+                </p>
+              </div>
 
               <button
                 className="sf-cart-btn"
-                style={{ ...S.cartBtn, background: addedToCart ? '#166534' : '#5A8A67' }}
+                style={{ ...S.cartBtn, background: addedToCart ? '#166534' : '#5A8A67', margin: 0 }}
                 onClick={handleAddToCart}
                 disabled={selected.inventory === 0}
               >
                 {addedToCart ? 'Added to Cart' : selected.inventory === 0 ? 'Out of Stock' : 'Add to Cart'}
               </button>
-
-              {selected.images?.length > 1 && (
-                <div style={{ display:'flex', gap:'.5rem', marginTop:'1.25rem', flexWrap:'wrap' }}>
-                  {selected.images.map((url, i) => (
-                    <img
-                      key={i}
-                      src={url}
-                      alt={`${selected.title} ${i+1}`}
-                      style={{ width:64, height:64, objectFit:'cover', borderRadius:8, border:'2px solid transparent', cursor:'pointer', transition:'border-color .15s' }}
-                      onMouseOver={e => e.target.style.borderColor='#5A8A67'}
-                      onMouseOut={e => e.target.style.borderColor='transparent'}
-                    />
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>

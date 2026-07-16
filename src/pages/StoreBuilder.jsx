@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Cropper from 'react-easy-crop'
 import { supabase } from '../lib/supabase'
+import Storefront from './Storefront'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -10,6 +11,87 @@ const defaultCategories = [
   { id: 'cat_accessories', name: 'Accessories', image_url: '', link_target: '#category-accessories' },
   { id: 'cat_shoes', name: 'Shoes', image_url: '', link_target: '#category-shoes' }
 ]
+
+
+const defaultTemplateData = {
+  header: {
+    logoName: "Selora",
+    navLinks: [
+      { label: "Home", url: "#" },
+      { label: "Collections", url: "#" },
+      { label: "New In", url: "#" },
+      { label: "About", url: "#" }
+    ]
+  },
+  hero: {
+    eyebrow: "NEW SEASON ARRIVALS",
+    title: "Dress Like the\nPerson You're\nBecoming",
+    subtitle: "Curated fashion, AI-optimized for you - discover pieces that sell themselves.",
+    ctaPrimaryText: "Shop the Collection",
+    ctaPrimaryUrl: "#new-arrivals",
+    ctaSecondaryText: "Explore Lookbook",
+    ctaSecondaryUrl: "#brand-story",
+    image: "/hero-dress.png",
+    trustBar: [
+      { icon: "leaf", label: "Sustainably Curated" },
+      { icon: "truck", label: "Free Shipping over $75" },
+      { icon: "arrow-path", label: "Easy 30-Day Returns" },
+      { icon: "shield", label: "Secure Checkout" }
+    ]
+  },
+  categories: {
+    eyebrow: "EXPLORE",
+    title: "Shop by Category",
+    items: [
+      { name: "Tops & Blouses", color: "#1A271C", textColor: "#ffffff", image: null, url: "#" },
+      { name: "Dresses", color: "#E5D9C4", textColor: "#1A271C", image: null, url: "#" },
+      { name: "Outerwear", color: "#82A996", textColor: "#ffffff", image: null, url: "#" },
+      { name: "Accessories", color: "#3B5A44", textColor: "#ffffff", image: null, url: "#" }
+    ]
+  },
+  newArrivals: {
+    eyebrow: "HANDPICKED FOR YOU",
+    title: "New Arrivals",
+    viewAllText: "View All Products",
+    viewAllUrl: "#",
+    items: [
+      { id: "sample-1", title: "Linen Wrap Dress", category: "DRESSES", price: 89.00, images: [] },
+      { id: "sample-2", title: "Cotton Blazer", category: "OUTERWEAR", price: 145.00, images: [] },
+      { id: "sample-3", title: "Silk Midi Skirt", category: "BOTTOMS", price: 112.00, images: [] },
+      { id: "sample-4", title: "Knit Cardigan", category: "TOPS", price: 78.00, images: [] }
+    ]
+  },
+  brandStory: {
+    eyebrow: "OUR STORY",
+    title: "Timeless designs, sustainably crafted",
+    subtitle: "We curate timeless, high-quality essentials designed to elevate your everyday. Crafted with sustainable materials and attention to detail, each piece is selected to last.",
+    ctaText: "Learn About Us",
+    ctaUrl: "#",
+    image: null,
+    aiBadgeText: "SELORA AI OPTIMIZED",
+    showAiBadge: true
+  },
+  newsletter: {
+    eyebrow: "STAY IN THE LOOP",
+    title: "Get first access to new drops",
+    subtitle: "New arrivals, exclusive pieces, and styling tips — delivered to your inbox.",
+    buttonText: "Subscribe",
+    inputPlaceholder: "Enter your email address"
+  }
+}
+
+function deepMerge(target, source) {
+  if (!source) return target;
+  const result = { ...target };
+  for (const key in source) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      result[key] = deepMerge(target[key] || {}, source[key]);
+    } else {
+      result[key] = source[key];
+    }
+  }
+  return result;
+}
 
 // helpers
 function slugify(str) {
@@ -79,7 +161,7 @@ function getCroppedImg(imageSrc, pixelCrop) {
 
 const S = {
   page:     { minHeight: '100vh', background: 'var(--bg-0)', fontFamily: 'Inter, sans-serif', color: 'var(--text-secondary)', transition: 'background-color 0.3s, color 0.3s' },
-  inner:    { maxWidth: 960, margin: '0 auto', padding: '2rem 1.5rem' },
+  inner:    { maxWidth: 1400, margin: '0 auto', padding: '2rem 1.5rem' },
   pageTitle:{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.03em' },
   pageSub:  { fontSize: '.875rem', color: 'var(--text-muted)', marginTop: '.35rem', marginBottom: '2rem' },
   tabs:     { display: 'flex', gap: 0, marginBottom: '2rem', borderBottom: '2px solid var(--border)' },
@@ -127,9 +209,61 @@ export default function StoreBuilder() {
   const [msg, setMsg]         = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [editProd, setEditProd]   = useState(null)
+  const [deletingProductId, setDeletingProductId] = useState(null)
 
-  const [form, setForm] = useState({ name:'', handle:'', description:'', cover_image:'', currency:'USD', is_public:true, categories: defaultCategories })
+  const [form, setForm] = useState({ name:'', handle:'', description:'', cover_image:'', currency:'USD', is_public:true, categories: defaultCategories, template_data: {} })
   const [handleEdited, setHandleEdited] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+
+  const [showPreviewOverlay, setShowPreviewOverlay] = useState(false)
+  const [previewStore, setPreviewStore] = useState(null)
+  const [isUpdatingPreview, setIsUpdatingPreview] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 0)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowPreviewOverlay(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  useEffect(() => {
+    if (!form || !form.name) return
+    setIsUpdatingPreview(true)
+    const handler = setTimeout(() => {
+      setPreviewStore(form)
+      setIsUpdatingPreview(false)
+    }, 600)
+    return () => clearTimeout(handler)
+  }, [form])
+
+  const updateForm = (updater) => {
+    setForm(updater)
+    setIsDirty(true)
+  }
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isDirty) {
+        e.preventDefault()
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave without saving?'
+        return e.returnValue
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isDirty])
 
   const [heroSlots, setHeroSlots] = useState({
     main: { url: '', croppedUrl: '', croppedBlob: null, error: '', savedUrl: '' },
@@ -150,20 +284,24 @@ export default function StoreBuilder() {
       const res = await api('GET', '/selora-stores/me')
       if (res.store) {
         setStore(res.store)
-        setForm({
+        const initialForm = {
           name: res.store.name,
           handle: res.store.handle,
           description: res.store.description || '',
           cover_image: res.store.cover_image || '',
           currency: res.store.currency,
           is_public: res.store.is_public,
-          categories: (res.store.categories && res.store.categories.length > 0) ? res.store.categories : defaultCategories
-        })
+          categories: (res.store.categories !== null && res.store.categories !== undefined) ? res.store.categories : defaultCategories,
+          template_data: res.store.template_data || {}
+        }
+        setForm(initialForm)
+        setPreviewStore(initialForm)
         setHeroSlots({
           main: { url: '', croppedUrl: res.store.hero_image_main || '', croppedBlob: null, error: '', savedUrl: res.store.hero_image_main || '' },
           left: { url: '', croppedUrl: res.store.hero_image_left || '', croppedBlob: null, error: '', savedUrl: res.store.hero_image_left || '' },
           right: { url: '', croppedUrl: res.store.hero_image_right || '', croppedBlob: null, error: '', savedUrl: res.store.hero_image_right || '' }
         })
+        setIsDirty(false)
         const pr = await api('GET', `/selora-stores/${res.store.id}/products`)
         setProducts(pr.products || [])
       }
@@ -172,7 +310,19 @@ export default function StoreBuilder() {
   }
 
   function onNameChange(val) {
-    setForm(f => ({ ...f, name:val, handle: handleEdited ? f.handle : slugify(val) }))
+    updateForm(f => ({ ...f, name:val, handle: handleEdited ? f.handle : slugify(val) }))
+  }
+
+  const handleTabChange = (nextTab) => {
+    if (isDirty) {
+      const confirmDiscard = window.confirm('You have unsaved changes. Are you sure you want to leave without saving?')
+      if (!confirmDiscard) return
+    }
+    setTab(nextTab)
+    setIsDirty(false)
+    if (nextTab === 'settings') {
+      loadData()
+    }
   }
 
   const hasAllHeroImages = !!(heroSlots.main.croppedUrl && heroSlots.left.croppedUrl && heroSlots.right.croppedUrl)
@@ -233,6 +383,7 @@ export default function StoreBuilder() {
           error: ''
         }
       }))
+      setIsDirty(true)
       
       setCroppingRole(null)
       setCroppingUrl(null)
@@ -257,15 +408,15 @@ export default function StoreBuilder() {
       link_target: ''
     }
     newCat.link_target = `#category-${newCat.id}`
-    setForm(f => ({ ...f, categories: [...(f.categories || []), newCat] }))
+    updateForm(f => ({ ...f, categories: [...(f.categories || []), newCat] }))
   }
 
   function removeCategory(id) {
-    setForm(f => ({ ...f, categories: (f.categories || []).filter(c => c.id !== id) }))
+    updateForm(f => ({ ...f, categories: (f.categories || []).filter(c => c.id !== id) }))
   }
 
   function updateCategoryField(id, field, value) {
-    setForm(f => ({
+    updateForm(f => ({
       ...f,
       categories: (f.categories || []).map(c => {
         if (c.id === id) {
@@ -287,7 +438,7 @@ export default function StoreBuilder() {
     const temp = list[index]
     list[index] = list[targetIndex]
     list[targetIndex] = temp
-    setForm(f => ({ ...f, categories: list }))
+    updateForm(f => ({ ...f, categories: list }))
   }
 
   async function handleCategoryImageSelect(file, catId) {
@@ -324,9 +475,10 @@ export default function StoreBuilder() {
       
       // 3. Update categories with url and save again
       const nextCategories = currentCategories.map(c => c.id === catId ? { ...c, image_url: uploadRes.url } : c)
-      setForm(f => ({ ...f, categories: nextCategories }))
+      updateForm(f => ({ ...f, categories: nextCategories }))
       const finalStore = await api('PUT', `/selora-stores/${store.id}`, { ...form, categories: nextCategories })
       setStore(finalStore)
+      setIsDirty(false)
       
       setMsg({ type: 'ok', text: 'Category image uploaded successfully!' })
     } catch (err) {
@@ -387,6 +539,7 @@ export default function StoreBuilder() {
         } else {
           setMsg({ type: 'ok', text: 'Store settings saved!' })
         }
+        setIsDirty(false)
         
       } else {
         // --- Store Onboarding / Creation ---
@@ -422,6 +575,7 @@ export default function StoreBuilder() {
         
         if (uploadFailedRole) {
           setStore(c)
+          setIsDirty(false)
           const roleLabel = uploadFailedRole === 'main' ? 'Main' : uploadFailedRole === 'left' ? 'Left' : 'Right'
           setMsg({
             type: 'error',
@@ -429,6 +583,7 @@ export default function StoreBuilder() {
           })
         } else {
           setStore(c)
+          setIsDirty(false)
           setMsg({ type: 'ok', text: 'Store created successfully!' })
           setTimeout(() => {
             window.location.href = `/store/${c.handle}`
@@ -442,11 +597,14 @@ export default function StoreBuilder() {
     }
   }
 
-  async function deleteProd(id) {
-    if (!window.confirm('Delete this product permanently?')) return
+  async function confirmDelete() {
+    if (!deletingProductId) return
+    const id = deletingProductId
+    setDeletingProductId(null)
     try {
       await api('DELETE', `/selora-stores/${store.id}/products/${id}`)
       setProducts(p => p.filter(x => x.id !== id))
+      setMsg({ type: 'ok', text: 'Product deleted permanently!' })
     } catch(e) { setMsg({ type:'error', text:e.message }) }
   }
 
@@ -477,360 +635,710 @@ export default function StoreBuilder() {
         @media (max-width: 640px) { .sb-row2 { grid-template-columns: 1fr !important; } }
       `}</style>
       <div style={S.inner}>
-        <h1 style={S.pageTitle}>Store Builder</h1>
-        <p style={S.pageSub}>
-          {store
-            ? <>Live at <a href={`/store/${store.handle}`} target="_blank" rel="noreferrer" style={{ color:'var(--g)', fontWeight:600, textDecoration:'none' }}>selora.fashion/store/{store.handle}</a> · <a href={`/store/${store.handle}`} target="_blank" rel="noreferrer" style={{ color:'var(--text-muted)', fontSize:'.8rem', textDecoration:'none' }}>Open storefront →</a></>
-            : 'Set up your store in seconds. Your public storefront goes live instantly.'
-          }
-        </p>
+        {/* Sticky Header Bar */}
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 45, // Render below sidebar (zIndex 51)
+          paddingTop: scrolled ? '0.75rem' : '1.5rem',
+          paddingBottom: scrolled ? '0.75rem' : '1.5rem',
+          background: 'var(--bg-0)', // Opaque color matching page background at all times
+          borderBottom: scrolled ? '1px solid var(--border)' : '1px solid transparent',
+          boxShadow: scrolled ? '0 4px 12px rgba(26, 39, 28, 0.05)' : 'none',
+          transition: 'all 0.2s ease',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '1rem'
+        }}>
+          <h1 style={{ ...S.pageTitle, margin: 0, fontSize: scrolled ? '1.5rem' : '1.75rem', transition: 'font-size 0.2s ease' }}>
+            Store Builder
+          </h1>
+          {store && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="sb-btn-ghost"
+                onClick={() => setShowPreviewOverlay(true)}
+                style={{
+                  ...S.btnGhost,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  borderRadius: 8,
+                  border: '1px solid var(--border)'
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle' }}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                Preview Storefront
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Scrollable Subtext */}
+        <div style={{ marginTop: '0.5rem', marginBottom: '2rem' }}>
+          <p style={{ ...S.pageSub, margin: 0 }}>
+            {store
+              ? <>Live at <a href={`/store/${store.handle}`} target="_blank" rel="noreferrer" style={{ color:'var(--g)', fontWeight:600, textDecoration:'none' }}>selora.fashion/store/{store.handle}</a> · <a href={`/store/${store.handle}`} target="_blank" rel="noreferrer" style={{ color:'var(--text-muted)', fontSize:'.8rem', textDecoration:'none' }}>Open storefront →</a></>
+              : 'Set up your store in seconds. Your public storefront goes live instantly.'
+            }
+          </p>
+        </div>
 
         {msg && <div style={S.alert(msg.type)}>{msg.text}</div>}
 
         <div style={S.tabs}>
           {[['settings','Store Settings'],['products','Products']].map(([k,l]) => (
-            <button key={k} style={S.tab(tab===k)} onClick={() => setTab(k)}>{l}</button>
+            <button key={k} style={S.tab(tab===k)} onClick={() => handleTabChange(k)}>{l}</button>
           ))}
         </div>
 
-        {/* SETTINGS TAB */}
-        {tab === 'settings' && (
-          <form onSubmit={saveSettings}>
-            <div style={S.card}>
-              <p style={S.cardTitle}>Store Identity</p>
-              <div style={S.field}>
-                <label style={S.label}>Store Name</label>
-                <input style={S.input} value={form.name} onChange={e => onNameChange(e.target.value)} placeholder="e.g. Luna Mode" required />
-              </div>
-              <div style={S.field}>
-                <label style={S.label}>Handle (URL Slug)</label>
-                <input
-                  style={S.input}
-                  value={form.handle}
-                  onChange={e => { setHandleEdited(true); setForm(f => ({ ...f, handle: slugify(e.target.value) })) }}
-                  placeholder="luna-mode"
-                  required
-                />
-                <p style={S.handlePrev}>Link Preview: {storeUrl}</p>
-              </div>
-              <div style={S.field}>
-                <label style={S.label}>Tagline / Description</label>
-                <textarea style={S.textarea} value={form.description} onChange={e => setForm(f => ({ ...f, description:e.target.value }))} placeholder="A short sentence about your brand..." />
-              </div>
-              <div style={S.field}>
-                <label style={S.label}>Cover Image URL</label>
-                <input style={S.input} value={form.cover_image} onChange={e => setForm(f => ({ ...f, cover_image:e.target.value }))} placeholder="https://..." />
-                <p style={S.hint}>Paste any image URL for your store banner.</p>
-              </div>
-
-              {/* Hero Stack Images Section */}
-              <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-                <p style={{ ...S.cardTitle, marginBottom: '0.5rem' }}>Hero Stack Images *</p>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                  Selora's native storefront uses a premium 3-card stacked composition. Upload and crop exactly 3 images below.
-                </p>
-
-                {/* Inline Validation Warning for onboarding */}
-                {!store && !hasAllHeroImages && (
-                  <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#B45309', borderRadius: 8, padding: '0.75rem 1rem', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                    Upload and crop all 3 hero images to launch your store.
+        <div>
+          {/* Main Form Editor */}
+          <div style={{ width: '100%' }}>
+            {/* SETTINGS TAB */}
+            {tab === 'settings' && (
+              <form onSubmit={saveSettings}>
+                <div style={S.card}>
+                  <p style={S.cardTitle}>Store Identity</p>
+                  <div style={S.field}>
+                    <label style={S.label}>Store Name</label>
+                    <input style={S.input} value={form.name} onChange={e => onNameChange(e.target.value)} placeholder="e.g. Luna Mode" required />
                   </div>
-                )}
+                  <div style={S.field}>
+                    <label style={S.label}>Handle (URL Slug)</label>
+                    <input
+                      style={S.input}
+                      value={form.handle}
+                      onChange={e => { setHandleEdited(true); updateForm(f => ({ ...f, handle: slugify(e.target.value) })) }}
+                      placeholder="luna-mode"
+                      required
+                    />
+                    <p style={S.handlePrev}>Link Preview: {storeUrl}</p>
+                  </div>
+                  <div style={S.field}>
+                    <label style={S.label}>Hero Headline</label>
+                    <input
+                      style={S.input}
+                      maxLength={60}
+                      value={form.template_data?.hero?.title ?? ""}
+                      placeholder={defaultTemplateData.hero.title}
+                      onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { hero: { title: e.target.value } }) }))}
+                    />
+                    <p style={{ ...S.hint, textAlign: 'right' }}>{(form.template_data?.hero?.title || "").length}/60 characters</p>
+                  </div>
+                  <div style={S.field}>
+                    <label style={S.label}>Tagline / Description</label>
+                    <textarea
+                      style={S.textarea}
+                      maxLength={200}
+                      value={form.description}
+                      onChange={e => updateForm(f => ({ ...f, description:e.target.value }))}
+                      placeholder="A short sentence about your brand..."
+                    />
+                    <p style={{ ...S.hint, textAlign: 'right' }}>{(form.description || "").length}/200 characters</p>
+                  </div>
+                  <div style={S.field}>
+                    <label style={S.label}>Brand Story Image URL</label>
+                    <input
+                      style={S.input}
+                      value={form.cover_image}
+                      onChange={e => updateForm(f => ({ ...f, cover_image:e.target.value }))}
+                      placeholder="https://..."
+                    />
+                    <p style={S.hint}>Paste any image URL to show in the Brand Story section.</p>
+                  </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                  {/* Slot 1: Main */}
-                  <HeroImageSlot
-                    role="main"
-                    label="Main Image (Center)"
-                    description="Front-facing card, straight-on focal point."
-                    slotState={heroSlots.main}
-                    onSelectFile={handleFileSelect}
-                    onRemove={() => setHeroSlots(prev => ({ ...prev, main: { ...prev.main, url: '', croppedUrl: '', croppedBlob: null, error: '' } }))}
-                  />
-                  
-                  {/* Slot 2: Left Accent */}
-                  <HeroImageSlot
-                    role="left"
-                    label="Left Accent"
-                    description="Rotated card placed behind-left."
-                    slotState={heroSlots.left}
-                    onSelectFile={handleFileSelect}
-                    onRemove={() => setHeroSlots(prev => ({ ...prev, left: { ...prev.left, url: '', croppedUrl: '', croppedBlob: null, error: '' } }))}
-                  />
+                  {/* Hero Stack Images Section */}
+                  <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+                    <p style={{ ...S.cardTitle, marginBottom: '0.5rem' }}>Hero Stack Images *</p>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                      Selora's native storefront uses a premium 3-card stacked composition. Upload and crop exactly 3 images below.
+                    </p>
 
-                  {/* Slot 3: Right Accent */}
-                  <HeroImageSlot
-                    role="right"
-                    label="Right Accent"
-                    description="Rotated card placed behind-right."
-                    slotState={heroSlots.right}
-                    onSelectFile={handleFileSelect}
-                    onRemove={() => setHeroSlots(prev => ({ ...prev, right: { ...prev.right, url: '', croppedUrl: '', croppedBlob: null, error: '' } }))}
-                  />
-                </div>
-
-                {/* Live Stacked Preview */}
-                {(heroSlots.main.croppedUrl || heroSlots.left.croppedUrl || heroSlots.right.croppedUrl) && (
-                  <div style={{ background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: 12, padding: '2rem', marginBottom: '2rem' }}>
-                    <p style={{ ...S.label, marginBottom: '1rem', textAlign: 'center' }}>Live Hero Composition Preview</p>
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 260, position: 'relative', overflow: 'hidden' }}>
-                      <div style={{ position: 'relative', width: 140, height: 186 }}>
-                              {/* Left Card */}
-                        {heroSlots.left.croppedUrl && (
-                          <div style={{
-                            position: 'absolute',
-                            inset: 0,
-                            borderRadius: 10,
-                            overflow: 'hidden',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                            transform: 'rotate(-8deg) translateX(-40px) scale(0.92)',
-                            transformOrigin: 'bottom center',
-                            zIndex: 1,
-                            background: '#1E3A2F'
-                          }}>
-                            <img src={heroSlots.left.croppedUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          </div>
-                        )}
-
-                        {/* Right Card */}
-                        {heroSlots.right.croppedUrl && (
-                          <div style={{
-                            position: 'absolute',
-                            inset: 0,
-                            borderRadius: 10,
-                            overflow: 'hidden',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                            transform: 'rotate(8deg) translateX(40px) scale(0.92)',
-                            transformOrigin: 'bottom center',
-                            zIndex: 1,
-                            background: '#284E39'
-                          }}>
-                            <img src={heroSlots.right.croppedUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          </div>
-                        )}
-
-                        {/* Main Card */}
-                        {heroSlots.main.croppedUrl && (
-                          <div style={{
-                            position: 'absolute',
-                            inset: 0,
-                            borderRadius: 10,
-                            overflow: 'hidden',
-                            boxShadow: '0 8px 24px rgba(26,39,28,0.25)',
-                            zIndex: 2,
-                            background: '#EAE5D9'
-                          }}>
-                            <img src={heroSlots.main.croppedUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          </div>
-                        )}
-
-                        {/* If none, empty stack preview */}
-                        {!heroSlots.main.croppedUrl && !heroSlots.left.croppedUrl && !heroSlots.right.croppedUrl && (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', border: '2px dashed var(--border)', borderRadius: 10, color: 'var(--text-muted)' }}>
-                            Empty
-                          </div>
-                        )}
+                    {/* Inline Validation Warning for onboarding */}
+                    {!store && !hasAllHeroImages && (
+                      <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#B45309', borderRadius: 8, padding: '0.75rem 1rem', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Upload and crop all 3 hero images to launch your store.
                       </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+                    )}
 
-              {/* Dynamic Categories Section */}
-              <div style={{ marginTop: '2.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem', marginBottom: '2rem' }}>
-                <p style={{ ...S.cardTitle, marginBottom: '0.5rem' }}>Shop by Category</p>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                  Manage store categories. Add as many as you'd like, drag or sort their display order, and optionally add images.
-                </p>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                  {(form.categories || []).map((cat, idx) => (
-                    <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                      {/* Slot 1: Main */}
+                      <HeroImageSlot
+                        role="main"
+                        label="Main Image (Center)"
+                        description="Front-facing card, straight-on focal point."
+                        slotState={heroSlots.main}
+                        onSelectFile={handleFileSelect}
+                        onRemove={() => setHeroSlots(prev => ({ ...prev, main: { ...prev.main, url: '', croppedUrl: '', croppedBlob: null, error: '' } }))}
+                      />
                       
-                      {/* Reorder Up/Down */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                        <button
-                          type="button"
-                          disabled={idx === 0}
-                          onClick={() => moveCategory(idx, -1)}
-                          style={{ background: 'none', border: 'none', color: idx === 0 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: idx === 0 ? 'not-allowed' : 'pointer', padding: 2, fontSize: '0.8rem' }}
-                        >
-                          ▲
-                        </button>
-                        <button
-                          type="button"
-                          disabled={idx === (form.categories.length - 1)}
-                          onClick={() => moveCategory(idx, 1)}
-                          style={{ background: 'none', border: 'none', color: idx === (form.categories.length - 1) ? 'var(--text-muted)' : 'var(--text-primary)', cursor: idx === (form.categories.length - 1) ? 'not-allowed' : 'pointer', padding: 2, fontSize: '0.8rem' }}
-                        >
-                          ▼
-                        </button>
-                      </div>
+                      {/* Slot 2: Left Accent */}
+                      <HeroImageSlot
+                        role="left"
+                        label="Left Accent"
+                        description="Rotated card placed behind-left."
+                        slotState={heroSlots.left}
+                        onSelectFile={handleFileSelect}
+                        onRemove={() => setHeroSlots(prev => ({ ...prev, left: { ...prev.left, url: '', croppedUrl: '', croppedBlob: null, error: '' } }))}
+                      />
 
-                      {/* Image Thumbnail / Overlay Upload */}
-                      <div
-                        onMouseEnter={e => { const overlay = e.currentTarget.querySelector('.cat-img-overlay'); if (overlay) overlay.style.opacity = '1' }}
-                        onMouseLeave={e => { const overlay = e.currentTarget.querySelector('.cat-img-overlay'); if (overlay) overlay.style.opacity = '0' }}
-                        style={{ position: 'relative', width: 50, height: 50, borderRadius: 8, overflow: 'hidden', background: 'var(--bg-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                      >
-                        {cat.image_url ? (
-                          <img src={cat.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                          </span>
-                        )}
-
-                        {store ? (
-                          <label className="cat-img-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '0.6rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s' }}>
-                            UPLOAD
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp"
-                              style={{ display: 'none' }}
-                              onChange={e => { if (e.target.files?.[0]) handleCategoryImageSelect(e.target.files[0], cat.id) }}
-                            />
-                          </label>
-                        ) : (
-                          <div className="cat-img-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '0.5rem', padding: '2px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s' }}>
-                            Save first
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Category Name */}
-                      <div style={{ flex: 1 }}>
-                        <input
-                          style={{ ...S.input, padding: '0.5rem 0.75rem' }}
-                          value={cat.name}
-                          onChange={e => updateCategoryField(cat.id, 'name', e.target.value)}
-                          placeholder="Category Name (e.g. Linen Dresses)"
-                          required
-                        />
-                      </div>
-
-                      {/* Browse Link Target */}
-                      <div style={{ flex: 1 }}>
-                        <input
-                          style={{ ...S.input, padding: '0.5rem 0.75rem' }}
-                          value={cat.link_target}
-                          onChange={e => updateCategoryField(cat.id, 'link_target', e.target.value)}
-                          placeholder="Link Target (e.g. #dresses)"
-                          required
-                        />
-                      </div>
-
-                      {/* Delete */}
-                      <button
-                        type="button"
-                        onClick={() => removeCategory(cat.id)}
-                        style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '1rem', cursor: 'pointer', padding: 4 }}
-                        title="Delete"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                      </button>
-
+                      {/* Slot 3: Right Accent */}
+                      <HeroImageSlot
+                        role="right"
+                        label="Right Accent"
+                        description="Rotated card placed behind-right."
+                        slotState={heroSlots.right}
+                        onSelectFile={handleFileSelect}
+                        onRemove={() => setHeroSlots(prev => ({ ...prev, right: { ...prev.right, url: '', croppedUrl: '', croppedBlob: null, error: '' } }))}
+                      />
                     </div>
-                  ))}
 
-                  {(form.categories || []).length === 0 && (
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>No categories added yet.</p>
-                  )}
+                    {/* Live Stacked Preview */}
+                    {(heroSlots.main.croppedUrl || heroSlots.left.croppedUrl || heroSlots.right.croppedUrl) && (
+                      <div style={{ background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: 12, padding: '2rem', marginBottom: '2rem' }}>
+                        <p style={{ ...S.label, marginBottom: '1rem', textAlign: 'center' }}>Live Hero Composition Preview</p>
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 260, position: 'relative', overflow: 'hidden' }}>
+                          <div style={{ position: 'relative', width: 140, height: 186 }}>
+                            {/* Left Card */}
+                            {heroSlots.left.croppedUrl && (
+                              <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                borderRadius: 10,
+                                overflow: 'hidden',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                transform: 'rotate(-8deg) translateX(-40px) scale(0.92)',
+                                transformOrigin: 'bottom center',
+                                zIndex: 1,
+                                background: '#1E3A2F'
+                              }}>
+                                <img src={heroSlots.left.croppedUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              </div>
+                            )}
 
-                  {(form.categories || []).length < 4 && (
-                    <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#B45309', borderRadius: 8, padding: '0.75rem 1rem', fontSize: '0.85rem', fontWeight: 600, marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                      Please configure at least 4 categories (currently: {(form.categories || []).length}).
-                    </div>
-                  )}
-                </div>
+                            {/* Right Card */}
+                            {heroSlots.right.croppedUrl && (
+                              <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                borderRadius: 10,
+                                overflow: 'hidden',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                transform: 'rotate(8deg) translateX(40px) scale(0.92)',
+                                transformOrigin: 'bottom center',
+                                zIndex: 1,
+                                background: '#284E39'
+                              }}>
+                                <img src={heroSlots.right.croppedUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              </div>
+                            )}
 
-                <button
-                  type="button"
-                  onClick={addCategory}
-                  className="sb-btn-ghost"
-                  style={{ ...S.btnGhost, padding: '0.5rem 1rem', fontSize: '0.8rem' }}
-                >
-                  + Add Category
-                </button>
-              </div>
+                            {/* Main Card */}
+                            {heroSlots.main.croppedUrl && (
+                              <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                borderRadius: 10,
+                                overflow: 'hidden',
+                                boxShadow: '0 8px 24px rgba(26,39,28,0.25)',
+                                zIndex: 2,
+                                background: '#EAE5D9'
+                              }}>
+                                <img src={heroSlots.main.croppedUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              </div>
+                            )}
 
-              <div style={{ ...S.row2 }} className="sb-row2">
-                <div style={S.field}>
-                  <label style={S.label}>Currency</label>
-                  <select style={S.select} value={form.currency} onChange={e => setForm(f => ({ ...f, currency:e.target.value }))}>
-                    {['USD','EUR','GBP','PKR','INR','AED','CAD','AUD'].map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div style={{ ...S.field }}>
-                  <label style={S.label}>Visibility</label>
-                  <div style={S.toggle}>
-                    <input type="checkbox" id="sb_public" checked={form.is_public} onChange={e => setForm(f => ({ ...f, is_public:e.target.checked }))} style={{ width:18, height:18, accentColor:'var(--g)', cursor:'pointer' }} />
-                    <label htmlFor="sb_public" style={{ fontSize:'.875rem', cursor:'pointer', color:'var(--text-secondary)' }}>Make store publicly visible</label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <button className="sb-btn-primary" style={S.btn} type="submit" disabled={saving}>
-              {saving ? 'Saving...' : (store ? 'Save Changes' : 'Create My Store')}
-            </button>
-          </form>
-        )}
-
-        {/* PRODUCTS TAB */}
-        {tab === 'products' && (
-          <div>
-            {!store ? (
-              <div style={S.card}>
-                <p style={{ color:'var(--text-muted)', fontSize:'.9rem', margin:0 }}>Create your store in the Settings tab first, then come back to add products.</p>
-              </div>
-            ) : (
-              <>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.25rem' }}>
-                  <p style={{ color:'var(--text-muted)', fontSize:'.875rem', margin:0 }}>{products.length} product{products.length!==1?'s':''}</p>
-                  <button className="sb-btn-primary" style={S.btn} onClick={() => { setEditProd(null); setShowModal(true) }}>+ Add Product</button>
-                </div>
-
-                {products.length === 0 ? (
-                  <div style={S.empty}>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '.75rem', color: 'var(--text-muted)' }}>
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                    </div>
-                    <p style={{ fontWeight:600, color:'var(--text-primary)', marginBottom:'.4rem' }}>No products yet</p>
-                    <p style={{ fontSize:'.875rem', margin:0 }}>Click "Add Product" to list your first item.</p>
-                  </div>
-                ) : (
-                  <div style={S.grid}>
-                    {products.map(p => (
-                      <div key={p.id} style={S.prodCard} className="sb-prod-card">
-                        {p.images?.[0]
-                          ? <img src={p.images[0]} alt={p.title} style={S.prodImg} />
-                          : (
-                            <div style={{ ...S.prodImg, display:'flex', alignItems:'center', justifyContent:'center', color: 'var(--text-muted)' }}>
-                              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                            </div>
-                          )
-                        }
-                        <div style={S.prodBody}>
-                          <p style={S.prodTitle}>{p.title}</p>
-                          <p style={S.prodPrice}>{form.currency} {Number(p.price).toFixed(2)}</p>
-                          <p style={S.prodMeta}>
-                             {p.inventory} in stock · {p.is_active ? 'Active' : 'Inactive'}
-                             <br />
-                             Category: {form.categories?.find(c => c.id === p.category_id)?.name || 'Uncategorized'}
-                          </p>
-                          <div style={S.prodActs}>
-                            <button className="sb-btn-ghost" style={S.btnSm} onClick={() => { setEditProd(p); setShowModal(true) }}>Edit</button>
-                            <button style={S.btnDanger} onClick={() => deleteProd(p.id)}>Delete</button>
+                            {/* If none, empty stack preview */}
+                            {!heroSlots.main.croppedUrl && !heroSlots.left.croppedUrl && !heroSlots.right.croppedUrl && (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', border: '2px dashed var(--border)', borderRadius: 10, color: 'var(--text-muted)' }}>
+                                Empty
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
-              </>
+                </div>
+
+                {/* TRUST BAR SETTINGS CARD */}
+                <div style={S.card}>
+                  <p style={S.cardTitle}>Trust Bar Settings</p>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                    Customize the labels for the 4 trust signals displayed below the hero section.
+                  </p>
+                  {[0, 1, 2, 3].map((idx) => {
+                    const defaultItem = defaultTemplateData.hero.trustBar[idx];
+                    const currentVal = form.template_data?.hero?.trustBar?.[idx]?.label ?? "";
+                    return (
+                      <div key={idx} style={S.field}>
+                        <label style={S.label}>Slot {idx + 1} Label ({defaultItem.icon.replace('-', ' ')})</label>
+                        <input
+                          style={S.input}
+                          value={currentVal}
+                          placeholder={defaultItem.label}
+                          onChange={e => {
+                            const nextTrustBar = [...(form.template_data?.hero?.trustBar || defaultTemplateData.hero.trustBar)];
+                            nextTrustBar[idx] = { ...nextTrustBar[idx], label: e.target.value };
+                            updateForm(f => ({
+                              ...f,
+                              template_data: deepMerge(f.template_data, { hero: { trustBar: nextTrustBar } })
+                            }));
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* SHOP BY CATEGORY CARD */}
+                <div style={S.card}>
+                  <p style={{ ...S.cardTitle, marginBottom: '0.5rem' }}>Shop by Category</p>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                    Manage store categories. Add as many as you'd like, drag or sort their display order, and optionally add images.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                    {(form.categories || []).map((cat, idx) => (
+                      <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: 10 }}>
+                        
+                        {/* Reorder Up/Down */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => moveCategory(idx, -1)}
+                            style={{ background: 'none', border: 'none', color: idx === 0 ? 'var(--text-muted)' : 'var(--text-primary)', cursor: idx === 0 ? 'not-allowed' : 'pointer', padding: 2, fontSize: '0.8rem' }}
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === (form.categories.length - 1)}
+                            onClick={() => moveCategory(idx, 1)}
+                            style={{ background: 'none', border: 'none', color: idx === (form.categories.length - 1) ? 'var(--text-muted)' : 'var(--text-primary)', cursor: idx === (form.categories.length - 1) ? 'not-allowed' : 'pointer', padding: 2, fontSize: '0.8rem' }}
+                          >
+                            ▼
+                          </button>
+                        </div>
+
+                        {/* Image Thumbnail / Overlay Upload */}
+                        <div
+                          onMouseEnter={e => { const overlay = e.currentTarget.querySelector('.cat-img-overlay'); if (overlay) overlay.style.opacity = '1' }}
+                          onMouseLeave={e => { const overlay = e.currentTarget.querySelector('.cat-img-overlay'); if (overlay) overlay.style.opacity = '0' }}
+                          style={{ position: 'relative', width: 50, height: 50, borderRadius: 8, overflow: 'hidden', background: 'var(--bg-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                        >
+                          {cat.image_url ? (
+                            <img src={cat.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                            </span>
+                          )}
+
+                          {store ? (
+                            <label className="cat-img-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '0.6rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s' }}>
+                              UPLOAD
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                style={{ display: 'none' }}
+                                onChange={e => { if (e.target.files?.[0]) handleCategoryImageSelect(e.target.files[0], cat.id) }}
+                              />
+                            </label>
+                          ) : (
+                            <div className="cat-img-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '0.5rem', padding: '2px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s' }}>
+                              Save first
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Category Name */}
+                        <div style={{ flex: 1 }}>
+                          <input
+                            style={{ ...S.input, padding: '0.5rem 0.75rem' }}
+                            value={cat.name}
+                            onChange={e => updateCategoryField(cat.id, 'name', e.target.value)}
+                            placeholder="Category Name (e.g. Linen Dresses)"
+                            required
+                          />
+                        </div>
+
+                        {/* Browse Link Target */}
+                        <div style={{ flex: 1 }}>
+                          <input
+                            style={{ ...S.input, padding: '0.5rem 0.75rem' }}
+                            value={cat.link_target}
+                            onChange={e => updateCategoryField(cat.id, 'link_target', e.target.value)}
+                            placeholder="Link Target (e.g. #dresses)"
+                            required
+                          />
+                        </div>
+
+                        {/* Delete */}
+                        <button
+                          type="button"
+                          onClick={() => removeCategory(cat.id)}
+                          style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '1rem', cursor: 'pointer', padding: 4 }}
+                          title="Delete"
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                        </button>
+
+                      </div>
+                    ))}
+
+                    {(form.categories || []).length === 0 && (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>No categories added yet.</p>
+                    )}
+
+                    {(form.categories || []).length < 4 && (
+                      <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#B45309', borderRadius: 8, padding: '0.75rem 1rem', fontSize: '0.85rem', fontWeight: 600, marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Please configure at least 4 categories (currently: {(form.categories || []).length}).
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={addCategory}
+                    className="sb-btn-ghost"
+                    style={{ ...S.btnGhost, padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                  >
+                    + Add Category
+                  </button>
+                </div>
+
+                {/* NEW ARRIVALS SETTINGS CARD */}
+                <div style={S.card}>
+                  <p style={S.cardTitle}>New Arrivals Section</p>
+                  <div style={S.field}>
+                    <label style={S.label}>Section Eyebrow Label</label>
+                    <input
+                      style={S.input}
+                      value={form.template_data?.newArrivals?.eyebrow ?? ""}
+                      placeholder={defaultTemplateData.newArrivals.eyebrow}
+                      onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { newArrivals: { eyebrow: e.target.value } }) }))}
+                    />
+                  </div>
+                  <div style={S.field}>
+                    <label style={S.label}>Section Heading</label>
+                    <input
+                      style={S.input}
+                      value={form.template_data?.newArrivals?.title ?? ""}
+                      placeholder={defaultTemplateData.newArrivals.title}
+                      onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { newArrivals: { title: e.target.value } }) }))}
+                    />
+                  </div>
+                  <div style={S.field}>
+                    <label style={S.label}>"View All" Link Target</label>
+                    <input
+                      style={S.input}
+                      value={form.template_data?.newArrivals?.viewAllUrl ?? ""}
+                      placeholder={defaultTemplateData.newArrivals.viewAllUrl}
+                      onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { newArrivals: { viewAllUrl: e.target.value } }) }))}
+                    />
+                  </div>
+                </div>
+
+                {/* BRAND STORY SETTINGS CARD */}
+                <div style={S.card}>
+                  <p style={S.cardTitle}>Brand Story Section</p>
+                  <div style={S.field}>
+                    <label style={S.label}>Section Eyebrow Label</label>
+                    <input
+                      style={S.input}
+                      value={form.template_data?.brandStory?.eyebrow ?? ""}
+                      placeholder={defaultTemplateData.brandStory.eyebrow}
+                      onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { brandStory: { eyebrow: e.target.value } }) }))}
+                    />
+                  </div>
+                  <div style={S.field}>
+                    <label style={S.label}>Section Heading</label>
+                    <input
+                      style={S.input}
+                      value={form.template_data?.brandStory?.title ?? ""}
+                      placeholder={defaultTemplateData.brandStory.title}
+                      onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { brandStory: { title: e.target.value } }) }))}
+                    />
+                  </div>
+                  <div style={S.field}>
+                    <label style={S.label}>Story Description</label>
+                    <textarea
+                      style={S.textarea}
+                      value={form.template_data?.brandStory?.subtitle ?? ""}
+                      placeholder={defaultTemplateData.brandStory.subtitle}
+                      onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { brandStory: { subtitle: e.target.value } }) }))}
+                    />
+                  </div>
+                  <div style={S.row2} className="sb-row2">
+                    <div style={S.field}>
+                      <label style={S.label}>CTA Link Text</label>
+                      <input
+                        style={S.input}
+                        value={form.template_data?.brandStory?.ctaText ?? ""}
+                        placeholder={defaultTemplateData.brandStory.ctaText}
+                        onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { brandStory: { ctaText: e.target.value } }) }))}
+                      />
+                    </div>
+                    <div style={S.field}>
+                      <label style={S.label}>CTA Link Target</label>
+                      <input
+                        style={S.input}
+                        value={form.template_data?.brandStory?.ctaUrl ?? ""}
+                        placeholder={defaultTemplateData.brandStory.ctaUrl}
+                        onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { brandStory: { ctaUrl: e.target.value } }) }))}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ ...S.field, marginTop: '0.5rem' }}>
+                    <label style={S.label}>Attribution Badge</label>
+                    <div style={S.toggle}>
+                      <input
+                        type="checkbox"
+                        id="sb_brand_story_badge"
+                        checked={form.template_data?.brandStory?.showAiBadge !== false}
+                        onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { brandStory: { showAiBadge: e.target.checked } }) }))}
+                        style={{ width:18, height:18, accentColor:'var(--g)', cursor:'pointer' }}
+                      />
+                      <label htmlFor="sb_brand_story_badge" style={{ fontSize:'.875rem', cursor:'pointer', color:'var(--text-secondary)' }}>Show "Selora AI Optimized" badge on Brand Photo</label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* NEWSLETTER SETTINGS CARD */}
+                <div style={S.card}>
+                  <p style={S.cardTitle}>Newsletter Section</p>
+                  <div style={S.field}>
+                    <label style={S.label}>Section Eyebrow Label</label>
+                    <input
+                      style={S.input}
+                      value={form.template_data?.newsletter?.eyebrow ?? ""}
+                      placeholder={defaultTemplateData.newsletter.eyebrow}
+                      onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { newsletter: { eyebrow: e.target.value } }) }))}
+                    />
+                  </div>
+                  <div style={S.field}>
+                    <label style={S.label}>Section Heading</label>
+                    <input
+                      style={S.input}
+                      value={form.template_data?.newsletter?.title ?? ""}
+                      placeholder={defaultTemplateData.newsletter.title}
+                      onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { newsletter: { title: e.target.value } }) }))}
+                    />
+                  </div>
+                  <div style={S.field}>
+                    <label style={S.label}>Section Subtitle</label>
+                    <input
+                      style={S.input}
+                      value={form.template_data?.newsletter?.subtitle ?? ""}
+                      placeholder={defaultTemplateData.newsletter.subtitle}
+                      onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { newsletter: { subtitle: e.target.value } }) }))}
+                    />
+                  </div>
+                  <div style={S.field}>
+                    <label style={S.label}>Button Label</label>
+                    <input
+                      style={S.input}
+                      value={form.template_data?.newsletter?.buttonText ?? ""}
+                      placeholder={defaultTemplateData.newsletter.buttonText}
+                      onChange={e => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { newsletter: { buttonText: e.target.value } }) }))}
+                    />
+                  </div>
+                </div>
+
+                <div style={S.card}>
+                  <div style={{ ...S.row2 }} className="sb-row2">
+                    <div style={S.field}>
+                      <label style={S.label}>Currency</label>
+                      <select style={S.select} value={form.currency} onChange={e => updateForm(f => ({ ...f, currency:e.target.value }))}>
+                        {['USD','EUR','GBP','PKR','INR','AED','CAD','AUD'].map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ ...S.field }}>
+                      <label style={S.label}>Visibility</label>
+                      <div style={S.toggle}>
+                        <input type="checkbox" id="sb_public" checked={form.is_public} onChange={e => updateForm(f => ({ ...f, is_public:e.target.checked }))} style={{ width:18, height:18, accentColor:'var(--g)', cursor:'pointer' }} />
+                        <label htmlFor="sb_public" style={{ fontSize:'.875rem', cursor:'pointer', color:'var(--text-secondary)' }}>Make store publicly visible</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <button className="sb-btn-primary" style={S.btn} type="submit" disabled={saving}>
+                  {saving ? 'Saving...' : (store ? 'Save Changes' : 'Create My Store')}
+                </button>
+              </form>
             )}
+
+            {/* PRODUCTS TAB */}
+            {tab === 'products' && (
+              <div>
+                {!store ? (
+                  <div style={S.card}>
+                    <p style={{ color:'var(--text-muted)', fontSize:'.9rem', margin:0 }}>Create your store in the Settings tab first, then come back to add products.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.25rem' }}>
+                      <p style={{ color:'var(--text-muted)', fontSize:'.875rem', margin:0 }}>{products.length} product{products.length!==1?'s':''}</p>
+                      <button className="sb-btn-primary" style={S.btn} onClick={() => { setEditProd(null); setShowModal(true) }}>+ Add Product</button>
+                    </div>
+
+                    {products.length === 0 ? (
+                      <div style={S.empty}>
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '.75rem', color: 'var(--text-muted)' }}>
+                          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                        </div>
+                        <p style={{ fontWeight:600, color:'var(--text-primary)', marginBottom:'.4rem' }}>No products yet</p>
+                        <p style={{ fontSize:'.875rem', margin:0 }}>Click "Add Product" to list your first item.</p>
+                      </div>
+                    ) : (
+                      <div style={S.grid}>
+                        {products.map(p => (
+                          <div key={p.id} style={S.prodCard} className="sb-prod-card">
+                            {p.images?.[0]
+                              ? <img src={p.images[0]} alt={p.title} style={S.prodImg} />
+                              : (
+                                <div style={{ ...S.prodImg, display:'flex', alignItems:'center', justifyContent:'center', color: 'var(--text-muted)' }}>
+                                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                                </div>
+                              )
+                            }
+                            <div style={S.prodBody}>
+                              <p style={S.prodTitle}>{p.title}</p>
+                              <p style={S.prodPrice}>{form.currency} {Number(p.price).toFixed(2)}</p>
+                              <p style={S.prodMeta}>
+                                 {p.inventory} in stock · {p.is_active ? 'Active' : 'Inactive'}
+                                 <br />
+                                 Category: {form.categories?.find(c => c.id === p.category_id)?.name || 'Uncategorized'}
+                              </p>
+                              <div style={S.prodActs}>
+                                <button className="sb-btn-ghost" style={S.btnSm} onClick={() => { setEditProd(p); setShowModal(true) }}>Edit</button>
+                                <button style={S.btnDanger} onClick={() => setDeletingProductId(p.id)}>Delete</button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Live Preview Modal Overlay */}
+        {showPreviewOverlay && store && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(26,39,28,0.4)',
+              backdropFilter: 'blur(8px)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '2rem'
+            }}
+            onClick={() => setShowPreviewOverlay(false)}
+          >
+            <div
+              style={{
+                width: '92%',
+                height: '92%',
+                background: 'var(--bg-0)',
+                borderRadius: 16,
+                boxShadow: '0 25px 60px rgba(0,0,0,0.35)',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  background: 'var(--bg-1)',
+                  borderBottom: '1px solid var(--border)',
+                  padding: '0.85rem 1.5rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-primary)' }}>
+                    LIVE STOREFRONT PREVIEW
+                  </span>
+                  <span style={{ background: 'var(--g)', color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4 }}>
+                    PREVIEW MODE
+                  </span>
+                  {isUpdatingPreview && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <div style={{ ...S.spinner, width: 12, height: 12, borderWidth: 2 }} />
+                      Updating...
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPreviewOverlay(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '1.25rem',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    padding: '4px 8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Close Preview (Esc)"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Body */}
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: 'auto',
+                  opacity: isUpdatingPreview ? 0.7 : 1,
+                  transition: 'opacity 0.3s ease'
+                }}
+                className="no-scrollbar"
+              >
+                <Storefront
+                  previewData={{
+                    store: {
+                      ...store,
+                      name: (previewStore || form).name,
+                      description: (previewStore || form).description,
+                      cover_image: (previewStore || form).cover_image,
+                      currency: (previewStore || form).currency,
+                      categories: (previewStore || form).categories,
+                      hero_image_main: heroSlots.main.croppedUrl || heroSlots.main.savedUrl,
+                      hero_image_left: heroSlots.left.croppedUrl || heroSlots.left.savedUrl,
+                      hero_image_right: heroSlots.right.croppedUrl || heroSlots.right.savedUrl,
+                      template_data: (previewStore || form).template_data
+                    },
+                    products
+                  }}
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -844,6 +1352,65 @@ export default function StoreBuilder() {
           onSave={onProductSaved}
           onClose={() => { setShowModal(false); setEditProd(null) }}
         />
+      )}
+
+      {deletingProductId && (
+        <div style={S.overlay} onClick={() => setDeletingProductId(null)}>
+          <div style={{ ...S.modal, maxWidth: 420, padding: '1.75rem', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.15rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(220, 38, 38, 0.1)', color: '#DC2626', width: 50, height: 50, borderRadius: '50%' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>
+                </svg>
+              </div>
+              <h3 style={{ ...S.modalTitle, margin: 0, fontSize: '1.2rem', fontFamily: 'Fraunces, serif' }}>Delete Product?</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 0.25rem', lineHeight: 1.5 }}>
+                Are you sure you want to permanently delete this product? This action cannot be undone.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+                <button
+                  onClick={confirmDelete}
+                  style={{
+                    flex: 1,
+                    background: '#DC2626',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '0.65rem 1rem',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    transition: 'opacity 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => setDeletingProductId(null)}
+                  className="sb-btn-ghost"
+                  style={{
+                    ...S.btnGhost,
+                    flex: 1,
+                    border: '1px solid var(--border)',
+                    background: 'none',
+                    color: 'var(--text-primary)',
+                    borderRadius: 8,
+                    padding: '0.65rem 1rem',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {croppingRole && (
@@ -998,7 +1565,8 @@ function HeroImageSlot({ role, label, description, slotState, onSelectFile, onRe
 
 function ProductModal({ storeId, currency, initial, onSave, onClose, categories = [] }) {
   const isEdit = !!initial
-  const [form, setForm] = useState({
+  const [isProductDirty, setIsProductDirty] = useState(false)
+  const [form, setFormState] = useState({
     title: initial?.title || '',
     description: initial?.description || '',
     price: initial?.price || '',
@@ -1009,29 +1577,57 @@ function ProductModal({ storeId, currency, initial, onSave, onClose, categories 
     images: initial?.images || [],
     category_id: initial?.category_id || '',
   })
+
+  const [productId] = useState(() => initial?.id || crypto.randomUUID())
+
+  const setForm = (updater) => {
+    setFormState(updater)
+    setIsProductDirty(true)
+  }
+
+  const handleClose = () => {
+    if (isProductDirty) {
+      if (!window.confirm('You have unsaved changes. Are you sure you want to discard them?')) return
+    }
+    onClose()
+  }
+
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving]       = useState(false)
   const [err, setErr]             = useState('')
   const [dragOver, setDragOver]   = useState(false)
   const fileInput = useRef()
 
-  async function uploadFiles(files) {
-    if (!files?.length) return
-    setUploading(true)
+  async function handleFileSelect(file) {
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setErr("Image file size must be under 10MB");
+      return;
+    }
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setErr("Supported image formats are JPG, PNG, and WEBP");
+      return;
+    }
+
+    setErr("");
+    setUploading(true);
+
     try {
-      const urls = []
-      for (const file of Array.from(files)) {
-        const b64 = await toBase64(file)
-        const res = await api('POST', `/selora-stores/${storeId}/upload-image`, {
-          file_data: b64,
-          file_name: file.name,
-          content_type: file.type || 'image/jpeg',
-        })
-        urls.push(res.url)
-      }
-      setForm(f => ({ ...f, images: [...f.images, ...urls] }))
-    } catch(e) { setErr(`Upload failed: ${e.message}`) }
-    finally { setUploading(false) }
+      const b64 = await toBase64(file);
+
+      const uploadRes = await api('POST', `/selora-stores/${storeId}/upload-product-image/${productId}`, {
+        file_data: b64,
+        content_type: file.type || 'image/jpeg'
+      });
+
+      setForm(f => ({ ...f, images: [uploadRes.url] }));
+    } catch (e) {
+      setErr(`Upload failed: ${e.message}`);
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function handleSubmit(e) {
@@ -1039,6 +1635,7 @@ function ProductModal({ storeId, currency, initial, onSave, onClose, categories 
     setSaving(true); setErr('')
     try {
       const payload = {
+        id: productId,
         title: form.title,
         description: form.description || null,
         price: parseFloat(form.price),
@@ -1058,11 +1655,73 @@ function ProductModal({ storeId, currency, initial, onSave, onClose, categories 
   }
 
   return (
-    <div style={S.overlay} onClick={e => { if(e.target===e.currentTarget) onClose() }}>
+    <div style={S.overlay} onClick={e => { if(e.target===e.currentTarget) handleClose() }}>
       <div style={S.modal}>
         <h2 style={S.modalTitle}>{isEdit ? 'Edit Product' : 'New Product'}</h2>
         {err && <div style={S.alert('error')}>{err}</div>}
         <form onSubmit={handleSubmit}>
+          <div style={S.field}>
+            <label style={S.label}>Product Image *</label>
+            {form.images?.[0] ? (
+              <div style={{ position: 'relative', width: '100%', height: 220, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                <img src={form.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, images: [] }))}
+                  style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    background: '#DC2626',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: 24,
+                    height: 24,
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+                  }}
+                  title="Remove Image"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <div
+                style={{
+                  border: `2px dashed ${dragOver ? 'var(--g)' : 'var(--border)'}`,
+                  borderRadius: 10,
+                  padding: '2rem',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: dragOver ? 'var(--bg-2)' : 'var(--bg-0)',
+                  transition: 'all 0.15s'
+                }}
+                onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={e => { e.preventDefault(); setDragOver(false); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0]) }}
+                onClick={() => fileInput.current.click()}
+              >
+                <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) handleFileSelect(e.target.files[0]) }} />
+                {uploading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={S.spinner} />
+                    <p style={{ fontSize: '.85rem', color: 'var(--text-muted)', margin: 0 }}>Uploading image...</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p style={{ fontSize: '.9rem', color: 'var(--text-muted)', margin: 0 }}>Drag product image here or click to browse</p>
+                    <p style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginTop: '.25rem', marginBottom: 0 }}>JPG, PNG, or WEBP (Max 10MB)</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div style={S.field}>
             <label style={S.label}>Title *</label>
             <input style={S.input} value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} required />
@@ -1071,15 +1730,16 @@ function ProductModal({ storeId, currency, initial, onSave, onClose, categories 
             <label style={S.label}>Description</label>
             <textarea style={S.textarea} value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))} placeholder="Describe this product..." />
           </div>
+          
           <div style={S.field}>
             <label style={S.label}>Category</label>
             {categories.length === 0 ? (
-                <div style={{ ...S.input, background: 'var(--bg-2)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                  No categories configured. Go to settings tab to create one.
-                </div>
+              <div style={{ ...S.input, background: 'var(--bg-2)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                No categories configured. Go to settings tab to create one.
+              </div>
             ) : (
-              <select style={S.select} value={form.category_id} onChange={e => setForm(f=>({...f,category_id:e.target.value}))}>
+              <select style={S.select} value={form.category_id} onChange={e => setForm(f => ({ ...f, category_id: e.target.value }))}>
                 <option value="">Uncategorized</option>
                 {categories.map(c => (
                   <option key={c.id} value={c.id}>{c.name || 'Unnamed Category'}</option>
@@ -1087,6 +1747,7 @@ function ProductModal({ storeId, currency, initial, onSave, onClose, categories 
               </select>
             )}
           </div>
+
           <div style={{ ...S.row2 }} className="sb-row2">
             <div style={S.field}>
               <label style={S.label}>Price ({currency}) *</label>
@@ -1116,39 +1777,11 @@ function ProductModal({ storeId, currency, initial, onSave, onClose, categories 
             <p style={S.hint}>Comma-separated</p>
           </div>
 
-          <div style={S.field}>
-            <label style={S.label}>Product Images</label>
-            <div
-              style={S.dropzone(dragOver)}
-              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={e => { e.preventDefault(); setDragOver(false); uploadFiles(e.dataTransfer.files) }}
-              onClick={() => fileInput.current.click()}
-            >
-              <input ref={fileInput} type="file" multiple accept="image/*" style={{ display:'none' }} onChange={e => uploadFiles(e.target.files)} />
-              {uploading
-                ? <><div style={{ ...S.spinner, margin:'0 auto .5rem' }} /><p style={{ fontSize:'.85rem', color:'var(--text-muted)', margin:0 }}>Uploading...</p></>
-                : <><p style={{ fontSize:'.9rem', color:'var(--text-muted)', margin:0 }}>Drop images here or click to browse</p><p style={{ fontSize:'.75rem', color:'var(--text-muted)', marginTop:'.25rem', marginBottom:0 }}>Multiple images supported</p></>
-              }
-            </div>
-            {form.images.length > 0 && (
-              <div style={S.thumbRow}>
-                {form.images.map((url, i) => (
-                  <div key={i} style={{ position:'relative' }}>
-                    <img src={url} alt="" style={S.thumb} />
-                    <button type="button" onClick={() => setForm(f=>({...f,images:f.images.filter((_,j)=>j!==i)}))}
-                      style={{ position:'absolute', top:-6, right:-6, background:'#DC2626', color:'#fff', border:'none', borderRadius:'50%', width:18, height:18, cursor:'pointer', fontSize:11, lineHeight:'18px', padding:0 }}>X</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           <div style={{ display:'flex', gap:'.75rem', marginTop:'.5rem' }}>
             <button className="sb-btn-primary" style={S.btn} type="submit" disabled={saving||uploading}>
               {saving ? 'Saving...' : (isEdit ? 'Save Changes' : 'Add Product')}
             </button>
-            <button className="sb-btn-ghost" style={S.btnGhost} type="button" onClick={onClose}>Cancel</button>
+            <button className="sb-btn-ghost" style={S.btnGhost} type="button" onClick={handleClose}>Cancel</button>
           </div>
         </form>
       </div>

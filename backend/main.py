@@ -1880,6 +1880,7 @@ class StoreCreateRequest(BaseModel):
     hero_image_left: Optional[str] = None
     hero_image_right: Optional[str] = None
     categories: Optional[List] = None
+    template_data: Optional[dict] = None
 
 class StoreUpdateRequest(BaseModel):
     name: Optional[str] = None
@@ -1892,6 +1893,7 @@ class StoreUpdateRequest(BaseModel):
     hero_image_left: Optional[str] = None
     hero_image_right: Optional[str] = None
     categories: Optional[List] = None
+    template_data: Optional[dict] = None
 
 class ProductCreateRequest(BaseModel):
     title: str
@@ -2211,6 +2213,13 @@ def create_selora_store(body: StoreCreateRequest, request: Request):
             'cover_image': body.cover_image,
             'currency': body.currency,
             'is_public': body.is_public,
+            'categories': body.categories or [
+                { "id": "cat_tops", "name": "Tops", "image_url": "", "link_target": "#category-tops" },
+                { "id": "cat_bottoms", "name": "Bottoms", "image_url": "", "link_target": "#category-bottoms" },
+                { "id": "cat_accessories", "name": "Accessories", "image_url": "", "link_target": "#category-accessories" },
+                { "id": "cat_shoes", "name": "Shoes", "image_url": "", "link_target": "#category-shoes" }
+            ],
+            'template_data': body.template_data or {},
         }).execute()
         return result.data[0]
     except Exception as e:
@@ -2295,7 +2304,7 @@ async def add_product_to_store(store_id: str, request: Request):
         inventory = int(body_json.get('inventory', 0))
     except (ValueError, TypeError) as e:
         raise HTTPException(status_code=400, detail=f'Invalid numeric field: {e}')
-    result = _db().table('selora_products').insert({
+    insert_data = {
         'store_id': store_id,
         'title': body_json.get('title', ''),
         'description': body_json.get('description'),
@@ -2306,7 +2315,10 @@ async def add_product_to_store(store_id: str, request: Request):
         'tags': body_json.get('tags', []),
         'is_active': body_json.get('is_active', True),
         'category_id': body_json.get('category_id'),
-    }).execute()
+    }
+    if body_json.get('id'):
+        insert_data['id'] = body_json['id']
+    result = _db().table('selora_products').insert(insert_data).execute()
     res_data = result.data[0]
     res_data["platform"] = "selora"
     return res_data
@@ -2445,6 +2457,148 @@ async def upload_hero_image(store_id: str, role: str, request: Request):
     db_field = f"hero_image_{role}"
     _db().table('selora_stores').update({db_field: public_url}).eq('id', store_id).execute()
     
+    return {'url': public_url}
+
+
+@app.post('/selora-stores/{store_id}/classify-image')
+async def classify_image(store_id: str, request: Request):
+    """
+    Call Claude API to classify product image against dynamic category list.
+    NOTE: This endpoint is currently unused in the single-product creation flow,
+    but is intentionally kept in the codebase for future bulk-import/bulk-upload features.
+    """
+    import base64
+    import httpx
+    import json
+    import re
+    from database import db as _db
+    user_id, _ = _get_user_id_from_token(request)
+    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail='Store not found')
+    if existing.data[0]['user_id'] != user_id:
+        raise HTTPException(status_code=403, detail='Forbidden')
+
+    body_json = await request.json()
+    image_data_b64 = body_json.get('image_data', '')
+    categories = body_json.get('categories', [])
+
+    if not image_data_b64:
+        raise HTTPException(status_code=400, detail="Image data is required")
+    if not categories:
+        return {"category": "Uncategorized", "confidence": "low"}
+
+    # Extract base64 data and media type
+    media_type = "image/jpeg"
+    base64_data = image_data_b64
+    if "," in image_data_b64:
+        header, base64_data = image_data_b64.split(",", 1)
+        if "image/png" in header:
+            media_type = "image/png"
+        elif "image/webp" in header:
+            media_type = "image/webp"
+
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    if not anthropic_key:
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY is not configured")
+
+    prompt = (
+        f"You are a fashion product classifier.\n"
+        f"Analyze the attached product image and classify it into exactly one of these categories: {json.dumps(categories)}.\n"
+        f"Do not invent new categories. If none of these categories are a reasonable fit, respond with 'Uncategorized'.\n"
+        f"Respond ONLY with a strict JSON object containing 'category' (the selected category name or 'Uncategorized') and 'confidence' ('high', 'medium', or 'low').\n"
+        f"Example: {{\"category\": \"Tops\", \"confidence\": \"high\"}}"
+    )
+
+    headers = {
+        "x-api-key": anthropic_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+    }
+
+    body = {
+        "model": "claude-3-5-sonnet-20241022",
+        "max_tokens": 1024,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": base64_data
+                        }
+                    },
+                    {
+                        "type": "text",
+                        "text": prompt
+                    }
+                ]
+            }
+        ]
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            res = await client.post("https://api.anthropic.com/v1/messages", json=body, headers=headers)
+            if res.status_code != 200:
+                print(f"Anthropic API error: {res.status_code} - {res.text}")
+                raise HTTPException(status_code=502, detail="Failed to communicate with Claude API")
+            
+            data = res.json()
+            content_text = data["content"][0]["text"].strip()
+            
+            json_match = re.search(r"\{.*?\}", content_text, re.DOTALL)
+            if json_match:
+                result = json.loads(json_match.group(0))
+                selected = result.get("category", "Uncategorized")
+                if selected not in categories and selected != "Uncategorized":
+                    selected = "Uncategorized"
+                return {
+                    "category": selected,
+                    "confidence": result.get("confidence", "low")
+                }
+            else:
+                raise ValueError("No JSON block found in response")
+    except Exception as e:
+        print(f"Classification error: {e}")
+        raise HTTPException(status_code=500, detail=f"Image classification failed: {str(e)}")
+
+
+@app.post('/selora-stores/{store_id}/upload-product-image/{product_id}')
+async def upload_product_image_by_id(store_id: str, product_id: str, request: Request):
+    """Upload a product image named product_id.jpg to product-images/{store_id} path."""
+    import base64
+    from database import db as _db
+    user_id, _ = _get_user_id_from_token(request)
+    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail='Store not found')
+    if existing.data[0]['user_id'] != user_id:
+        raise HTTPException(status_code=403, detail='Forbidden')
+        
+    body_json = await request.json()
+    file_data_b64 = body_json.get('file_data', '')
+    content_type = body_json.get('content_type', 'image/jpeg')
+    file_bytes = base64.b64decode(file_data_b64)
+    
+    path = f'product-images/{store_id}/{product_id}.jpg'
+    supabase_url = os.getenv('SUPABASE_URL')
+    bucket = 'selora-products'
+    storage = _db().storage.from_(bucket)
+    
+    try:
+        try:
+            storage.remove(path)
+        except Exception:
+            pass
+        storage.upload(path, file_bytes, {'content-type': content_type, 'upsert': 'true'})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Storage upload failed: {str(e)}")
+        
+    public_url = f'{supabase_url}/storage/v1/object/public/{bucket}/{path}'
     return {'url': public_url}
 
 
