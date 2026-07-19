@@ -26,6 +26,7 @@ import HowItWorksPage from './pages/HowItWorksPage'
 import PricingPage    from './pages/PricingPage'
 import StoreBuilder   from './pages/StoreBuilder'
 import Storefront     from './pages/Storefront'
+import StorefrontOrders from './pages/StorefrontOrders'
 import Reports        from './pages/Reports'
 import Profile        from './pages/Profile'
 import Orders         from './pages/Orders'
@@ -73,6 +74,7 @@ export default function App() {
               <Route path="/how-it-works" element={<HowItWorksPage />} />
               <Route path="/pricing"      element={<PricingPage />} />
               <Route path="/store/:handle" element={<Storefront />} />
+              <Route path="/store/:handle/orders" element={<StorefrontOrders />} />
 
               {/* Protected — standalone (own header/footer) */}
               <Route path="/connect" element={<ProtectedRoute><Connect /></ProtectedRoute>} />

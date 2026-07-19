@@ -369,6 +369,57 @@ def get_store_orders(store_id: str, request: Request, limit: int = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch orders: {e}")
 
+@app.get("/api/stores/{store_id}/orders/by-wallet/{wallet_address}")
+def get_store_orders_by_wallet(store_id: str, wallet_address: str):
+    """Fetch orders for a specific buyer wallet on a store (public buyer endpoint)."""
+    from database import db as _db
+    try:
+        result = _db().table("selora_orders") \
+            .select("*") \
+            .eq("store_id", store_id) \
+            .ilike("buyer_wallet", wallet_address.strip()) \
+            .order("created_at", desc=True) \
+            .execute()
+        
+        # Collect all product IDs in these orders to fetch in a single batch
+        product_ids = set()
+        for o in (result.data or []):
+            for item in o.get("items", []):
+                if item.get("product_id"):
+                    product_ids.add(item["product_id"])
+        
+        products_map = {}
+        if product_ids:
+            prod_res = _db().table("selora_products").select("id, title, images").in_("id", list(product_ids)).execute()
+            for p in (prod_res.data or []):
+                products_map[p["id"]] = p
+
+        orders_cleaned = []
+        for o in (result.data or []):
+            enriched_items = []
+            for item in o.get("items", []):
+                prod_info = products_map.get(item.get("product_id"))
+                enriched_items.append({
+                    "product_id": item.get("product_id"),
+                    "quantity": item.get("quantity", 1),
+                    "price": item.get("price", 0),
+                    "title": prod_info["title"] if prod_info else "Deleted Product",
+                    "image_url": prod_info["images"][0] if prod_info and prod_info.get("images") and len(prod_info["images"]) > 0 else None
+                })
+
+            orders_cleaned.append({
+                "id": o["id"],
+                "items": enriched_items,
+                "total_usd": o.get("total_usd"),
+                "status": o.get("status"),
+                "created_at": o.get("created_at"),
+                "reference": o.get("reference"),
+                "signature": o.get("signature")
+            })
+        
+        return {"orders": orders_cleaned}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch orders for wallet: {e}")
 
 @app.get("/api/stores/{store_id}/settings")
 def get_store_settings(store_id: str):

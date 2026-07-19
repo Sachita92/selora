@@ -1038,6 +1038,20 @@ export default function Storefront({ previewData = null }) {
                 {link.label}
               </a>
             ))}
+            <Link
+              to={`/store/${handle}/orders`}
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '0.9rem',
+                fontWeight: 500,
+                color: '#3B5A44',
+                textDecoration: 'none',
+                transition: 'color 0.2s',
+              }}
+              className="sf-nav-link"
+            >
+              My Orders
+            </Link>
           </div>
 
           {/* Right: Bag */}
@@ -1374,7 +1388,10 @@ export default function Storefront({ previewData = null }) {
       {/* Platform Attribution Footer */}
       <footer style={{ borderTop: '1px solid #E4EBE5', padding: '2.5rem 1.5rem', textAlign: 'center', backgroundColor: '#F8FAF8' }}>
         <p style={{ fontSize: '0.8rem', color: '#7B907D', margin: '0 0 0.5rem' }}>
-          &copy; {new Date().getFullYear()} {store.name || "Selora Store"}. All rights reserved.
+          &copy; {new Date().getFullYear()} {store.name || "Selora Store"}. All rights reserved. &bull;{' '}
+          <Link to={`/store/${handle}/orders`} style={{ color: '#7B907D', textDecoration: 'none', fontWeight: 500 }}>
+            My Orders
+          </Link>
         </p>
         <p style={{ fontSize: '0.72rem', color: '#9AB49D', margin: 0 }}>
           Powered by <a href="/" style={{ color: '#7B907D', textDecoration: 'none', fontWeight: 600 }}>Selora AI</a>
