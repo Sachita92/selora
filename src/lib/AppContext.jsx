@@ -17,6 +17,8 @@ export function AppProvider({ children }) {
   const [products, setProducts] = useState([])
   const [fetchingProducts, setFetchingProducts] = useState(false)
   const [productsStats, setProductsStats] = useState({ revenue: 0, orders: 0 })
+  const [orders, setOrders] = useState([])
+  const [fetchingOrders, setFetchingOrders] = useState(false)
   // Ref to prevent duplicate auth subscriptions in React Strict Mode
   const authSubscriptionRef = useRef(null)
   const initialFetchTriggered = useRef(false)
@@ -100,9 +102,9 @@ export function AppProvider({ children }) {
     }
   }
 
-  const fetchProducts = async (storeId, forceRefresh = false) => {
+  const fetchProducts = async (storeId, forceRefresh = false, silent = false) => {
     if (!storeId) return
-    setFetchingProducts(true)
+    if (!silent) setFetchingProducts(true)
     try {
       const url = `${API_URL}/api/stores/${storeId}/products${forceRefresh ? '?force_refresh=true' : ''}`
       const res = await fetch(url)
@@ -115,18 +117,51 @@ export function AppProvider({ children }) {
     } catch (e) {
       console.error('Failed to fetch products:', e)
     } finally {
-      setFetchingProducts(false)
+      if (!silent) setFetchingProducts(false)
     }
   }
 
-  // Fetch products automatically in the background when activeStore changes
+  const fetchOrders = async (storeId, silent = false) => {
+    if (!storeId) return
+    if (!silent) setFetchingOrders(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session ? session.access_token : ''
+      const url = `${API_URL}/api/stores/${storeId}/orders`
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await res.json()
+      setOrders(data.orders || [])
+    } catch (e) {
+      console.error('Failed to fetch orders:', e)
+    } finally {
+      if (!silent) setFetchingOrders(false)
+    }
+  }
+
+  // Fetch products & orders automatically when activeStore changes
   useEffect(() => {
     if (activeStore) {
       fetchProducts(activeStore.id)
+      fetchOrders(activeStore.id)
     } else {
       setProducts([])
       setProductsStats({ revenue: 0, orders: 0 })
+      setOrders([])
     }
+  }, [activeStore])
+
+  // Real-time background polling (every 10s) to keep inventory levels and new orders updated on the dashboard
+  useEffect(() => {
+    if (!activeStore) return
+    const interval = setInterval(() => {
+      fetchProducts(activeStore.id, false, true)
+      fetchOrders(activeStore.id, true)
+    }, 10000)
+    return () => clearInterval(interval)
   }, [activeStore])
 
   const logout = async () => {
@@ -149,6 +184,9 @@ export function AppProvider({ children }) {
       fetchingProducts,
       productsStats, setProductsStats,
       fetchProducts,
+      orders, setOrders,
+      fetchingOrders,
+      fetchOrders,
       authModal, openAuthModal, closeAuthModal,
       nameModal, setNameModal,
       isLoggingOut, setIsLoggingOut

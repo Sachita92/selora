@@ -35,12 +35,18 @@ const s = {
   mVal:    { fontFamily: 'Fraunces,serif', fontSize: '1.8rem', fontWeight: 400, color: c.dark, margin: '.3rem 0' },
   mLbl:    { fontSize: '.68rem', color: c.muted, textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600 },
   empty:   { textAlign: 'center', padding: '3rem 1rem', color: c.muted, fontSize: '.88rem', fontWeight: 300, lineHeight: 1.7 },
+  overlay:  { position: 'fixed', inset: 0, background: 'rgba(26,39,28,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
+  modal:    { background: '#fff', borderRadius: 16, width: '100%', maxWidth: 580, maxHeight: '90vh', overflowY: 'auto', padding: '2rem', border: '1px solid var(--border)' },
+  modalTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-primary)', marginTop: 0, marginBottom: '1.5rem' },
+  spinner:  { display: 'inline-block', width: 20, height: 20, border: '2px solid var(--border)', borderTop: '2px solid var(--g)', borderRadius: '50%', animation: 'spin .7s linear infinite' },
 }
 
 const GlobalStyles = () => (
   <style>{`
     .selora-card { transition: all .25s cubic-bezier(.4,0,.2,1); }
     .selora-card:hover { transform: translateY(-3px); border-color: #5F8D76 !important; box-shadow: 0 8px 24px rgba(95,141,118,.06) !important; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .sf-order-row-hover:hover { background: var(--bg-2); }
     .qa-card {
       display: flex; align-items: center; gap: .7rem;
       padding: .85rem 1.1rem;
@@ -195,12 +201,30 @@ const IconX = () => (
   </svg>
 )
 
+function getRelativeTime(dateString) {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now - date
+  const diffSec = Math.floor(diffMs / 1000)
+  const diffMin = Math.floor(diffSec / 60)
+  const diffHr = Math.floor(diffMin / 60)
+  const diffDay = Math.floor(diffHr / 24)
+
+  if (diffSec < 60) return 'Just now'
+  if (diffMin < 60) return `${diffMin}m ago`
+  if (diffHr < 24) return `${diffHr}h ago`
+  if (diffDay === 1) return 'Yesterday'
+  return `${diffDay}d ago`
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { user, stores, activeStore, setActiveStore, loading, products, fetchingProducts, productsStats, fetchProducts } = useAppContext()
+  const { user, stores, activeStore, setActiveStore, loading, products, fetchingProducts, productsStats, fetchProducts, orders, fetchingOrders } = useAppContext()
   const { sendMessage, setOpen } = useChat()
   const [logs, setLogs]         = useState([])
+  const [selectedOrder, setSelectedOrder] = useState(null)
   const [reports, setReports]   = useState([])
   const [fetchingLogs, setFetchingLogs]       = useState(false)
   const [fetchingReports, setFetchingReports] = useState(false)
@@ -706,6 +730,96 @@ export default function Dashboard() {
               </div>
             )}
 
+            {/* ── RECENT ORDERS ────────────────────────────────────────────── */}
+            <div style={{ ...s.card, marginBottom: '1.5rem', padding: '1.25rem 1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ fontSize: '.72rem', fontWeight: 700, color: c.muted, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                  Recent Orders
+                </div>
+                {orders && orders.length > 0 && (
+                  <Link to="/orders" style={{ fontSize: '.75rem', fontWeight: 600, color: c.green, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    View All Orders &rarr;
+                  </Link>
+                )}
+              </div>
+
+              {fetchingOrders ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '1.5rem 0' }}>
+                  <div style={s.spinner} />
+                  <span style={{ fontSize: '0.85rem', color: c.muted }}>Loading orders...</span>
+                </div>
+              ) : !orders || orders.length === 0 ? (
+                <div style={{ padding: '2rem 1rem', textAlign: 'center', color: c.muted, border: '1px dashed var(--border)', borderRadius: 8, background: 'var(--bg-0)' }}>
+                  <span style={{ fontSize: '1.5rem', display: 'block', marginBottom: '0.5rem' }}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', color: 'var(--text-muted)' }}>
+                      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    </svg>
+                  </span>
+                  <p style={{ fontSize: '0.85rem', margin: 0 }}>
+                    No orders yet — orders will appear here once customers start buying.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)', color: c.muted }}>
+                        <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Products</th>
+                        <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Amount</th>
+                        <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Buyer Wallet</th>
+                        <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Status</th>
+                        <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.slice(0, 5).map((order) => {
+                        const lineItems = order.items || []
+                        const prodNames = lineItems.map(item => `${item.title} (x${item.quantity})`).join(', ')
+                        const wallet = order.buyer_wallet || 'Anonymous'
+                        const truncatedWallet = wallet !== 'Anonymous' ? `${wallet.substring(0, 4)}...${wallet.substring(wallet.length - 4)}` : 'Anonymous'
+                        const relativeTime = getRelativeTime(order.created_at)
+
+                        return (
+                          <tr
+                            key={order.id}
+                            onClick={() => setSelectedOrder(order)}
+                            style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.15s' }}
+                            className="sf-order-row-hover"
+                          >
+                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 500, color: c.dark, maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={prodNames}>
+                              {prodNames || 'Unnamed Item'}
+                            </td>
+                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: c.green }}>
+                              ${Number(order.total_usd).toFixed(2)}
+                            </td>
+                            <td style={{ padding: '0.75rem 0.5rem', color: c.muted, fontFamily: 'monospace' }} title={wallet}>
+                              {truncatedWallet}
+                            </td>
+                            <td style={{ padding: '0.75rem 0.5rem' }}>
+                              <span style={{
+                                padding: '0.15rem 0.5rem',
+                                borderRadius: 12,
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                background: order.status === 'paid' ? 'var(--badge-success-bg, #DCFCE7)' : order.status === 'failed' ? 'var(--inventory-empty-bg, #FEF2F2)' : 'var(--inventory-low-bg, #FFFBEB)',
+                                color: order.status === 'paid' ? 'var(--badge-success-text, #166534)' : order.status === 'failed' ? 'var(--inventory-empty-text, #DC2626)' : 'var(--inventory-low-text, #D97706)'
+                              }}>
+                                {order.status === 'paid' ? 'Confirmed' : order.status === 'failed' ? 'Failed' : 'Pending'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '0.75rem 0.5rem', color: c.muted }}>
+                              {relativeTime}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
             {/* Last Agent Run card section removed (summary now displays in the marquee ticker at the top) */}
 
             {/* ── STAT CARDS ────────────────────────────────────────────────── */}
@@ -956,6 +1070,100 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+
+            {selectedOrder && (
+              <div style={s.overlay} onClick={() => setSelectedOrder(null)}>
+                <div style={{ ...s.modal, maxWidth: 500, padding: '2rem' }} onClick={e => e.stopPropagation()}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+                    <h3 style={{ ...s.modalTitle, margin: 0 }}>Order Details</h3>
+                    <button
+                      onClick={() => setSelectedOrder(null)}
+                      style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontSize: '0.85rem' }}>
+                    {/* Order Status Badge & Total */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-0)', padding: '1rem', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <div>
+                        <div style={{ color: c.muted, fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.04em', marginBottom: '0.2rem' }}>
+                          Order Total
+                        </div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: c.green }}>
+                          ${Number(selectedOrder.total_usd).toFixed(2)}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{
+                          padding: '0.25rem 0.75rem',
+                          borderRadius: 20,
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          background: selectedOrder.status === 'paid' ? 'var(--badge-success-bg, #DCFCE7)' : selectedOrder.status === 'failed' ? 'var(--inventory-empty-bg, #FEF2F2)' : 'var(--inventory-low-bg, #FFFBEB)',
+                          color: selectedOrder.status === 'paid' ? 'var(--badge-success-text, #166534)' : selectedOrder.status === 'failed' ? 'var(--inventory-empty-text, #DC2626)' : 'var(--inventory-low-text, #D97706)'
+                        }}>
+                          {selectedOrder.status === 'paid' ? 'Confirmed' : selectedOrder.status === 'failed' ? 'Failed' : 'Pending'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Order Meta Fields */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div>
+                        <span style={{ display: 'block', color: c.muted, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                          Buyer Wallet Address
+                        </span>
+                        <span style={{ fontFamily: 'monospace', wordBreak: 'break-all', display: 'block', background: 'var(--bg-2)', padding: '0.5rem 0.75rem', borderRadius: 6, color: c.dark }}>
+                          {selectedOrder.buyer_wallet || 'Anonymous'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span style={{ display: 'block', color: c.muted, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                          Transaction Reference (Signature)
+                        </span>
+                        <span style={{ fontFamily: 'monospace', wordBreak: 'break-all', display: 'block', background: 'var(--bg-2)', padding: '0.5rem 0.75rem', borderRadius: 6, color: c.muted }}>
+                          {selectedOrder.reference || 'N/A'}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '1.5rem' }}>
+                        <div style={{ flex: 1 }}>
+                          <span style={{ display: 'block', color: c.muted, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                            Date / Time
+                          </span>
+                          <span style={{ color: c.dark }}>
+                            {new Date(selectedOrder.created_at).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Line Items Table */}
+                    <div>
+                      <span style={{ display: 'block', color: c.muted, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.25rem' }}>
+                        Items Ordered
+                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {(selectedOrder.items || []).map((item, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.25rem 0' }}>
+                            <div>
+                              <span style={{ fontWeight: 600, color: c.dark }}>{item.title}</span>
+                              <span style={{ color: c.muted, marginLeft: '0.5rem' }}>x{item.quantity}</span>
+                            </div>
+                            <span style={{ fontWeight: 600, color: c.dark }}>
+                              ${Number(item.price * item.quantity).toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
 

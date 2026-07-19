@@ -24,6 +24,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
         "https://selora.fashion",
         "https://www.selora.fashion",
         os.getenv("SHOPIFY_APP_URL", ""),
@@ -288,11 +290,18 @@ def get_store_products(store_id: str, force_refresh: bool = False):
         try:
             prod_res = _db().table("selora_products").select("*").eq("store_id", store_id).execute()
             
-            # Calculate revenue/orders metrics from paid selora_orders
+            # Calculate revenue/orders metrics from paid selora_orders (last 30 days)
             revenue = 0.0
             orders_count = 0
             try:
-                orders_res = _db().table("selora_orders").select("total_usd").eq("store_id", store_id).eq("status", "paid").execute()
+                from datetime import datetime, timedelta, timezone
+                thirty_days_ago_iso = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+                orders_res = _db().table("selora_orders") \
+                    .select("total_usd") \
+                    .eq("store_id", store_id) \
+                    .eq("status", "paid") \
+                    .gte("created_at", thirty_days_ago_iso) \
+                    .execute()
                 if orders_res.data:
                     orders_count = len(orders_res.data)
                     revenue = sum(float(o["total_usd"]) for o in orders_res.data)
@@ -338,6 +347,27 @@ def get_store_products(store_id: str, force_refresh: bool = False):
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch products: {e}")
+
+
+@app.get("/api/stores/{store_id}/orders")
+def get_store_orders(store_id: str, request: Request, limit: int = None):
+    """Fetch all native orders for the active store (owner only)."""
+    from database import db as _db, get_store_by_id
+    user_id, _ = _get_user_id_from_token(request)
+    store = get_store_by_id(store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    if store["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    try:
+        query = _db().table("selora_orders").select("*").eq("store_id", store_id).order("created_at", desc=True)
+        if limit:
+            query = query.limit(limit)
+        result = query.execute()
+        return {"orders": result.data or []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch orders: {e}")
 
 
 @app.get("/api/stores/{store_id}/settings")
@@ -2958,12 +2988,12 @@ def create_solana_checkout(body: SolanaCheckoutRequest):
     if total_usd <= 0:
         raise HTTPException(status_code=400, detail="Invalid order total")
         
-    # 3. Generate reference public key
+    # 3. Generate reference public key (must be a base58 string, not bytes)
     try:
         from cryptography.hazmat.primitives.asymmetric import ed25519 as crypto_ed25519
         priv = crypto_ed25519.Ed25519PrivateKey.generate()
         pub_bytes = priv.public_key().public_bytes_raw()
-        reference = b58encode(pub_bytes)
+        reference = b58encode(pub_bytes)  # returns str — custom b58encode in this file
     except Exception as e:
         print(f"Error generating reference key: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate payment reference")
@@ -2984,7 +3014,8 @@ def create_solana_checkout(body: SolanaCheckoutRequest):
         print(f"Error inserting order record: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create pending order: {e}")
         
-    usdc_mint = os.getenv("USDC_MINT", "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU")
+    # Devnet USDC-Dev mint from spl-token-faucet.com — override via USDC_MINT env var if using a different mint
+    usdc_mint = os.getenv("USDC_MINT", "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr")
     
     return {
         "success": True,
@@ -2997,7 +3028,36 @@ def create_solana_checkout(body: SolanaCheckoutRequest):
     }
 
 
+# ─── Solana RPC proxy ─────────────────────────────────────────────────────────
+# The browser cannot call api.devnet.solana.com directly from localhost because
+# Solana's public devnet RPC returns CORS errors for preflight requests.
+# This endpoint forwards any JSON-RPC payload to Solana devnet server-side.
+@app.post("/api/rpc/solana")
+async def solana_rpc_proxy(request: Request):
+    import httpx
+    rpc_url = os.getenv("SOLANA_RPC_URL", "https://api.devnet.solana.com")
+    try:
+        body = await request.json()
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                rpc_url,
+                json=body,
+                headers={"Content-Type": "application/json"}
+            )
+        from fastapi import Response
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            media_type="application/json"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Solana RPC proxy error: {e}")
+
+
+
+
 @app.get("/api/checkout/solana/verify/{reference}")
+
 def verify_solana_checkout(reference: str):
     import httpx
     from database import db as _db
@@ -3033,7 +3093,7 @@ def verify_solana_checkout(reference: str):
         raise HTTPException(status_code=400, detail="Merchant payout wallet is not configured")
         
     merchant_wallet = recipient.strip()
-    usdc_mint = os.getenv("USDC_MINT", "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU")
+    usdc_mint = os.getenv("USDC_MINT", "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr")
     rpc_url = os.getenv("SOLANA_RPC_URL", "https://api.devnet.solana.com")
     
     # 2. Query Solana Devnet RPC to verify transaction
@@ -3119,13 +3179,34 @@ def verify_solana_checkout(reference: str):
                             
                     received_usdc += (post_amount - pre_amount)
                     
-            if received_usdc >= expected_usdc:
+            # Handle self-transfers (merchant testing their own store using the same wallet)
+            buyer_wallet = order.get("buyer_wallet")
+            is_self_transfer = buyer_wallet and (buyer_wallet.strip().lower() == merchant_wallet.lower())
+
+            if received_usdc >= expected_usdc or is_self_transfer:
                 confirmed_signature = sig
                 break
                 
         if confirmed_signature:
             # 3. Update status in database
             _db().table("selora_orders").update({"status": "paid"}).eq("id", order["id"]).execute()
+            
+            # 3.5 Decrement product inventory (stock)
+            try:
+                for item in order.get("items", []):
+                    prod_id = item.get("product_id")
+                    qty = item.get("quantity", 1)
+                    if prod_id:
+                        # Get current inventory
+                        prod_res = _db().table("selora_products").select("inventory").eq("id", prod_id).execute()
+                        if prod_res.data:
+                            current_inv = prod_res.data[0].get("inventory")
+                            if current_inv is not None:
+                                new_inv = current_inv - qty
+                                _db().table("selora_products").update({"inventory": new_inv}).eq("id", prod_id).execute()
+                                print(f"📉 Decremented product {prod_id} inventory from {current_inv} to {new_inv}")
+            except Exception as inv_err:
+                print(f"⚠️ Failed to decrement inventory: {inv_err}")
             
             # 4. Insert purchase events into selora_events
             try:

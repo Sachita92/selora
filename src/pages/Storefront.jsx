@@ -2,26 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { useAuth } from '../lib/useAuth'
-import { useSignAndSendTransaction, useWallets } from '@privy-io/react-auth/solana'
-import { 
-  address, 
-  createSolanaRpc, 
-  createTransactionMessage, 
-  setTransactionMessageFeePayer, 
-  setTransactionMessageLifetimeUsingBlockhash, 
-  appendTransactionMessageInstructions, 
-  compileTransaction, 
-  getTransactionEncoder,
-  AccountRole
-} from '@solana/kit'
-import { 
-  findAssociatedTokenPda, 
-  getTransferCheckedInstruction, 
-  getCreateAssociatedTokenIdempotentInstructionAsync,
-  TOKEN_PROGRAM_ADDRESS
-} from '@solana-program/token'
+
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+const DEBUG_PAYMENTS = import.meta.env.DEV
+const logPayment = (...args) => { if (DEBUG_PAYMENTS) console.log(...args) }
+const warnPayment = (...args) => { if (DEBUG_PAYMENTS) console.warn(...args) }
+const errorPayment = (...args) => { if (DEBUG_PAYMENTS) console.error(...args) }
 
 function getSession() {
   let id = sessionStorage.getItem('selora_sid')
@@ -389,9 +377,10 @@ export default function Storefront({ previewData = null }) {
   const [addedToCart, setAddedToCart] = useState(false)
   const [activeImageIdx, setActiveImageIdx] = useState(0)
 
-  const { wallets } = useWallets()
-  const { signAndSendTransaction } = useSignAndSendTransaction()
   const { login: connectWallet, logout: disconnectWallet, walletAddress } = useAuth()
+
+  // Track whether Phantom is installed and connected (for the direct-pay button)
+  const [phantomConnected, setPhantomConnected] = useState(() => !!(window.solana?.isPhantom && window.solana?.isConnected))
 
   const [cart, setCart] = useState([])
   const [isCartOpen, setIsCartOpen] = useState(false)
@@ -401,6 +390,8 @@ export default function Storefront({ previewData = null }) {
   const [paymentError, setPaymentError] = useState('')
   const [pollingInterval, setPollingInterval] = useState(null)
   const [verifyAttempts, setVerifyAttempts] = useState(0)
+  const [purchasedItems, setPurchasedItems] = useState([])
+  const [txSignature, setTxSignature] = useState('')
 
   const startPolling = (reference) => {
     if (pollingInterval) clearInterval(pollingInterval)
@@ -418,6 +409,8 @@ export default function Storefront({ previewData = null }) {
         const data = await res.json()
         if (data.status === 'confirmed') {
           clearInterval(interval)
+          setTxSignature(data.signature || '')
+          setPurchasedItems([...cart])
           setPaymentStatus('confirmed')
           setCart([])
           triggerEvent(null, 'purchase')
@@ -429,7 +422,7 @@ export default function Storefront({ previewData = null }) {
           setPaymentStatus('timeout')
         }
       } catch (err) {
-        console.error("Polling verify error:", err)
+        errorPayment("Polling verify error:", err)
       }
     }, 2500)
     setPollingInterval(interval)
@@ -511,7 +504,7 @@ export default function Storefront({ previewData = null }) {
     setVerifyAttempts(0)
     
     try {
-      const activeWallet = wallets?.find(w => w.chainType === 'solana')?.address || null
+      const activeWallet = window.solana?.publicKey?.toString() || null
       const cartPayload = cart.map(item => ({
         product_id: item.product.id,
         quantity: item.quantity
@@ -536,10 +529,12 @@ export default function Storefront({ previewData = null }) {
       
       const data = await response.json()
       setCheckoutDetails(data)
-      startPolling(data.reference)
+      // ⚠️ Do NOT start polling here — polling only starts after the wallet
+      // transaction is actually sent (in handleWalletPayment). Starting it here
+      // burns all 24 poll attempts before the user even clicks Pay.
       
     } catch (err) {
-      console.error(err)
+      errorPayment(err)
       setPaymentError(err.message || "Could not connect to payment gateway")
       setPaymentStatus(null)
     } finally {
@@ -548,91 +543,123 @@ export default function Storefront({ previewData = null }) {
   }
 
   const handleWalletPayment = async () => {
+    logPayment('[Payment] handleWalletPayment called, checkoutDetails:', checkoutDetails)
     setCheckoutLoading(true)
     setPaymentError('')
-    
+
     try {
-      const selectedWallet = wallets?.find(w => w.chainType === 'solana') || wallets?.[0]
-      if (!selectedWallet) {
-        throw new Error("Please connect your wallet first")
+      // ── 1. Connect to Phantom via the injected provider ─────────────────────
+      const phantom = window.solana
+      if (!phantom || !phantom.isPhantom) {
+        throw new Error("Phantom wallet not found. Please install the Phantom browser extension.")
       }
-      
-      const rpcUrl = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.devnet.solana.com'
-      const rpc = createSolanaRpc(rpcUrl)
-      const { value: latestBlockhash } = await rpc.getLatestBlockhash().send()
-      
-      const buyerAddr = address(selectedWallet.address)
-      const recipientAddr = address(checkoutDetails.recipient)
-      const mintAddr = address(checkoutDetails.spl_token_mint)
-      const referenceAddr = address(checkoutDetails.reference)
-      
-      const [sourceAta] = await findAssociatedTokenPda({
-        mint: mintAddr,
-        owner: buyerAddr,
-        tokenProgram: TOKEN_PROGRAM_ADDRESS
-      })
-      
-      const [destAta] = await findAssociatedTokenPda({
-        mint: mintAddr,
-        owner: recipientAddr,
-        tokenProgram: TOKEN_PROGRAM_ADDRESS
-      })
-      
-      const createAtaIx = await getCreateAssociatedTokenIdempotentInstructionAsync({
-        mint: mintAddr,
-        owner: recipientAddr,
-        payer: buyerAddr,
-        tokenProgram: TOKEN_PROGRAM_ADDRESS
-      })
-      
-      const amountInBaseUnits = BigInt(Math.round(checkoutDetails.amount_usdc * 1_000_000))
-      const transferIx = getTransferCheckedInstruction({
-        source: sourceAta,
-        destination: destAta,
-        authority: buyerAddr,
-        amount: amountInBaseUnits,
-        decimals: 6,
-        mint: mintAddr,
-        tokenProgram: TOKEN_PROGRAM_ADDRESS
-      })
-      
-      transferIx.accounts.push({
-        address: referenceAddr,
-        role: AccountRole.READONLY
-      })
-      
-      let message = createTransactionMessage({ version: 0 })
-      message = setTransactionMessageFeePayer(buyerAddr, message)
-      message = setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, message)
-      message = appendTransactionMessageInstructions([createAtaIx, transferIx], message)
-      const transactionMessage = compileTransaction(message)
-      
-      const encodedTx = new Uint8Array(getTransactionEncoder().encode(transactionMessage))
-      
-      const result = await signAndSendTransaction({
-        transaction: encodedTx,
-        wallet: selectedWallet
-      })
-      
-      console.log("Transaction sent with signature:", result.signature)
-      
+      if (!phantom.isConnected) {
+        await phantom.connect()
+      }
+      const buyerPubkey = phantom.publicKey
+      if (!buyerPubkey) {
+        throw new Error("Could not read Phantom public key. Make sure Phantom is unlocked.")
+      }
+      setPhantomConnected(true)
+
+      logPayment('[Payment] Loading Solana SDK...')
+      const [
+        { Connection, PublicKey, TransactionMessage, VersionedTransaction },
+        { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction,
+          createTransferCheckedInstruction, TOKEN_PROGRAM_ID, getMint },
+      ] = await Promise.all([
+        import('@solana/web3.js'),
+        import('@solana/spl-token'),
+      ])
+      logPayment('[Payment] SDK loaded ✓')
+
+      // ── 3. Set up connection and keys ────────────────────────────────────────
+      // IMPORTANT: Use backend proxy for all RPC calls — api.devnet.solana.com
+      // cannot be called directly from the browser (CORS preflight failures).
+      const rpcUrl = import.meta.env.VITE_SOLANA_RPC_URL ||
+        `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/rpc/solana`
+      const wsUrl = rpcUrl.includes('127.0.0.1') || rpcUrl.includes('localhost')
+        ? 'wss://api.devnet.solana.com/'
+        : undefined
+      logPayment('[Payment] RPC (via proxy):', rpcUrl)
+      logPayment('[Payment] WS Endpoint:', wsUrl || 'Auto-derived')
+      logPayment('[Payment] Mint:', checkoutDetails.spl_token_mint)
+      logPayment('[Payment] Recipient:', checkoutDetails.recipient)
+      logPayment('[Payment] Reference:', checkoutDetails.reference)
+      logPayment('[Payment] Amount USDC:', checkoutDetails.amount_usdc)
+      const conn      = new Connection(rpcUrl, { commitment: 'confirmed', wsEndpoint: wsUrl })
+      const mintPk    = new PublicKey(checkoutDetails.spl_token_mint)
+      const recipient = new PublicKey(checkoutDetails.recipient)
+      const reference = new PublicKey(checkoutDetails.reference)
+
+      let decimals = 6
+      try {
+        const mintInfo = await getMint(conn, mintPk)
+        decimals = mintInfo.decimals
+        logPayment('[Payment] Mint decimals from chain:', decimals)
+      } catch (_) {
+        warnPayment('[Payment] Could not fetch mint info, using decimals=6')
+      }
+
+      const sourceAta = getAssociatedTokenAddressSync(mintPk, buyerPubkey, false, TOKEN_PROGRAM_ID)
+      const destAta   = getAssociatedTokenAddressSync(mintPk, recipient,   false, TOKEN_PROGRAM_ID)
+      logPayment('[Payment] Source ATA:', sourceAta.toString())
+      logPayment('[Payment] Dest ATA:', destAta.toString())
+
+      const amountRaw = BigInt(Math.round(checkoutDetails.amount_usdc * Math.pow(10, decimals)))
+      logPayment('[Payment] Amount raw:', amountRaw.toString())
+
+      const createDestAtaIx = createAssociatedTokenAccountIdempotentInstruction(
+        buyerPubkey, destAta, recipient, mintPk, TOKEN_PROGRAM_ID
+      )
+      const transferIx = createTransferCheckedInstruction(
+        sourceAta, mintPk, destAta,
+        buyerPubkey,
+        amountRaw, decimals, [], TOKEN_PROGRAM_ID
+      )
+      transferIx.keys.push({ pubkey: reference, isSigner: false, isWritable: false })
+      logPayment('[Payment] Instructions built ✓')
+
+      const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('confirmed')
+      logPayment('[Payment] Blockhash:', blockhash)
+      const txMsg = new TransactionMessage({
+        payerKey: buyerPubkey,
+        recentBlockhash: blockhash,
+        instructions: [createDestAtaIx, transferIx],
+      }).compileToV0Message()
+      const versionedTx = new VersionedTransaction(txMsg)
+      logPayment('[Payment] VersionedTransaction built ✓')
+
+      logPayment('[Payment] Calling phantom.signAndSendTransaction...')
+      const { signature } = await phantom.signAndSendTransaction(versionedTx)
+      logPayment('[Payment] Transaction sent ✓ signature:', signature)
+
+      logPayment('[Payment] Waiting for on-chain confirmation...')
+      await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed')
+      logPayment('[Payment] Transaction confirmed ✓')
+
       if (checkoutDetails?.reference) {
         startPolling(checkoutDetails.reference)
       }
-      
+
     } catch (err) {
-      console.error("Wallet transaction failed:", err)
+      errorPayment('[Payment] FAILED at step above ↑', err)
       let msg = err.message || "Failed to sign transaction"
-      if (msg.includes("User rejected")) {
-        msg = "Transaction was rejected in your wallet."
-      } else if (msg.includes("insufficient balance") || msg.includes("0x1")) {
-        msg = "Insufficient Devnet SOL or USDC balance to complete the transaction."
+      if (msg.includes("User rejected") || msg.includes("rejected") || msg.includes("cancelled")) {
+        msg = "Transaction was cancelled in Phantom."
+      } else if (msg.includes("insufficient") || msg.includes("0x1") || msg.includes("balance") || msg.includes("0 lamports")) {
+        msg = "Insufficient USDC-Dev or SOL balance. Make sure Phantom has USDC-Dev from spl-token-faucet.com."
+      } else if (msg.includes("TokenAccountNotFound") || msg.includes("Account does not exist")) {
+        msg = "USDC-Dev token account not found. Make sure you received USDC-Dev from spl-token-faucet.com."
       }
-      setPaymentError(msg)
+      setPaymentError(msg + (err.message && msg !== err.message ? ` — ${err.message}` : ''))
     } finally {
       setCheckoutLoading(false)
     }
   }
+
+
+
 
 
   function pct(price, compare) {
@@ -1497,7 +1524,68 @@ export default function Storefront({ previewData = null }) {
               </button>
             </div>
 
-            {cart.length === 0 ? (
+            {paymentStatus === 'confirmed' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', textAlign: 'center', flex: 1, overflowY: 'auto' }} className="no-scrollbar">
+                <div style={{ color: 'var(--g)', marginBottom: '1.25rem', display: 'flex', justifyContent: 'center' }}>
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.4rem', color: 'var(--text-primary)', margin: '0 0 .5rem' }}>Payment Successful!</h3>
+                <p style={{ fontSize: '.85rem', color: 'var(--text-muted)', margin: '0 0 1.5rem', lineHeight: 1.4 }}>
+                  Your order is being processed. You'll receive updates on your order status.
+                </p>
+
+                {/* Order Summary box */}
+                <div style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem', background: 'var(--bg-2)', marginBottom: '1.5rem', textAlign: 'left' }}>
+                  <p style={{ fontSize: '.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', margin: '0 0 .5rem' }}>Order Details</p>
+                  <p style={{ fontSize: '.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 .75rem' }}>
+                    Order ID: <span style={{ fontFamily: 'monospace', fontWeight: 400 }}>#{checkoutDetails?.order_id?.slice(0, 8) || '...'}</span>
+                  </p>
+                  
+                  {/* Items purchased list */}
+                  <div style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '.75rem 0', margin: '.75rem 0' }}>
+                    {purchasedItems.map(item => (
+                      <div key={item.product.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', marginBottom: '.4rem', color: 'var(--text-primary)' }}>
+                        <span style={{ fontWeight: 500 }}>{item.product.title} <span style={{ color: 'var(--text-muted)' }}>x{item.quantity}</span></span>
+                        <span style={{ fontWeight: 600 }}>{currency} {(item.product.price * item.quantity).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '.9rem', color: 'var(--text-primary)' }}>
+                    <span>Total Paid</span>
+                    <span>{currency} {Number(checkoutDetails?.amount_usdc || 0).toFixed(2)} USDC</span>
+                  </div>
+                </div>
+
+                {/* Trust signal / Explorer link */}
+                {txSignature && (
+                  <div style={{ marginBottom: '1.5rem', fontSize: '.8rem', color: 'var(--text-muted)' }}>
+                    <span>Transaction signature: </span>
+                    <a 
+                      href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      style={{ color: 'var(--g)', fontWeight: 600, textDecoration: 'none', wordBreak: 'break-all', display: 'block', marginTop: '.25rem' }}
+                    >
+                      {txSignature.slice(0, 8)}...{txSignature.slice(-8)} ↗
+                    </a>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    setIsCartOpen(false);
+                    setCheckoutDetails(null);
+                    setPaymentStatus(null);
+                    setPurchasedItems([]);
+                    setTxSignature('');
+                  }}
+                  style={{ width: '100%', padding: '.85rem', background: 'var(--g)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', transition: 'background .2s' }}
+                >
+                  Continue Shopping
+                </button>
+              </div>
+            ) : cart.length === 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center', color: 'var(--text-muted)' }}>
                 <div style={{ color: '#5A8A67', marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
@@ -1608,7 +1696,7 @@ export default function Storefront({ previewData = null }) {
                           </p>
 
                           {/* Connected Wallet Button or Connect Wallet Action */}
-                          {walletAddress ? (
+                          {(phantomConnected || window.solana?.isPhantom) ? (
                             <button
                               onClick={handleWalletPayment}
                               disabled={checkoutLoading}
@@ -1638,7 +1726,19 @@ export default function Storefront({ previewData = null }) {
                           ) : (
                             <div style={{ marginBottom: '1rem' }}>
                               <button
-                                onClick={connectWallet}
+                                onClick={async () => {
+                                  const phantom = window.solana
+                                  if (!phantom || !phantom.isPhantom) {
+                                    window.open('https://phantom.app/', '_blank')
+                                    return
+                                  }
+                                  try {
+                                    await phantom.connect()
+                                    setPhantomConnected(true)
+                                  } catch (e) {
+                                    setPaymentError('Could not connect Phantom. Make sure it is unlocked.')
+                                  }
+                                }}
                                 style={{
                                   width: '100%',
                                   padding: '.75rem',
@@ -1656,10 +1756,12 @@ export default function Storefront({ previewData = null }) {
                                   marginBottom: '.5rem'
                                 }}
                               >
-                                Connect Wallet to Pay
+                                {window.solana?.isPhantom ? 'Connect Phantom to Pay' : 'Install Phantom Wallet'}
                               </button>
                               <p style={{ fontSize: '.75rem', color: 'var(--text-muted)', margin: 0 }}>
-                                Connect your Solana wallet via Privy to pay directly on desktop, or scan below.
+                                {window.solana?.isPhantom
+                                  ? 'Click to connect your Phantom wallet, then pay.'
+                                  : 'Or scan the QR code below with your Solana wallet app.'}
                               </p>
                             </div>
                           )}
@@ -1682,25 +1784,6 @@ export default function Storefront({ previewData = null }) {
                         </div>
                       )}
 
-                      {paymentStatus === 'confirmed' && (
-                        <div style={{ padding: '1rem 0' }}>
-                          <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--g)', marginBottom: '1rem' }}>
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                          </div>
-                          <p style={{ fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 .25rem' }}>Payment Confirmed!</p>
-                          <p style={{ fontSize: '.8rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>Your order has been placed successfully.</p>
-                          <button
-                            onClick={() => {
-                              setIsCartOpen(false);
-                              setCheckoutDetails(null);
-                              setPaymentStatus(null);
-                            }}
-                            style={{ width: '100%', padding: '.7rem', background: 'var(--g)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
-                          >
-                            Continue Shopping
-                          </button>
-                        </div>
-                      )}
 
                       {paymentStatus === 'timeout' && (
                         <div>

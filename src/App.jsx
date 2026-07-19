@@ -28,6 +28,7 @@ import StoreBuilder   from './pages/StoreBuilder'
 import Storefront     from './pages/Storefront'
 import Reports        from './pages/Reports'
 import Profile        from './pages/Profile'
+import Orders         from './pages/Orders'
 
 // ─── Protected route wrapper ──────────────────────────────────────────────────
 function ProtectedRoute({ children }) {
@@ -81,6 +82,7 @@ export default function App() {
                 <Route path="/dashboard"     element={<Dashboard />} />
                 <Route path="/products"      element={<Products />} />
                 <Route path="/products/:id"  element={<ProductDetail />} />
+                <Route path="/orders"        element={<Orders />} />
                 <Route path="/settings"      element={<Settings />} />
                 <Route path="/reports"       element={<Reports />} />
                 <Route path="/store-builder" element={<StoreBuilder />} />

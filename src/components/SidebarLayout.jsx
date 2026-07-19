@@ -14,7 +14,7 @@ const c = {
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export default function SidebarLayout() {
-  const { user, stores, activeStore, setActiveStore } = useAppContext()
+  const { user, stores, activeStore, setActiveStore, orders } = useAppContext()
   const { logout } = useAuth()
   const { messages, loading: chatLoading, sendMessage, loadHistory, loadSessions, sessionId, sessions, selectSession, setOpen, startNewSession, deleteSession, renameSession, pinSession, pendingDelete, setPendingDelete } = useChat()
   const navigate = useNavigate()
@@ -29,6 +29,41 @@ export default function SidebarLayout() {
   const [rightPanelOpen, setRightPanelOpen]      = useState(false)
   const [panelRunning, setPanelRunning]          = useState(false)
   const [latestRunAt, setLatestRunAt]            = useState(null)
+  
+  const [lastCheckedTime, setLastCheckedTime] = useState(() => {
+    if (!activeStore) return new Date().toISOString()
+    const saved = localStorage.getItem(`last_checked_orders_${activeStore.id}`)
+    if (!saved) {
+      const nowStr = new Date().toISOString()
+      localStorage.setItem(`last_checked_orders_${activeStore.id}`, nowStr)
+      return nowStr
+    }
+    return saved
+  })
+
+  useEffect(() => {
+    if (activeStore) {
+      const saved = localStorage.getItem(`last_checked_orders_${activeStore.id}`)
+      if (!saved) {
+        const nowStr = new Date().toISOString()
+        localStorage.setItem(`last_checked_orders_${activeStore.id}`, nowStr)
+        setLastCheckedTime(nowStr)
+      } else {
+        setLastCheckedTime(saved)
+      }
+    }
+  }, [activeStore])
+
+  const unreadCount = activeStore && orders
+    ? orders.filter(o => o.status === 'paid' && new Date(o.created_at) > new Date(lastCheckedTime)).length
+    : 0
+
+  const handleNotificationsClick = () => {
+    if (!activeStore) return
+    const nowStr = new Date().toISOString()
+    localStorage.setItem(`last_checked_orders_${activeStore.id}`, nowStr)
+    setLastCheckedTime(nowStr)
+  }
 
   useEffect(() => {
     const handleResize = () => {
@@ -280,6 +315,20 @@ export default function SidebarLayout() {
                   <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
                   <line x1="3" y1="6" x2="21" y2="6"></line>
                   <path d="M16 10a4 4 0 0 1-8 0"></path>
+                </svg>
+              )
+            },
+            { 
+              name: 'Orders', 
+              path: '/orders', 
+              icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                  <path d="M12 11h4"></path>
+                  <path d="M12 16h4"></path>
+                  <path d="M8 11h.01"></path>
+                  <path d="M8 16h.01"></path>
                 </svg>
               )
             },
@@ -645,8 +694,9 @@ export default function SidebarLayout() {
 
           {/* Notification bell */}
           <button
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.muted, display: 'flex', alignItems: 'center', padding: '.35rem', borderRadius: 8, transition: 'color 0.2s', flexShrink: 0 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.muted, display: 'flex', alignItems: 'center', padding: '.35rem', borderRadius: 8, transition: 'color 0.2s', flexShrink: 0, position: 'relative' }}
             title="Notifications"
+            onClick={handleNotificationsClick}
             onMouseEnter={e => e.currentTarget.style.color = c.dark}
             onMouseLeave={e => e.currentTarget.style.color = c.muted}
           >
@@ -654,6 +704,26 @@ export default function SidebarLayout() {
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
             </svg>
+            {unreadCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                background: '#DC2626',
+                color: '#fff',
+                borderRadius: '50%',
+                width: 14,
+                height: 14,
+                fontSize: '8px',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 4px rgba(220, 38, 38, 0.4)'
+              }}>
+                {unreadCount}
+              </span>
+            )}
           </button>
 
           {/* Avatar + dropdown */}
