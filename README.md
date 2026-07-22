@@ -58,7 +58,7 @@ Broadening direct-browser checkout and order lookup to other wallets (Solflare, 
 ### Testing it yourself
 - Get Devnet SOL (for fees): https://faucet.solana.com
 - Get Devnet USDC matching mint `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`: https://spl-token-faucet.com/?token-name=USDC-Dev
-  *(Note: Circle's own devnet faucet uses a different mint and will NOT work with this checkout — this tripped us up during development too.)*
+  *(Note: Circle's own devnet faucet uses a different mint and will NOT work with this checkout.)*
 - Set Phantom to **Devnet** before testing.
 
 ---
