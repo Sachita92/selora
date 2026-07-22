@@ -13,6 +13,26 @@ const c = {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+const getGreeting = () => {
+  const hr = new Date().getHours()
+  if (hr < 12) return 'Good morning'
+  if (hr < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
+const getDisplayName = (u) => {
+  if (!u) return 'Seller'
+  const nameVal = u.display_name || u.user_metadata?.display_name || u.user_metadata?.name
+  if (nameVal) return nameVal
+  if (u.email && !u.email.endsWith('@selora.io')) return u.email
+  if (u.wallet_address) {
+    const w = u.wallet_address
+    return w.length > 8 ? `${w.slice(0, 4)}...${w.slice(-4)}` : w
+  }
+  if (u.email) return u.email
+  return 'Seller'
+}
+
 export default function SidebarLayout() {
   const { user, stores, activeStore, setActiveStore, orders } = useAppContext()
   const { logout } = useAuth()
@@ -355,6 +375,15 @@ export default function SidebarLayout() {
                 </svg>
               )
             },
+            {
+              name: 'Connect Store',
+              path: '/connect',
+              icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              )
+            },
           ].map(nav => {
             const active = location.pathname === nav.path
             return (
@@ -653,6 +682,23 @@ export default function SidebarLayout() {
 
           {/* Spacer */}
           <div style={{ flex: 1 }} />
+
+          {/* Inline Greeting */}
+          {!isMobile && user && (
+            <span style={{ 
+              fontSize: '1.05rem', 
+              color: 'var(--text-primary)', 
+              fontWeight: 700,
+              marginRight: '1rem', 
+              display: 'inline-block',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '320px'
+            }}>
+              {getGreeting()}, {getDisplayName(user)} 👋
+            </span>
+          )}
 
           {/* Agent panel toggle — Replaced arrow with agent avatar */}
           <button

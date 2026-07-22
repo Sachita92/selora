@@ -420,15 +420,6 @@ export default function Dashboard() {
       msg:  `Your agent flagged ${concernCount} item${concernCount !== 1 ? 's' : ''} that need${concernCount === 1 ? 's' : ''} attention`,
       action: { label: 'Review Now', to: '/reports' },
     }
-    // 4. Agent hasn't run in 48 h
-    if (!fetchingReports && !latestReport) return {
-      type: 'neutral',
-      msg:  "Your agent hasn't run yet — click 'Run Agent Now' at the top to start growing your store",
-    }
-    if (latestReport && (Date.now() - new Date(latestReport.created_at).getTime() > 48 * 60 * 60 * 1000)) return {
-      type: 'neutral',
-      msg:  "Your agent hasn't run recently — click 'Run Agent Now' at the top to check your store",
-    }
     return null
   })()
 
@@ -442,59 +433,28 @@ export default function Dashboard() {
     <div style={s.page}>
       <GlobalStyles />
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '2.5rem 2rem 5rem' }}>
-        {activeStore && !marqueeDismissed && (
-          <div className="marquee-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-              <div className="marquee-text">
-                🤖 {getMarqueeText()}
-              </div>
-            </div>
-            <button
-              onClick={() => setMarqueeDismissed(true)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-muted)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '.2rem .4rem',
-                zIndex: 10,
-                fontWeight: 600,
-                fontSize: '1rem',
-                opacity: 0.8,
-                transition: 'opacity 0.15s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
-              title="Dismiss Report"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* ── GREETING ──────────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h1 style={s.h1}>{getGreeting()}, {getDisplayName(user)} 👋</h1>
-            <p style={{ fontSize: '.85rem', color: c.muted, marginTop: '.3rem', fontWeight: 300 }}>
-              {activeStore
-                ? (activeStore.shop_url ? `Connected to ${activeStore.shop_name}` : `Hosting native store: ${activeStore.shop_name}`)
-                : 'Set up a store to get started'}
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            {activeStore && (
-              <button style={{ ...s.btnP, background: running ? '#7B907D' : c.green }} onClick={runAgent} disabled={running}>
-                {running ? 'Agent running...' : 'Run Agent Now'}
+        {/* ── ACTIONS HEADER / STOREFRONT STATUS ───────────────────────────── */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+          {/* Left: Compact Storefront status line if Selora native store */}
+          {activeStore && activeStore.platform === 'selora' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', background: 'var(--bg-1)', border: '1px solid var(--border)', padding: '.45rem .85rem', borderRadius: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--g)', display: 'inline-block' }} className="pdot" />
+              <span style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>Storefront Live</span>
+              <span style={{ color: 'var(--border-strong)', width: 1, height: 14 }} />
+              <a href={activeStore.shop_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '.8rem', color: 'var(--g)', textDecoration: 'none', fontWeight: 600 }} title="Visit Public Storefront">Visit ↗</a>
+              <span style={{ color: 'var(--border-strong)', width: 1, height: 14 }} />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.origin + activeStore.shop_url);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                style={{ background: 'none', border: 'none', color: copied ? 'var(--g)' : 'var(--text-muted)', fontSize: '.8rem', cursor: 'pointer', fontWeight: 500, padding: 0 }}
+              >
+                {copied ? 'Copied ✓' : 'Copy Link'}
               </button>
-            )}
-            <Link to="/connect" style={{ ...s.btnP, background: 'transparent', color: c.green, border: `1px solid ${c.green}` }}>
-              + Set Up Store
-            </Link>
-          </div>
+            </div>
+          ) : <div />}
         </div>
 
         {/* ── NO STORES ─────────────────────────────────────────────────────── */}
@@ -528,100 +488,6 @@ export default function Dashboard() {
 
         {activeStore && (
           <>
-            {activeStore.platform === 'selora' && (
-              <div 
-                style={{
-                  background: 'var(--bg-1)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 12,
-                  padding: '1.25rem 1.5rem',
-                  marginBottom: '1.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '1rem'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
-                  <span style={{ fontSize: '1.5rem' }}>🌿</span>
-                  <div>
-                    <h4 style={{ margin: 0, fontSize: '.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      Your Public Storefront is Live!
-                    </h4>
-                    <p style={{ margin: '.2rem 0 0 0', fontSize: '.82rem', color: 'var(--text-muted)' }}>
-                      Customers can browse your catalog and check out using Solana Pay.
-                    </p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '.6rem' }}>
-                  <a 
-                    href={activeStore.shop_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      background: 'var(--g)',
-                      color: '#fff',
-                      padding: '.55rem 1.1rem',
-                      borderRadius: 8,
-                      fontSize: '.8rem',
-                      fontWeight: 600,
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '.4rem',
-                      transition: 'all 0.15s'
-                    }}
-                  >
-                    <span>Visit Storefront</span>
-                    <span>↗</span>
-                  </a>
-                  <Link
-                    to="/store-builder"
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid var(--border-strong)',
-                      color: 'var(--text-primary)',
-                      padding: '.55rem 1.1rem',
-                      borderRadius: 8,
-                      fontSize: '.8rem',
-                      fontWeight: 500,
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '.4rem',
-                      transition: 'all 0.15s',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Edit Storefront
-                  </Link>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.origin + activeStore.shop_url);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
-                    }}
-                    style={{
-                      background: copied ? 'rgba(90,138,103,0.1)' : 'transparent',
-                      border: `1px solid ${copied ? 'var(--g)' : 'var(--border-strong)'}`,
-                      color: copied ? 'var(--g)' : 'var(--text-primary)',
-                      padding: '.55rem 1.1rem',
-                      borderRadius: 8,
-                      fontSize: '.8rem',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '.4rem',
-                      transition: 'all 0.15s'
-                    }}
-                  >
-                    {copied ? 'Copied ✓' : 'Copy Link'}
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* ── WHAT TO DO NEXT BANNER (2d) ───────────────────────────────── */}
             {topPriority && !bannerDismissed && (() => {
@@ -674,6 +540,107 @@ export default function Dashboard() {
                 Manage Store
               </Link>
             </div>
+
+            {/* ── PENDING/NEEDS-REVIEW ORDERS ────────────────────────────────── */}
+            {(() => {
+              const pendingOrders = (orders || []).filter(o => o.status === 'pending')
+              if (pendingOrders.length === 0) return null
+              return (
+                <div style={{ ...s.card, marginBottom: '1.5rem', padding: '1.25rem 1.5rem', background: 'var(--inventory-low-bg)', border: '1px solid var(--inventory-low-text)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div style={{ fontSize: '.72rem', fontWeight: 700, color: 'var(--inventory-low-text)', textTransform: 'uppercase', letterSpacing: '.06em', display: 'flex', alignItems: 'center', gap: '.45rem' }}>
+                      <span className="pdot" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--inventory-low-text)', display: 'inline-block' }} />
+                      Pending Orders ({pendingOrders.length})
+                    </div>
+                    <Link to="/orders" style={{ fontSize: '.75rem', fontWeight: 600, color: 'var(--inventory-low-text)', textDecoration: 'none' }}>
+                      View all →
+                    </Link>
+                  </div>
+                  <div style={{ overflowX: 'auto' }} className="no-scrollbar">
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.8rem', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid rgba(217, 119, 6, 0.2)', color: 'var(--inventory-low-text)', opacity: 0.85 }}>
+                          <th style={{ padding: '0.5rem', fontWeight: 600 }}>Order ID</th>
+                          <th style={{ padding: '0.5rem', fontWeight: 600 }}>Total</th>
+                          <th style={{ padding: '0.5rem', fontWeight: 600 }}>Status</th>
+                          <th style={{ padding: '0.5rem', fontWeight: 600 }}>Reference</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingOrders.slice(0, 3).map(order => (
+                          <tr key={order.id} style={{ borderBottom: '1px solid rgba(217, 119, 6, 0.1)', color: '#1A271C' }}>
+                            <td style={{ padding: '0.75rem 0.5rem', fontFamily: 'monospace', fontWeight: 500 }}>
+                              #{order.id.slice(0, 8)}
+                            </td>
+                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600 }}>
+                              ${Number(order.total_usd || 0).toFixed(2)}
+                            </td>
+                            <td style={{ padding: '0.75rem 0.5rem' }}>
+                              <span style={{
+                                padding: '0.15rem 0.5rem',
+                                borderRadius: 12,
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                background: 'var(--inventory-low-bg, #FFFBEB)',
+                                color: 'var(--inventory-low-text, #D97706)',
+                                border: '1px solid var(--inventory-low-text)'
+                              }}>
+                                Pending
+                              </span>
+                            </td>
+                            <td style={{ padding: '0.75rem 0.5rem', color: c.muted, fontFamily: 'monospace', fontSize: '.75rem' }}>
+                              {order.reference ? `${order.reference.slice(0, 6)}...${order.reference.slice(-6)}` : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* ── NEEDS YOUR ATTENTION (Low Stock Alerts) ─────────────────── */}
+            {hasFlags && (
+              <div style={{ ...s.card, marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <div style={{ ...s.cardTit, marginBottom: 0 }}>Needs Your Attention</div>
+                  {allFlagged.length > 4 && (
+                    <Link to="/products" style={{ fontSize: '.75rem', color: c.green, textDecoration: 'none', fontWeight: 600 }}>
+                      View all {allFlagged.length} flagged →
+                    </Link>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+                  {flaggedSlice.map(prod => (
+                    <div
+                      key={prod.id}
+                      onClick={() => navigate(`/products/${prod.id}`)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '.75rem', background: 'var(--bg-0)', border: `1px solid ${c.border}`, borderRadius: 10, cursor: 'pointer', transition: 'all .15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--inventory-low-text)'; e.currentTarget.style.background = 'var(--inventory-low-bg)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.background = 'var(--bg-0)' }}
+                    >
+                      <div style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', background: 'var(--bg-2)', flexShrink: 0 }}>
+                        {prod.image_url
+                          ? <img src={getOptimizedImageUrl(prod.image_url, 96)} alt={prod.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>👗</div>
+                        }
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '.82rem', fontWeight: 600, color: c.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{prod.title}</div>
+                        <div style={{ fontSize: '.72rem', color: 'var(--inventory-low-text)', marginTop: '.15rem', fontWeight: 500 }}>{getFlagReason(prod)}</div>
+                      </div>
+                      <button
+                        style={{ background: 'none', border: '1px solid var(--inventory-low-text)', color: 'var(--inventory-low-text)', padding: '.3rem .8rem', borderRadius: 6, fontSize: '.72rem', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+                        onClick={e => { e.stopPropagation(); navigate(`/products/${prod.id}`) }}
+                      >
+                        Review
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* ── STORE PULSE (2a) ──────────────────────────────────────────── */}
             {showStorePulse && (
@@ -738,63 +705,53 @@ export default function Dashboard() {
                 </div>
                 {orders && orders.length > 0 && (
                   <Link to="/orders" style={{ fontSize: '.75rem', fontWeight: 600, color: c.green, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                    View All Orders &rarr;
+                    View all {orders.length} orders →
                   </Link>
                 )}
               </div>
 
               {fetchingOrders ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '1.5rem 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
                   <div style={s.spinner} />
-                  <span style={{ fontSize: '0.85rem', color: c.muted }}>Loading orders...</span>
                 </div>
               ) : !orders || orders.length === 0 ? (
-                <div style={{ padding: '2rem 1rem', textAlign: 'center', color: c.muted, border: '1px dashed var(--border)', borderRadius: 8, background: 'var(--bg-0)' }}>
-                  <span style={{ fontSize: '1.5rem', display: 'block', marginBottom: '0.5rem' }}>
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', color: 'var(--text-muted)' }}>
-                      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                    </svg>
-                  </span>
-                  <p style={{ fontSize: '0.85rem', margin: 0 }}>
-                    No orders yet — orders will appear here once customers start buying.
-                  </p>
+                <div style={{ textAlign: 'center', padding: '1.5rem 0', color: c.muted, fontSize: '.82rem', fontWeight: 300 }}>
+                  No orders found.
                 </div>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
+                <div style={{ overflowX: 'auto' }} className="no-scrollbar">
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.8rem', textAlign: 'left' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border)', color: c.muted }}>
-                        <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Products</th>
-                        <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Amount</th>
-                        <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Buyer Wallet</th>
-                        <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Status</th>
-                        <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Date</th>
+                      <tr style={{ borderBottom: `1px solid ${c.border}`, color: c.muted }}>
+                        <th style={{ padding: '0.5rem', fontWeight: 600 }}>Order</th>
+                        <th style={{ padding: '0.5rem', fontWeight: 600 }}>Date</th>
+                        <th style={{ padding: '0.5rem', fontWeight: 600 }}>Customer</th>
+                        <th style={{ padding: '0.5rem', fontWeight: 600 }}>Total</th>
+                        <th style={{ padding: '0.5rem', fontWeight: 600 }}>Status</th>
+                        <th style={{ padding: '0.5rem', fontWeight: 600 }}>Fulfillment</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {orders.slice(0, 5).map((order) => {
-                        const lineItems = order.items || []
-                        const prodNames = lineItems.map(item => `${item.title} (x${item.quantity})`).join(', ')
-                        const wallet = order.buyer_wallet || 'Anonymous'
-                        const truncatedWallet = wallet !== 'Anonymous' ? `${wallet.substring(0, 4)}...${wallet.substring(wallet.length - 4)}` : 'Anonymous'
-                        const relativeTime = getRelativeTime(order.created_at)
-
+                      {orders.slice(0, 5).map(order => {
+                        const relativeTime = formatDate(order.created_at)
                         return (
                           <tr
                             key={order.id}
                             onClick={() => setSelectedOrder(order)}
-                            style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.15s' }}
                             className="sf-order-row-hover"
+                            style={{ borderBottom: `1px solid ${c.border}`, cursor: 'pointer', transition: 'background 0.15s' }}
                           >
-                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 500, color: c.dark, maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={prodNames}>
-                              {prodNames || 'Unnamed Item'}
+                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: c.dark }}>
+                              #{order.id.slice(0, 8)}
                             </td>
-                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: c.green }}>
-                              ${Number(order.total_usd).toFixed(2)}
+                            <td style={{ padding: '0.75rem 0.5rem', color: c.muted }}>
+                              {new Date(order.created_at).toLocaleDateString()}
                             </td>
-                            <td style={{ padding: '0.75rem 0.5rem', color: c.muted, fontFamily: 'monospace' }} title={wallet}>
-                              {truncatedWallet}
+                            <td style={{ padding: '0.75rem 0.5rem', color: c.dark }}>
+                              {order.buyer_wallet ? getDisplayName({ wallet_address: order.buyer_wallet }) : 'Guest'}
+                            </td>
+                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: c.dark }}>
+                              ${Number(order.total_usd || 0).toFixed(2)}
                             </td>
                             <td style={{ padding: '0.75rem 0.5rem' }}>
                               <span style={{
@@ -809,7 +766,7 @@ export default function Dashboard() {
                               </span>
                             </td>
                             <td style={{ padding: '0.75rem 0.5rem', color: c.muted }}>
-                              {relativeTime}
+                              {order.fulfillment_status || 'Unfulfilled'}
                             </td>
                           </tr>
                         )
@@ -819,8 +776,6 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-
-            {/* Last Agent Run card section removed (summary now displays in the marquee ticker at the top) */}
 
             {/* ── STAT CARDS ────────────────────────────────────────────────── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -943,48 +898,6 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* ── NEEDS YOUR ATTENTION ──────────────────────────────────────── */}
-            {hasFlags && (
-              <div style={{ ...s.card, marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <div style={{ ...s.cardTit, marginBottom: 0 }}>Needs Your Attention</div>
-                  {allFlagged.length > 4 && (
-                    <Link to="/products" style={{ fontSize: '.75rem', color: c.green, textDecoration: 'none', fontWeight: 600 }}>
-                      View all {allFlagged.length} flagged →
-                    </Link>
-                  )}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
-                  {flaggedSlice.map(prod => (
-                    <div
-                      key={prod.id}
-                      onClick={() => navigate(`/products/${prod.id}`)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '.75rem', background: 'var(--bg-0)', border: `1px solid ${c.border}`, borderRadius: 10, cursor: 'pointer', transition: 'all .15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--inventory-low-text)'; e.currentTarget.style.background = 'var(--inventory-low-bg)' }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.background = 'var(--bg-0)' }}
-                    >
-                      <div style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', background: 'var(--bg-2)', flexShrink: 0 }}>
-                        {prod.image_url
-                          ? <img src={getOptimizedImageUrl(prod.image_url, 96)} alt={prod.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>👗</div>
-                        }
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '.82rem', fontWeight: 600, color: c.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{prod.title}</div>
-                        <div style={{ fontSize: '.72rem', color: 'var(--inventory-low-text)', marginTop: '.15rem', fontWeight: 500 }}>{getFlagReason(prod)}</div>
-                      </div>
-                      <button
-                        style={{ background: 'none', border: '1px solid var(--inventory-low-text)', color: 'var(--inventory-low-text)', padding: '.3rem .8rem', borderRadius: 6, fontSize: '.72rem', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
-                        onClick={e => { e.stopPropagation(); navigate(`/products/${prod.id}`) }}
-                      >
-                        Review
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* ── ACTIVE COLLECTION ─────────────────────────────────────────── */}
             <div
               style={{ ...s.card, overflow: 'hidden', padding: '1.4rem 1.6rem' }}
@@ -1054,13 +967,11 @@ export default function Dashboard() {
                               </span>
                             )}
                           </div>
-                          <div style={{ padding: '.65rem .8rem', display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
-                            <div style={{ fontSize: '.75rem', fontWeight: 600, color: c.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '.2rem' }}>
-                              {prod.title}
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: '.8rem', fontWeight: 700, color: c.dark }}>${parseFloat(prod.price).toFixed(2)}</span>
-                              <span style={{ fontSize: '.65rem', color: c.muted }}>{prod.sales_last_30_days || 0} sold</span>
+                          <div style={{ padding: '.65rem .8rem', flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: '.8rem', color: c.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{prod.title}</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '.5rem' }}>
+                              <span style={{ fontSize: '.72rem', color: c.muted }}>Inv: {prod.inventory}</span>
+                              <span style={{ fontSize: '.82rem', fontWeight: 700, color: c.green }}>${prod.price}</span>
                             </div>
                           </div>
                         </div>
@@ -1071,61 +982,41 @@ export default function Dashboard() {
               )}
             </div>
 
+            {/* ── SELECTED ORDER DETAIL MODAL ─────────────────────────────── */}
             {selectedOrder && (
-              <div style={s.overlay} onClick={() => setSelectedOrder(null)}>
-                <div style={{ ...s.modal, maxWidth: 500, padding: '2rem' }} onClick={e => e.stopPropagation()}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
-                    <h3 style={{ ...s.modalTitle, margin: 0 }}>Order Details</h3>
-                    <button
-                      onClick={() => setSelectedOrder(null)}
-                      style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)' }}
-                    >
-                      ✕
-                    </button>
+              <div style={s.overlay} onClick={e => { if (e.target === e.currentTarget) setSelectedOrder(null) }}>
+                <div style={s.modal}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: `1px solid ${c.border}`, paddingBottom: '0.75rem' }}>
+                    <h3 style={s.modalTitle}>Order Details</h3>
+                    <button onClick={() => setSelectedOrder(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: c.muted }}>✕</button>
                   </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontSize: '0.85rem' }}>
-                    {/* Order Status Badge & Total */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-0)', padding: '1rem', borderRadius: 8, border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                       <div>
-                        <div style={{ color: c.muted, fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.04em', marginBottom: '0.2rem' }}>
-                          Order Total
-                        </div>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: c.green }}>
-                          ${Number(selectedOrder.total_usd).toFixed(2)}
-                        </div>
+                        <span style={{ display: 'block', color: c.muted, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Order ID</span>
+                        <span style={{ fontFamily: 'monospace', color: c.dark }}>#{selectedOrder.id}</span>
                       </div>
                       <div>
+                        <span style={{ display: 'block', color: c.muted, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Buyer Wallet</span>
+                        <span style={{ fontFamily: 'monospace', color: c.dark, fontSize: '0.8rem' }}>
+                          {selectedOrder.buyer_wallet ? selectedOrder.buyer_wallet : 'N/A'}
+                        </span>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', color: c.muted, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Total USD</span>
+                        <span style={{ fontWeight: 600, color: c.dark }}>${Number(selectedOrder.total_usd || 0).toFixed(2)}</span>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', color: c.muted, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Status</span>
                         <span style={{
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: 20,
-                          fontSize: '0.75rem',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: 12,
+                          fontSize: '0.72rem',
                           fontWeight: 600,
                           background: selectedOrder.status === 'paid' ? 'var(--badge-success-bg, #DCFCE7)' : selectedOrder.status === 'failed' ? 'var(--inventory-empty-bg, #FEF2F2)' : 'var(--inventory-low-bg, #FFFBEB)',
                           color: selectedOrder.status === 'paid' ? 'var(--badge-success-text, #166534)' : selectedOrder.status === 'failed' ? 'var(--inventory-empty-text, #DC2626)' : 'var(--inventory-low-text, #D97706)'
                         }}>
                           {selectedOrder.status === 'paid' ? 'Confirmed' : selectedOrder.status === 'failed' ? 'Failed' : 'Pending'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Order Meta Fields */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div>
-                        <span style={{ display: 'block', color: c.muted, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                          Buyer Wallet Address
-                        </span>
-                        <span style={{ fontFamily: 'monospace', wordBreak: 'break-all', display: 'block', background: 'var(--bg-2)', padding: '0.5rem 0.75rem', borderRadius: 6, color: c.dark }}>
-                          {selectedOrder.buyer_wallet || 'Anonymous'}
-                        </span>
-                      </div>
-
-                      <div>
-                        <span style={{ display: 'block', color: c.muted, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                          Transaction Reference (Signature)
-                        </span>
-                        <span style={{ fontFamily: 'monospace', wordBreak: 'break-all', display: 'block', background: 'var(--bg-2)', padding: '0.5rem 0.75rem', borderRadius: 6, color: c.muted }}>
-                          {selectedOrder.reference || 'N/A'}
                         </span>
                       </div>
 

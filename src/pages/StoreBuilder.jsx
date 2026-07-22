@@ -103,6 +103,14 @@ async function getAuthHeader() {
   return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
 }
 
+function getFriendlyErrorMessage(err) {
+  const errMsg = err?.message || String(err)
+  if (errMsg.includes("template_data") && errMsg.includes("schema cache")) {
+    return "Database Schema Error: The 'template_data' column is missing from your 'selora_stores' table in Supabase. Please execute the local SQL migration script (013_add_template_data_to_selora_stores.sql) in your Supabase SQL editor to create it."
+  }
+  return errMsg
+}
+
 async function api(method, path, body) {
   const headers = { 'Content-Type': 'application/json', ...(await getAuthHeader()) }
   const res = await fetch(`${API}${path}`, {
@@ -305,7 +313,7 @@ export default function StoreBuilder() {
         const pr = await api('GET', `/selora-stores/${res.store.id}/products`)
         setProducts(pr.products || [])
       }
-    } catch(e) { setMsg({ type:'error', text:e.message }) }
+    } catch(e) { setMsg({ type:'error', text: getFriendlyErrorMessage(e) }) }
     finally { setLoading(false) }
   }
 
@@ -591,7 +599,7 @@ export default function StoreBuilder() {
         }
       }
     } catch (e) {
-      setMsg({ type: 'error', text: e.message })
+      setMsg({ type: 'error', text: getFriendlyErrorMessage(e) })
     } finally {
       setSaving(false)
     }
@@ -605,7 +613,7 @@ export default function StoreBuilder() {
       await api('DELETE', `/selora-stores/${store.id}/products/${id}`)
       setProducts(p => p.filter(x => x.id !== id))
       setMsg({ type: 'ok', text: 'Product deleted permanently!' })
-    } catch(e) { setMsg({ type:'error', text:e.message }) }
+    } catch(e) { setMsg({ type:'error', text: getFriendlyErrorMessage(e) }) }
   }
 
   function onProductSaved(p) {

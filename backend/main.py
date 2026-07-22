@@ -131,7 +131,7 @@ def oauth_callback(
         shop_name=shop_name,
     )
 
-    print(f"✅ {shop_name} connected successfully!")
+    print(f" {shop_name} connected successfully!")
 
     # Redirect to dashboard (frontend)
     dashboard_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/dashboard?store_id={store['id']}"
@@ -2307,6 +2307,11 @@ def create_selora_store(body: StoreCreateRequest, request: Request):
         err = str(e)
         if 'duplicate' in err.lower() or 'unique' in err.lower():
             raise HTTPException(status_code=409, detail='That handle is already taken. Please choose another.')
+        if 'template_data' in err.lower() and 'schema cache' in err.lower():
+            raise HTTPException(
+                status_code=500,
+                detail="Database Schema Error: The 'template_data' column is missing from your 'selora_stores' table in Supabase. Please execute the local SQL migration script (013_add_template_data_to_selora_stores.sql) in your Supabase SQL editor to create it."
+            )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -2364,8 +2369,17 @@ def update_selora_store(store_id: str, body: StoreUpdateRequest, request: Reques
         raise HTTPException(status_code=400, detail='No fields to update')
     if 'handle' in update_data:
         update_data['handle'] = re.sub(r'[^a-z0-9-]', '', update_data['handle'].lower().replace(' ', '-'))
-    result = _db().table('selora_stores').update(update_data).eq('id', store_id).execute()
-    return result.data[0]
+    try:
+        result = _db().table('selora_stores').update(update_data).eq('id', store_id).execute()
+        return result.data[0]
+    except Exception as e:
+        err = str(e)
+        if 'template_data' in err.lower() and 'schema cache' in err.lower():
+            raise HTTPException(
+                status_code=500,
+                detail="Database Schema Error: The 'template_data' column is missing from your 'selora_stores' table in Supabase. Please execute the local SQL migration script (013_add_template_data_to_selora_stores.sql) in your Supabase SQL editor to create it."
+            )
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post('/selora-stores/{store_id}/products')
