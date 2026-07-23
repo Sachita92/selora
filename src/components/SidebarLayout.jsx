@@ -226,6 +226,40 @@ export default function SidebarLayout() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: c.bg, fontFamily: 'Inter, sans-serif' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .sf-dashboard-header {
+            padding: 0 0.5rem !important;
+            gap: 0.35rem !important;
+          }
+          .sf-store-status-name {
+            max-width: 80px !important;
+          }
+          .sf-store-status-pill {
+            padding: 0.25rem 0.5rem !important;
+            gap: 0.3rem !important;
+          }
+          .sf-agent-panel-outer {
+            display: none !important;
+          }
+          .sf-agent-panel-outer.open {
+            display: flex !important;
+            width: 100vw !important;
+            position: fixed !important;
+            right: 0 !important;
+            top: 0 !important;
+            z-index: 1000 !important;
+          }
+          .sf-agent-panel-inner {
+            width: 100vw !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .sf-store-status-name {
+            max-width: 50px !important;
+          }
+        }
+      `}</style>
       
       {/* MOBILE OVERLAY */}
       {isMobile && sidebarOpen && (
@@ -665,7 +699,7 @@ export default function SidebarLayout() {
           gap: '.75rem',
           boxSizing: 'border-box',
           flexShrink: 0,
-        }}>
+        }} className="sf-dashboard-header">
 
           {/* Mobile: hamburger */}
           {isMobile && !sidebarOpen && (
@@ -696,7 +730,7 @@ export default function SidebarLayout() {
               textOverflow: 'ellipsis',
               maxWidth: '320px'
             }}>
-              {getGreeting()}, {getDisplayName(user)} 👋
+              {getGreeting()}, {getDisplayName(user)}
             </span>
           )}
 
@@ -844,18 +878,18 @@ export default function SidebarLayout() {
             )}
           </div>
 
-          {/* Store status pill (moved to right after profile avatar) */}
+           {/* Store status pill (moved to right after profile avatar) */}
           {activeStore ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.45rem', background: 'var(--bg-2)', border: `1px solid ${c.border}`, borderRadius: 999, padding: '.28rem .85rem', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.45rem', background: 'var(--bg-2)', border: `1px solid ${c.border}`, borderRadius: 999, padding: '.28rem .85rem', flexShrink: 0 }} className="sf-store-status-pill">
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.green, display: 'inline-block' }} className="pdot" />
-              <span style={{ fontSize: '.78rem', fontWeight: 500, color: c.dark, whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontSize: '.78rem', fontWeight: 500, color: c.dark, whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }} className="sf-store-status-name">
                 {activeStore.shop_name}
               </span>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '.45rem', background: 'var(--bg-2)', border: `1px solid ${c.border}`, borderRadius: 999, padding: '.28rem .85rem', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.45rem', background: 'var(--bg-2)', border: `1px solid ${c.border}`, borderRadius: 999, padding: '.28rem .85rem', flexShrink: 0 }} className="sf-store-status-pill">
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#D97706', display: 'inline-block' }} />
-              <span style={{ fontSize: '.78rem', fontWeight: 500, color: c.muted, whiteSpace: 'nowrap' }}>No store connected</span>
+              <span style={{ fontSize: '.78rem', fontWeight: 500, color: c.muted, whiteSpace: 'nowrap' }} className="sf-store-status-name">No store connected</span>
             </div>
           )}
         </header>
@@ -878,7 +912,7 @@ export default function SidebarLayout() {
         height: '100vh',
         position: 'sticky',
         top: 0,
-      }}>
+      }} className={"sf-agent-panel-outer" + (rightPanelOpen ? " open" : "")}>
         {/* Inner wrapper keeps the panel at fixed 380px inside the collapsing outer */}
         <div style={{
           width: 380,
@@ -888,7 +922,7 @@ export default function SidebarLayout() {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-        }}>
+        }} className="sf-agent-panel-inner">
 
           {/* Panel header */}
           <div style={{

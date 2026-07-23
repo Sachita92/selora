@@ -42,6 +42,11 @@ export function useAuth() {
     setSyncing(true)
     setError(null)
     try {
+      // Clear stale Supabase session data first to avoid conflict
+      try {
+        await supabase.auth.signOut()
+      } catch (_) {}
+
       const token = await getAccessToken()
       if (!token) throw new Error("Could not retrieve Privy token")
 

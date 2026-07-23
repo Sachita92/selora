@@ -47,6 +47,85 @@ const GlobalStyles = () => (
     .selora-card:hover { transform: translateY(-3px); border-color: #5F8D76 !important; box-shadow: 0 8px 24px rgba(95,141,118,.06) !important; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .sf-order-row-hover:hover { background: var(--bg-2); }
+
+    /* Responsive overrides */
+    @media (max-width: 1024px) {
+      .sf-stats-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+      }
+    }
+    @media (max-width: 768px) {
+      .sf-dashboard-container {
+        padding: 1.5rem 1rem 3rem !important;
+      }
+      .sf-stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+      .sf-pulse-divider {
+        display: none !important;
+      }
+      .sf-pulse-container {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 1rem !important;
+      }
+    }
+    @media (max-width: 480px) {
+      .sf-stats-grid {
+        grid-template-columns: 1fr !important;
+      }
+      .sf-review-btn {
+        padding: 0.5rem 1rem !important;
+        font-size: 0.8rem !important;
+      }
+      .sf-hide-mobile {
+        display: none !important;
+      }
+      .sf-modal-grid {
+        grid-template-columns: 1fr !important;
+      }
+      .sf-modal-grid span {
+        word-break: break-all !important;
+      }
+      .sf-modal-container {
+        padding: 1.25rem !important;
+      }
+      
+      /* Table to card layout reflow */
+      .sf-responsive-table, 
+      .sf-responsive-table thead, 
+      .sf-responsive-table tbody, 
+      .sf-responsive-table th, 
+      .sf-responsive-table td, 
+      .sf-responsive-table tr {
+        display: block !important;
+      }
+      .sf-responsive-table thead {
+        display: none !important;
+      }
+      .sf-responsive-table tr {
+        border: 1px solid var(--border) !important;
+        border-radius: 8px !important;
+        padding: 0.75rem !important;
+        margin-bottom: 0.75rem !important;
+        background: var(--bg-1) !important;
+      }
+      .sf-responsive-table td {
+        padding: 0.25rem 0 !important;
+        border: none !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+      }
+      .sf-responsive-table td::before {
+        content: attr(data-label) !important;
+        font-weight: 600 !important;
+        color: var(--text-muted) !important;
+        font-size: 0.75rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+      }
+    }
     .qa-card {
       display: flex; align-items: center; gap: .7rem;
       padding: .85rem 1.1rem;
@@ -230,6 +309,21 @@ export default function Dashboard() {
   const [fetchingReports, setFetchingReports] = useState(false)
   const [running, setRunning]   = useState(false)
   const [scrollIndex, setScrollIndex] = useState(0)
+  const [visibleCount, setVisibleCount] = useState(4)
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 480) {
+        setVisibleCount(1)
+      } else if (window.innerWidth < 768) {
+        setVisibleCount(2)
+      } else {
+        setVisibleCount(4)
+      }
+    }
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
   const [isHovered, setIsHovered]     = useState(false)
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -288,15 +382,15 @@ export default function Dashboard() {
 
   // Carousel autoplay
   useEffect(() => {
-    if (products.length <= 4 || isHovered) return
+    if (products.length <= visibleCount || isHovered) return
     const interval = setInterval(() => {
       setScrollIndex(prev => {
         const next = prev + 1
-        return next > products.length - 4 ? 0 : next
+        return next > products.length - visibleCount ? 0 : next
       })
     }, 3500)
     return () => clearInterval(interval)
-  }, [products, isHovered])
+  }, [products, isHovered, visibleCount])
 
   const runAgent = async () => {
     if (!activeStore) return
@@ -432,7 +526,7 @@ export default function Dashboard() {
   return (
     <div style={s.page}>
       <GlobalStyles />
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '2.5rem 2rem 5rem' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '2.5rem 2rem 5rem' }} className="sf-dashboard-container">
         {/* ── ACTIONS HEADER / STOREFRONT STATUS ───────────────────────────── */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           {/* Left: Compact Storefront status line if Selora native store */}
@@ -557,25 +651,25 @@ export default function Dashboard() {
                     </Link>
                   </div>
                   <div style={{ overflowX: 'auto' }} className="no-scrollbar">
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.8rem', textAlign: 'left' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.8rem', textAlign: 'left' }} className="sf-responsive-table">
                       <thead>
                         <tr style={{ borderBottom: '1px solid rgba(217, 119, 6, 0.2)', color: 'var(--inventory-low-text)', opacity: 0.85 }}>
                           <th style={{ padding: '0.5rem', fontWeight: 600 }}>Order ID</th>
                           <th style={{ padding: '0.5rem', fontWeight: 600 }}>Total</th>
                           <th style={{ padding: '0.5rem', fontWeight: 600 }}>Status</th>
-                          <th style={{ padding: '0.5rem', fontWeight: 600 }}>Reference</th>
+                          <th style={{ padding: '0.5rem', fontWeight: 600 }} className="sf-hide-mobile">Reference</th>
                         </tr>
                       </thead>
                       <tbody>
                         {pendingOrders.slice(0, 3).map(order => (
                           <tr key={order.id} style={{ borderBottom: '1px solid rgba(217, 119, 6, 0.1)', color: '#1A271C' }}>
-                            <td style={{ padding: '0.75rem 0.5rem', fontFamily: 'monospace', fontWeight: 500 }}>
+                            <td style={{ padding: '0.75rem 0.5rem', fontFamily: 'monospace', fontWeight: 500 }} data-label="Order ID">
                               #{order.id.slice(0, 8)}
                             </td>
-                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600 }}>
+                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600 }} data-label="Total">
                               ${Number(order.total_usd || 0).toFixed(2)}
                             </td>
-                            <td style={{ padding: '0.75rem 0.5rem' }}>
+                            <td style={{ padding: '0.75rem 0.5rem' }} data-label="Status">
                               <span style={{
                                 padding: '0.15rem 0.5rem',
                                 borderRadius: 12,
@@ -588,7 +682,7 @@ export default function Dashboard() {
                                 Pending
                               </span>
                             </td>
-                            <td style={{ padding: '0.75rem 0.5rem', color: c.muted, fontFamily: 'monospace', fontSize: '.75rem' }}>
+                            <td style={{ padding: '0.75rem 0.5rem', color: c.muted, fontFamily: 'monospace', fontSize: '.75rem' }} className="sf-hide-mobile" data-label="Reference">
                               {order.reference ? `${order.reference.slice(0, 6)}...${order.reference.slice(-6)}` : '-'}
                             </td>
                           </tr>
@@ -633,6 +727,7 @@ export default function Dashboard() {
                       <button
                         style={{ background: 'none', border: '1px solid var(--inventory-low-text)', color: 'var(--inventory-low-text)', padding: '.3rem .8rem', borderRadius: 6, fontSize: '.72rem', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
                         onClick={e => { e.stopPropagation(); navigate(`/products/${prod.id}`) }}
+                        className="sf-review-btn"
                       >
                         Review
                       </button>
@@ -648,7 +743,7 @@ export default function Dashboard() {
                 <div style={{ fontSize: '.68rem', fontWeight: 700, color: c.muted, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '.75rem' }}>
                   Store Pulse
                 </div>
-                <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'center' }} className="sf-pulse-container">
 
                   <div>
                     <div style={{ fontFamily: 'Fraunces,serif', fontSize: '1.4rem', fontWeight: 400, color: c.dark, lineHeight: 1 }}>
@@ -659,7 +754,7 @@ export default function Dashboard() {
 
                   {totalInventory !== null && (
                     <>
-                      <div style={{ width: 1, height: 32, background: c.border }} />
+                      <div style={{ width: 1, height: 32, background: c.border }} className="sf-pulse-divider" />
                       <div>
                         <div style={{ fontFamily: 'Fraunces,serif', fontSize: '1.4rem', fontWeight: 400, color: c.dark, lineHeight: 1 }}>
                           {totalInventory.toLocaleString()}
@@ -671,7 +766,7 @@ export default function Dashboard() {
 
                   {outOfStock > 0 && (
                     <>
-                      <div style={{ width: 1, height: 32, background: c.border }} />
+                      <div style={{ width: 1, height: 32, background: c.border }} className="sf-pulse-divider" />
                       <div>
                         <div style={{ fontFamily: 'Fraunces,serif', fontSize: '1.4rem', fontWeight: 400, color: 'var(--inventory-empty-text, #DC2626)', lineHeight: 1 }}>
                           {outOfStock}
@@ -683,7 +778,7 @@ export default function Dashboard() {
 
                   {lowStockCount > 0 && (
                     <>
-                      <div style={{ width: 1, height: 32, background: c.border }} />
+                      <div style={{ width: 1, height: 32, background: c.border }} className="sf-pulse-divider" />
                       <div>
                         <div style={{ fontFamily: 'Fraunces,serif', fontSize: '1.4rem', fontWeight: 400, color: 'var(--inventory-low-text)', lineHeight: 1 }}>
                           {lowStockCount}
@@ -720,15 +815,15 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div style={{ overflowX: 'auto' }} className="no-scrollbar">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.8rem', textAlign: 'left' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.8rem', textAlign: 'left' }} className="sf-responsive-table">
                     <thead>
                       <tr style={{ borderBottom: `1px solid ${c.border}`, color: c.muted }}>
                         <th style={{ padding: '0.5rem', fontWeight: 600 }}>Order</th>
-                        <th style={{ padding: '0.5rem', fontWeight: 600 }}>Date</th>
-                        <th style={{ padding: '0.5rem', fontWeight: 600 }}>Customer</th>
+                        <th style={{ padding: '0.5rem', fontWeight: 600 }} className="sf-hide-mobile">Date</th>
+                        <th style={{ padding: '0.5rem', fontWeight: 600 }} className="sf-hide-mobile">Customer</th>
                         <th style={{ padding: '0.5rem', fontWeight: 600 }}>Total</th>
                         <th style={{ padding: '0.5rem', fontWeight: 600 }}>Status</th>
-                        <th style={{ padding: '0.5rem', fontWeight: 600 }}>Fulfillment</th>
+                        <th style={{ padding: '0.5rem', fontWeight: 600 }} className="sf-hide-mobile">Fulfillment</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -741,19 +836,19 @@ export default function Dashboard() {
                             className="sf-order-row-hover"
                             style={{ borderBottom: `1px solid ${c.border}`, cursor: 'pointer', transition: 'background 0.15s' }}
                           >
-                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: c.dark }}>
+                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: c.dark }} data-label="Order">
                               #{order.id.slice(0, 8)}
                             </td>
-                            <td style={{ padding: '0.75rem 0.5rem', color: c.muted }}>
+                            <td style={{ padding: '0.75rem 0.5rem', color: c.muted }} className="sf-hide-mobile" data-label="Date">
                               {new Date(order.created_at).toLocaleDateString()}
                             </td>
-                            <td style={{ padding: '0.75rem 0.5rem', color: c.dark }}>
+                            <td style={{ padding: '0.75rem 0.5rem', color: c.dark }} className="sf-hide-mobile" data-label="Customer">
                               {order.buyer_wallet ? getDisplayName({ wallet_address: order.buyer_wallet }) : 'Guest'}
                             </td>
-                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: c.dark }}>
+                            <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: c.dark }} data-label="Total">
                               ${Number(order.total_usd || 0).toFixed(2)}
                             </td>
-                            <td style={{ padding: '0.75rem 0.5rem' }}>
+                            <td style={{ padding: '0.75rem 0.5rem' }} data-label="Status">
                               <span style={{
                                 padding: '0.15rem 0.5rem',
                                 borderRadius: 12,
@@ -765,7 +860,7 @@ export default function Dashboard() {
                                 {order.status === 'paid' ? 'Confirmed' : order.status === 'failed' ? 'Failed' : 'Pending'}
                               </span>
                             </td>
-                            <td style={{ padding: '0.75rem 0.5rem', color: c.muted }}>
+                            <td style={{ padding: '0.75rem 0.5rem', color: c.muted }} className="sf-hide-mobile" data-label="Fulfillment">
                               {order.fulfillment_status || 'Unfulfilled'}
                             </td>
                           </tr>
@@ -778,7 +873,7 @@ export default function Dashboard() {
             </div>
 
             {/* ── STAT CARDS ────────────────────────────────────────────────── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '1rem', marginBottom: '1.5rem' }} className="sf-stats-grid">
 
               {/* Revenue 30d */}
               <div style={s.mCard} className="selora-card">
@@ -919,8 +1014,8 @@ export default function Dashboard() {
 
               {fetchingProducts ? (
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                  {[1,2,3,4].map(n => (
-                    <div key={n} style={{ border: `1px solid ${c.border}`, borderRadius: 10, background: 'var(--bg-1)', width: 'calc(25% - .75rem)', flexShrink: 0, height: 210, display: 'flex', flexDirection: 'column' }}>
+                  {[1,2,3,4].slice(0, visibleCount).map(n => (
+                    <div key={n} style={{ border: `1px solid ${c.border}`, borderRadius: 10, background: 'var(--bg-1)', width: visibleCount === 4 ? 'calc(25% - .75rem)' : (visibleCount === 2 ? 'calc(50% - .5rem)' : '100%'), flexShrink: 0, height: 210, display: 'flex', flexDirection: 'column' }}>
                       <div style={{ aspectRatio: '1.15', width: '100%', background: 'var(--bg-2)' }} />
                       <div style={{ padding: '.65rem .8rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
                         <div style={{ height: 12, background: 'var(--bg-2)', borderRadius: 4, width: '80%' }} />
@@ -938,7 +1033,7 @@ export default function Dashboard() {
                 <div style={{ overflow: 'hidden', width: '100%' }}>
                   <div style={{
                     display: 'flex', gap: '1rem',
-                    transform: `translateX(calc(-${scrollIndex} * (25% + .25rem)))`,
+                    transform: `translateX(${visibleCount === 4 ? `calc(-${scrollIndex} * (25% + .25rem))` : (visibleCount === 2 ? `calc(-${scrollIndex} * (50% + .5rem))` : `calc(-${scrollIndex} * (100% + 1rem))`)}`,
                     transition: 'transform .7s cubic-bezier(.16,1,.3,1)',
                   }}>
                     {products.map((prod, index) => {
@@ -948,7 +1043,7 @@ export default function Dashboard() {
                         <div
                           key={prod.id}
                           onClick={() => navigate(`/products/${prod.id}`)}
-                          style={{ border: `1px solid var(--border)`, borderRadius: 10, overflow: 'hidden', background: 'var(--bg-1)', cursor: 'pointer', display: 'flex', flexDirection: 'column', width: 'calc(25% - .75rem)', flexShrink: 0 }}
+                          style={{ border: `1px solid var(--border)`, borderRadius: 10, overflow: 'hidden', background: 'var(--bg-1)', cursor: 'pointer', display: 'flex', flexDirection: 'column', width: visibleCount === 4 ? 'calc(25% - .75rem)' : (visibleCount === 2 ? 'calc(50% - .5rem)' : '100%'), flexShrink: 0 }}
                           className="selora-card"
                         >
                           <div style={{ aspectRatio: '1.15', width: '100%', overflow: 'hidden', background: 'var(--bg-2)', position: 'relative' }}>
@@ -985,13 +1080,13 @@ export default function Dashboard() {
             {/* ── SELECTED ORDER DETAIL MODAL ─────────────────────────────── */}
             {selectedOrder && (
               <div style={s.overlay} onClick={e => { if (e.target === e.currentTarget) setSelectedOrder(null) }}>
-                <div style={s.modal}>
+                <div style={s.modal} className="sf-modal-container">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: `1px solid ${c.border}`, paddingBottom: '0.75rem' }}>
                     <h3 style={s.modalTitle}>Order Details</h3>
                     <button onClick={() => setSelectedOrder(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: c.muted }}>✕</button>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }} className="sf-modal-grid">
                       <div>
                         <span style={{ display: 'block', color: c.muted, fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Order ID</span>
                         <span style={{ fontFamily: 'monospace', color: c.dark }}>#{selectedOrder.id}</span>

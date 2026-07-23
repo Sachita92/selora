@@ -454,13 +454,18 @@ function SignupForm({ plan, onSuccess, onSwitch, dark }) {
 
 // ── AuthModal ─────────────────────────────────────────────────────────────────
 export default function AuthModal() {
-  const { authModal, closeAuthModal } = useAppContext()
+  const { authModal, closeAuthModal, authMessage, setAuthMessage } = useAppContext()
   const { open, mode, plan } = authModal
   const [currentMode, setCurrentMode] = useState(mode)
   const navigate = useNavigate()
   const dark = useIsDark()
 
   const T = t(dark)
+
+  const handleClose = useCallback(() => {
+    if (setAuthMessage) setAuthMessage(null)
+    closeAuthModal()
+  }, [closeAuthModal, setAuthMessage])
 
   // Sync mode when opened with a specific mode
   useEffect(() => {
@@ -479,13 +484,13 @@ export default function AuthModal() {
   // Escape key
   useEffect(() => {
     if (!open) return
-    const handler = (e) => { if (e.key === 'Escape') closeAuthModal() }
+    const handler = (e) => { if (e.key === 'Escape') handleClose() }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [open, closeAuthModal])
+  }, [open, handleClose])
 
   function handleSuccess(user, plan) {
-    closeAuthModal()
+    handleClose()
     if (plan && plan !== 'free') {
       navigate(`/pricing?plan=${plan}`)
     } else {
@@ -567,7 +572,7 @@ export default function AuthModal() {
 
       {/* Backdrop */}
       <div
-        onClick={closeAuthModal}
+        onClick={handleClose}
         style={{
           position: 'fixed', inset: 0, zIndex: 9000,
           background: T.backdrop,
@@ -610,7 +615,7 @@ export default function AuthModal() {
           {/* Close button */}
           <button
             className="am-close"
-            onClick={closeAuthModal}
+            onClick={handleClose}
             aria-label="Close"
             style={{ color: T.closeColor }}
             onMouseEnter={e => { e.currentTarget.style.background = T.closeBgHover; e.currentTarget.style.color = T.closeColorHover }}
@@ -627,6 +632,12 @@ export default function AuthModal() {
               Se<span style={{ color: T.green }}>lo</span>ra
             </span>
           </div>
+
+          {authMessage && (
+            <div style={{ background: T.successBg, border: `1px solid ${T.successColor}`, borderRadius: 8, padding: '.7rem 1rem', fontSize: '.82rem', color: T.successColor, marginBottom: '1.2rem', textAlign: 'center', fontWeight: 500 }}>
+              {authMessage}
+            </div>
+          )}
 
           {currentMode === 'login'
             ? <LoginForm  plan={plan} onSuccess={handleSuccess} onSwitch={switchMode} dark={dark} />

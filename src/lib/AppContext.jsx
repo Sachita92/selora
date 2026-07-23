@@ -1,10 +1,13 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
+import { usePrivy } from '@privy-io/react-auth'
 import { supabase } from './supabase'
 
 const AppContext = createContext(null)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export function AppProvider({ children }) {
+  const { user: privyUser, authenticated, ready, getAccessToken } = usePrivy()
+  const [authMessage, setAuthMessage] = useState(null)
   const [user, setUser] = useState(null)
   const [stores, setStores] = useState([])
   const [activeStore, setActiveStore] = useState(null)
@@ -22,6 +25,115 @@ export function AppProvider({ children }) {
   // Ref to prevent duplicate auth subscriptions in React Strict Mode
   const authSubscriptionRef = useRef(null)
   const initialFetchTriggered = useRef(false)
+  const attemptSilentSyncRef = useRef(null)
+  const isLoggingOutRef = useRef(isLoggingOut)
+  const syncAttemptsRef = useRef(0)
+  const lastSyncFailureTimeRef = useRef(0)
+  const isSyncingRef = useRef(false)
+
+  useEffect(() => {
+    isLoggingOutRef.current = isLoggingOut
+  }, [isLoggingOut])
+
+  const getWalletAddress = useCallback((u) => {
+    if (!u) return null
+    if (u.wallet?.chainType === 'solana') {
+      return u.wallet.address
+    }
+    const solanaAccount = u.linkedAccounts?.find(
+      (account) => account.type === 'wallet' && account.chainType === 'solana'
+    )
+    return solanaAccount?.address || null
+  }, [])
+
+  const handleSignOutAndPrompt = useCallback(async () => {
+    try {
+      await supabase.auth.signOut()
+    } catch (_) {}
+    setUser(null)
+    setStores([])
+    setActiveStore(null)
+    setAuthMessage("Please reconnect your wallet to continue")
+    openAuthModal('login')
+  }, [openAuthModal])
+
+  const attemptSilentSync = useCallback(async () => {
+    if (isSyncingRef.current) return
+    isSyncingRef.current = true
+
+    if (syncAttemptsRef.current >= 3) {
+      console.warn("Max silent sync attempts reached. Prompting for reconnect.")
+      handleSignOutAndPrompt()
+      isSyncingRef.current = false
+      return
+    }
+
+    const timeSinceLastFailure = Date.now() - lastSyncFailureTimeRef.current
+    if (timeSinceLastFailure < 10000) {
+      console.warn("Prevented auth sync retry loop. Cooldown active.")
+      isSyncingRef.current = false
+      return
+    }
+
+    if (!ready || !authenticated || !privyUser) {
+      handleSignOutAndPrompt()
+      isSyncingRef.current = false
+      return
+    }
+    try {
+      console.log(`Attempting silent token recovery sync via Privy (Attempt ${syncAttemptsRef.current + 1})...`)
+      syncAttemptsRef.current++
+      const token = await getAccessToken()
+      if (!token) throw new Error("Could not retrieve Privy token")
+
+      // Sign out of Supabase first to clear stale/corrupted token data
+      try {
+        await supabase.auth.signOut()
+      } catch (_) {}
+
+      const walletAddress = getWalletAddress(privyUser)
+
+      const res = await fetch(`${API_URL}/api/auth/privy-sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          privy_token: token,
+          wallet_address: walletAddress,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error("Sync failed")
+      }
+
+      const data = await res.json()
+      if (data.session) {
+        const { error: supabaseErr } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        })
+        if (supabaseErr) throw supabaseErr
+
+        console.log("Silent recovery sync successful, Supabase session restored!")
+        syncAttemptsRef.current = 0
+        fetchStores()
+      } else {
+        throw new Error("No session returned")
+      }
+    } catch (err) {
+      console.error("Silent recovery sync failed:", err)
+      lastSyncFailureTimeRef.current = Date.now()
+      handleSignOutAndPrompt()
+    } finally {
+      isSyncingRef.current = false
+    }
+  }, [ready, authenticated, privyUser, getAccessToken, getWalletAddress, handleSignOutAndPrompt])
+
+  useEffect(() => {
+    attemptSilentSyncRef.current = attemptSilentSync
+  }, [attemptSilentSync])
 
   // Auth check & store fetch
   useEffect(() => {
@@ -29,13 +141,21 @@ export function AppProvider({ children }) {
 
     // Only subscribe once — guard against React Strict Mode double-invoke
     if (!authSubscriptionRef.current) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (!mounted) return
         if (!session) {
           setUser(null)
           setStores([])
           setActiveStore(null)
           setLoading(false)
+
+          // Detect if Supabase session failed to refresh unexpectedly while Privy is still authenticated
+          if (!isLoggingOutRef.current && ready && authenticated) {
+            console.log("Session lost/expired unexpectedly while Privy is authenticated. Triggering silent sync...")
+            if (attemptSilentSyncRef.current) {
+              await attemptSilentSyncRef.current()
+            }
+          }
         } else {
           setUser(session.user)
           // Deduplicate parallel initial fetch
@@ -57,11 +177,20 @@ export function AppProvider({ children }) {
         authSubscriptionRef.current = null
       }
     }
-  }, [])
+  }, [ready, authenticated])
 
-  const fetchStores = async () => {
+  const fetchStores = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (error) {
+        console.warn("fetchStores session error (ignoring if expected refresh failure):", error.message)
+        if (error.message?.includes('Invalid Refresh Token') || error.message?.includes('Refresh Token Not Found')) {
+          if (attemptSilentSyncRef.current) {
+            await attemptSilentSyncRef.current()
+          }
+          return
+        }
+      }
       if (!session) {
         setLoading(false)
         return
@@ -100,7 +229,7 @@ export function AppProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   const fetchProducts = async (storeId, forceRefresh = false, silent = false) => {
     if (!storeId) return
@@ -125,8 +254,12 @@ export function AppProvider({ children }) {
     if (!storeId) return
     if (!silent) setFetchingOrders(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (error) {
+        console.warn("fetchOrders session error:", error.message)
+      }
       const token = session ? session.access_token : ''
+      if (!token) return
       const url = `${API_URL}/api/stores/${storeId}/orders`
       const res = await fetch(url, {
         headers: {
@@ -189,7 +322,8 @@ export function AppProvider({ children }) {
       fetchOrders,
       authModal, openAuthModal, closeAuthModal,
       nameModal, setNameModal,
-      isLoggingOut, setIsLoggingOut
+      isLoggingOut, setIsLoggingOut,
+      authMessage, setAuthMessage
     }}>
       {children}
     </AppContext.Provider>

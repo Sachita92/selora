@@ -142,6 +142,7 @@ selora/
 - AI growth agent: automated repricing, listing copywriting, and restock alerts for connected stores
 - Broaden direct-browser checkout and order lookup beyond Phantom, via `@solana/wallet-adapter-react`
 - Solana Token Extensions loyalty tokens for Native Store buyers
+- Agent-initiated payments via pay.sh / x402, enabling the AI growth agent to autonomously handle tasks like restocking or paid promotions on a seller's behalf
 - Expanded platform connections beyond Shopify
 
 ---

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { useAuth } from '../lib/useAuth'
 
@@ -216,9 +216,9 @@ function ProductCard({ product, isSample = false, isAdded = false, onProductClic
 
   return (
     <div
-      onClick={() => !isSample && onProductClick && onProductClick(product)}
+      onClick={() => onProductClick && onProductClick(product)}
       style={{
-        cursor: isSample ? 'default' : 'pointer',
+        cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
         borderRadius: 16,
@@ -227,7 +227,7 @@ function ProductCard({ product, isSample = false, isAdded = false, onProductClic
         border: '1px solid #E4EBE5',
         transition: 'all 0.3s ease',
       }}
-      className={isSample ? "" : "sf-prod-card"}
+      className="sf-prod-card"
     >
       {/* Image Wrapper */}
       <div style={{ position: 'relative', aspectRatio: '3/4', background: '#F8FAF8', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -361,7 +361,8 @@ function ProductGrid({ products, isSample = false, onProductClick, onAddToCart, 
 }
 
 export default function Storefront({ previewData = null }) {
-  const { handle } = useParams()
+  const { handle, productId } = useParams()
+  const navigate = useNavigate()
   const { openAuthModal } = useAppContext()
   const [store, setStore]     = useState(null)
   const [products, setProducts] = useState([])
@@ -456,17 +457,30 @@ export default function Storefront({ previewData = null }) {
 
   useEffect(() => {
     if (store) {
-      document.title = store.name || "Selora Store"
+      const isSample = products.length === 0
+      const currentProducts = isSample ? defaultTemplateData.newArrivals.items : products
+      const currentProduct = productId ? currentProducts.find(p => String(p.id) === String(productId)) : null
+
+      if (currentProduct) {
+        document.title = `${currentProduct.title} — ${store.name || "Selora Store"}`
+      } else {
+        document.title = store.name ? `${store.name} — Storefront` : "Selora Store"
+      }
+
       if (!previewData) {
         trackEvent(store.id, null, 'view')
       }
     }
-  }, [store, previewData])
+  }, [store, previewData, productId, products])
 
   function openProduct(p) {
-    setSelected(p)
-    setAddedToCart(false)
-    setActiveImageIdx(0)
+    if (!previewData) {
+      navigate(`/store/${handle}/product/${p.id}`)
+    } else {
+      setSelected(p)
+      setAddedToCart(false)
+      setActiveImageIdx(0)
+    }
     if (!trackedViews.current.has(p.id)) {
       trackedViews.current.add(p.id)
       triggerEvent(p.id, 'view')
@@ -489,7 +503,6 @@ export default function Storefront({ previewData = null }) {
     setTimeout(() => {
       setAddedToCart(false)
       setSelected(null)
-      setIsCartOpen(true)
     }, 850)
   }
 
@@ -969,8 +982,7 @@ export default function Storefront({ previewData = null }) {
         .sf-drawer-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(26,39,28,.45);
-          backdrop-filter: blur(4px);
+          background: rgba(26, 39, 28, 0.25);
           z-index: 299;
         }
         .sf-drawer {
@@ -1014,30 +1026,33 @@ export default function Storefront({ previewData = null }) {
         <div style={{ maxWidth: 1200, margin: '0 auto', height: 70, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Left: logo/name */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <a href="#" style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(1.1rem, 3vw, 1.4rem)', fontWeight: 700, color: '#1A271C', textDecoration: 'none', letterSpacing: '-0.02em', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block' }} title={store.name || "Selora"}>
+            <Link to={`/store/${handle}`} style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(1.1rem, 3vw, 1.4rem)', fontWeight: 700, color: '#1A271C', textDecoration: 'none', letterSpacing: '-0.02em', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block' }} title={store.name || "Selora"}>
               {store.name || "Selora"}
-            </a>
+            </Link>
           </div>
 
           {/* Center: nav links */}
           <div style={{ display: 'flex', gap: '2rem' }} className="sf-nav-links">
-            {template.header.navLinks.map((link, idx) => (
-              <a
-                key={idx}
-                href={link.url}
-                style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '0.9rem',
-                  fontWeight: 500,
-                  color: '#3B5A44',
-                  textDecoration: 'none',
-                  transition: 'color 0.2s',
-                }}
-                className="sf-nav-link"
-              >
-                {link.label}
-              </a>
-            ))}
+            {template.header.navLinks.map((link, idx) => {
+              const isHome = link.label.toLowerCase() === 'home'
+              return (
+                <a
+                  key={idx}
+                  href={isHome ? `/store/${handle}` : link.url}
+                  style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                    color: '#3B5A44',
+                    textDecoration: 'none',
+                    transition: 'color 0.2s',
+                  }}
+                  className="sf-nav-link"
+                >
+                  {link.label}
+                </a>
+              )
+            })}
             <Link
               to={`/store/${handle}/orders`}
               style={{
@@ -1082,308 +1097,505 @@ export default function Storefront({ previewData = null }) {
         </div>
       </nav>
 
-      {/* HERO SECTION */}
-      <div className="sf-hero-section">
-        {/* Left Half: Headline, Paragraph, CTAs */}
-        <div className="sf-hero-left">
-          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#82A996', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            {template.hero.eyebrow}
-          </span>
-          <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2rem, 4.5vw, 3.5rem)', fontWeight: 500, color: '#ffffff', margin: 0, lineHeight: 1.1, whiteSpace: 'pre-line' }}>
-            {template.hero.title}
-          </h1>
-          <p style={{ fontSize: '1rem', color: '#B8BCB8', lineHeight: 1.6, margin: '0.5rem 0 1rem' }}>
-            {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-            <a
-              href={template.hero.ctaPrimaryUrl}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.85rem 1.75rem',
-                backgroundColor: '#82A996',
-                color: '#1A271C',
-                borderRadius: 30,
-                textDecoration: 'none',
-                fontWeight: 600,
-                fontSize: '0.9rem',
-                transition: 'all 0.2s ease',
-              }}
-              className="sf-hero-btn-primary"
+      {productId ? (
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '3rem 1.5rem', fontFamily: 'Inter, sans-serif', minHeight: '60vh' }}>
+          {/* Breadcrumb / Back link */}
+          <div style={{ marginBottom: '2.5rem' }}>
+            <Link
+              to={`/store/${handle}`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: '#5A8A67', fontWeight: 600, textDecoration: 'none', fontSize: '0.9rem', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#1A271C'}
+              onMouseLeave={e => e.currentTarget.style.color = '#5A8A67'}
             >
-              {template.hero.ctaPrimaryText} &rarr;
-            </a>
-            <a
-              href={template.hero.ctaSecondaryUrl}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.85rem 1.75rem',
-                backgroundColor: 'transparent',
-                color: '#ffffff',
-                borderRadius: 30,
-                border: '1.5px solid rgba(255,255,255,0.4)',
-                textDecoration: 'none',
-                fontWeight: 600,
-                fontSize: '0.9rem',
-                transition: 'all 0.2s ease',
-              }}
-              className="sf-hero-btn-secondary"
-            >
-              {template.hero.ctaSecondaryText}
-            </a>
+              &larr; Back to Home
+            </Link>
           </div>
-        </div>
 
-        {/* Right Half: Stacked Card Composition or Placeholder */}
-        <div className="sf-hero-right">
-          {hasAnyHero ? (
-            <div className="sf-hero-stack-container">
-              <div className="sf-hero-stack">
-                {/* Left Card */}
-                {imgLeft && (
-                  <div className="sf-hero-card sf-hero-card-left">
-                    <img src={imgLeft} alt="" />
-                  </div>
-                )}
-                {/* Right Card */}
-                {imgRight && (
-                  <div className="sf-hero-card sf-hero-card-right">
-                    <img src={imgRight} alt="" />
-                  </div>
-                )}
-                {/* Main Card */}
-                {imgMain && (
-                  <div className="sf-hero-card sf-hero-card-main">
-                    <img src={imgMain} alt="" />
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="sf-hero-placeholder">
-              <div className="sf-hero-placeholder-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}><LeafIcon size={48} color="rgba(255,255,255,0.2)" /></div>
-              <p style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 500 }}>Add your hero images</p>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'Inter, sans-serif' }}>
-                Go to the store builder settings tab to complete onboarding
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
+          {(() => {
+            const isSample = products.length === 0
+            const currentProducts = isSample ? defaultTemplateData.newArrivals.items : products
+            const product = currentProducts.find(p => String(p.id) === String(productId))
 
-      {/* TRUST BAR */}
-      <div className="sf-trust-bar">
-        {template.hero.trustBar.map((item, idx) => (
-          <div key={idx} className="sf-trust-item">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1E3A2F' }}>
-              {renderIcon(item.icon, 20, '#1E3A2F')}
-            </div>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1E3A2F', fontFamily: 'Inter, sans-serif' }}>
-              {item.label}
-            </span>
-          </div>
-        ))}
-      </div>
+            if (!product) {
+              return (
+                <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+                  <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', color: '#1A271C', margin: '0 0 1rem' }}>Product Not Found</h2>
+                  <p style={{ color: '#7B907D', marginBottom: '2rem' }}>The product you are looking for does not exist or has been removed.</p>
+                  <Link to={`/store/${handle}`} style={{ display: 'inline-block', background: '#5A8A67', color: '#fff', padding: '0.85rem 2rem', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}>
+                    Return to Store
+                  </Link>
+                </div>
+              )
+            }
 
-      {/* MAIN CONTAINER */}
-      <main style={{ maxWidth: 1200, margin: '0 auto', padding: '5rem 1.5rem' }}>
-        
-        {/* SHOP BY CATEGORY */}
-        <section style={{ marginBottom: '6rem' }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
-            {template.categories.eyebrow}
-          </span>
-          <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 500, color: '#1A271C', margin: '0 0 2rem' }}>
-            {template.categories.title}
-          </h2>
+            const resolvedCategoryName = isSample
+              ? (product.category || 'FASHION').toUpperCase()
+              : (store?.categories?.find(c => c.id === product.category_id)?.name || 'Uncategorized').toUpperCase()
 
-          <div className="sf-category-grid">
-            {(() => {
-              const isCustom = store && store.categories !== null && store.categories !== undefined;
-              const items = isCustom ? store.categories : template.categories.items;
-              const dynamicColors = [
-                { bg: '#1A271C', text: '#EAE5D9' },
-                { bg: '#EAE5D9', text: '#1A271C' },
-                { bg: '#8D9B8E', text: '#1E3A2F' },
-                { bg: '#3D4A3E', text: '#EAE5D9' }
-              ];
-              return items.map((item, idx) => {
-                const imageUrl = isCustom ? item.image_url : item.image;
-                const colorIndex = idx % dynamicColors.length;
-                const fallbackBg = isCustom ? dynamicColors[colorIndex].bg : (item.color || '#EAE5D9');
-                const catTextColor = imageUrl ? '#ffffff' : (isCustom ? dynamicColors[colorIndex].text : (item.textColor || '#ffffff'));
-                const linkTarget = isCustom ? item.link_target : item.link;
+            const hasImage = product.images && product.images.length > 0
 
-                return (
-                  <a
-                    key={item.id || idx}
-                    href={linkTarget || '#'}
-                    style={{
-                      backgroundColor: fallbackBg,
-                      backgroundImage: imageUrl ? `url(${imageUrl})` : 'none',
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      position: 'relative',
-                      borderRadius: 16,
-                      aspectRatio: '4/3',
-                      padding: '2.5rem 2rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'flex-end',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                      textDecoration: 'none'
-                    }}
-                    className="sf-cat-card"
-                  >
-                    {imageUrl && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', borderRadius: 16, zIndex: 1 }} />
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '4.5rem', alignItems: 'start' }} className="sf-prod-detail-grid">
+                  <style>{`
+                    @media (max-width: 768px) {
+                      .sf-prod-detail-grid {
+                        grid-template-columns: 1fr !important;
+                        gap: 2.5rem !important;
+                      }
+                    }
+                  `}</style>
+
+                  {/* Left Column: Image (contain, uncropped) */}
+                  <div style={{ position: 'relative', width: '100%', aspectRatio: '3/4', background: '#F8FAF8', borderRadius: 16, border: '1px solid #E4EBE5', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {hasImage ? (
+                      <img
+                        src={product.images[0]}
+                        alt={product.title}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <div style={{ color: '#5A8A67', opacity: 0.45 }}>
+                        <LeafIcon size={64} color="#5A8A67" />
+                      </div>
                     )}
-                    <div style={{ position: 'relative', zIndex: 2 }}>
-                      <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.6rem', color: catTextColor, margin: '0 0 0.5rem', fontWeight: 400 }}>
-                        {item.name}
-                      </h3>
-                      <span style={{ color: catTextColor, opacity: 0.85, fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        Browse &rarr;
+
+                    {isSample && (
+                      <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.75rem', fontWeight: 700, padding: '0.25rem 0.6rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10 }}>
+                        SAMPLE
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column: Info */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
+                        {resolvedCategoryName}
                       </span>
+                      <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: '#1A271C', margin: '0 0 0.75rem', lineHeight: 1.15 }}>
+                        {product.title}
+                      </h1>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.5rem' }}>
+                        <span style={{ fontSize: '1.75rem', fontWeight: 700, color: '#5A8A67' }}>
+                          {currency} {Number(product.price).toFixed(2)}
+                        </span>
+                        {product.compare_at_price && (
+                          <span style={{ fontSize: '1.2rem', color: '#7B907D', textDecoration: 'line-through' }}>
+                            {currency} {Number(product.compare_at_price).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </a>
-                )
-              });
-            })()}
-          </div>
-        </section>
 
-        {/* NEW ARRIVALS / PRODUCT GRID */}
-        <section id="new-arrivals" style={{ marginBottom: '6rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '2.5rem' }}>
-            <div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
-                {template.newArrivals.eyebrow}
-              </span>
-              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 500, color: '#1A271C', margin: 0 }}>
-                {template.newArrivals.title}
-              </h2>
-            </div>
-            <a href={template.newArrivals.viewAllUrl} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', fontWeight: 600, color: '#5A8A67', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              {template.newArrivals.viewAllText} &rarr;
-            </a>
-          </div>
+                    {/* Stock pill */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {isSample ? (
+                        <span style={{ fontSize: '0.85rem', color: '#7B907D', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
+                          In stock (Sample demo)
+                        </span>
+                      ) : product.inventory > 0 ? (
+                        <span style={{ fontSize: '0.85rem', color: '#1A271C', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
+                          {product.inventory} in stock
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.85rem', color: '#EF4444', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
+                          Out of stock
+                        </span>
+                      )}
+                    </div>
 
-          <ProductGrid
-            products={products.length > 0 ? products.slice(0, 4) : template.newArrivals.items}
-            isSample={products.length === 0}
-            categories={store?.categories}
-            onProductClick={openProduct}
-            onAddToCart={(prod) => {
-              triggerEvent(prod.id, 'add_to_cart');
-              setCart(prev => {
-                const existing = prev.find(item => item.product.id === prod.id);
-                if (existing) {
-                  return prev.map(item => item.product.id === prod.id ? { ...item, quantity: item.quantity + 1 } : item);
-                }
-                return [...prev, { product: prod, quantity: 1 }];
-              });
-            }}
-            currency={currency}
-          />
-        </section>
+                    {/* Description */}
+                    {product.description && (
+                      <div style={{ borderTop: '1px solid #E4EBE5', paddingTop: '1.5rem', borderBottom: '1px solid #E4EBE5', paddingBottom: '1.5rem', marginTop: '0.5rem' }}>
+                        <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 600, color: '#1A271C', margin: '0 0 0.5rem' }}>Description</h3>
+                        <p style={{ fontSize: '0.95rem', color: '#7B907D', lineHeight: 1.7, margin: 0 }}>
+                          {product.description}
+                        </p>
+                      </div>
+                    )}
 
-        {/* BRAND STORY */}
-        <section id="brand-story" className="sf-brand-story" style={{ marginBottom: '2rem' }}>
-          {/* Left half: Brand Photo */}
-          <div style={{ position: 'relative', width: '100%', aspectRatio: '1.1/1', background: '#F5F3E9', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            {(store.cover_image || template.brandStory.image) ? (
-              <img src={store.cover_image || template.brandStory.image} alt="Brand Story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ textAlign: 'center', color: '#7B907D' }}>
-                <LeafIcon size={40} color="#7B907D" />
-                <p style={{ margin: '0.5rem 0 0', fontWeight: 500, fontSize: '0.9rem' }}>Brand Photo</p>
+                    {/* Actions */}
+                    <div style={{ marginTop: '1rem' }}>
+                      <button
+                        onClick={() => {
+                          if (isSample) return
+                          triggerEvent(product.id, 'add_to_cart')
+                          setCart(prev => {
+                            const existing = prev.find(item => item.product.id === product.id)
+                            if (existing) {
+                              return prev.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item)
+                            }
+                            return [...prev, { product, quantity: 1 }]
+                          })
+                          setAddedToCart(true)
+                          setTimeout(() => {
+                            setAddedToCart(false)
+                          }, 1500)
+                        }}
+                        disabled={isSample || product.inventory === 0}
+                        style={{
+                          width: '100%',
+                          padding: '1.1rem',
+                          background: isSample ? '#EDF3EE' : product.inventory === 0 ? '#E4EBE5' : addedToCart ? '#1E3A2F' : '#5A8A67',
+                          color: isSample ? '#5A8A67' : product.inventory === 0 ? '#7B907D' : '#ffffff',
+                          border: isSample ? '1px solid #C7DACB' : 'none',
+                          borderRadius: 10,
+                          fontSize: '1rem',
+                          fontWeight: 600,
+                          cursor: (isSample || product.inventory === 0) ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.2s',
+                          textAlign: 'center'
+                        }}
+                      >
+                        {isSample ? 'SAMPLE (Add to Bag Disabled)' : product.inventory === 0 ? 'Out of Stock' : addedToCart ? 'Added to Bag ✓' : 'Add to Bag'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Related Products */}
+                {(() => {
+                  const sameCatProducts = currentProducts.filter(p => p.id !== product.id && (isSample ? p.category === product.category : p.category_id === product.category_id)).slice(0, 4)
+                  if (sameCatProducts.length === 0) return null
+                  return (
+                    <div style={{ marginTop: '4rem', borderTop: '1px solid #E4EBE5', paddingTop: '3rem' }}>
+                      <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 500, color: '#1A271C', marginBottom: '2rem' }}>
+                        You might also like
+                      </h3>
+                      <ProductGrid
+                        products={sameCatProducts}
+                        isSample={isSample}
+                        categories={store?.categories}
+                        onProductClick={(p) => navigate(`/store/${handle}/product/${p.id}`)}
+                        onAddToCart={(p) => {
+                          triggerEvent(p.id, 'add_to_cart')
+                          setCart(prev => {
+                            const existing = prev.find(item => item.product.id === p.id)
+                            if (existing) {
+                              return prev.map(item => item.product.id === p.id ? { ...item, quantity: item.quantity + 1 } : item)
+                            }
+                            return [...prev, { product: p, quantity: 1 }]
+                          })
+                        }}
+                        currency={currency}
+                      />
+                    </div>
+                  )
+                })()}
               </div>
-            )}
-            {/* Small Optimized Badge */}
-            {template.brandStory.showAiBadge !== false && (
-              <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.65rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block' }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                {template.brandStory.aiBadgeText || "SELORA AI OPTIMIZED"}
-              </div>
-            )}
-          </div>
-
-          {/* Right half: Text */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', justifyContent: 'center' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              {template.brandStory.eyebrow}
-            </span>
-            <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: '#1A271C', margin: 0, lineHeight: 1.15 }}>
-              {template.brandStory.title}
-            </h2>
-            <p style={{ fontSize: '0.95rem', color: '#7B907D', lineHeight: 1.7, margin: '0.5rem 0' }}>
-              {template.brandStory.subtitle}
-            </p>
-            <a href={template.brandStory.ctaUrl} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.9rem', fontWeight: 600, color: '#5A8A67', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              {template.brandStory.ctaText} &rarr;
-            </a>
-          </div>
-        </section>
-
-      </main>
-
-      {/* NEWSLETTER / FOOTER BAND */}
-      <section style={{ backgroundColor: '#1A271C', color: '#ffffff', padding: '5rem 2rem', textAlign: 'center', width: '100%', boxSizing: 'border-box' }} className="sf-newsletter-section">
-        <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#82A996', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            {template.newsletter.eyebrow}
-          </span>
-          <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.2rem', fontWeight: 500, color: '#ffffff', margin: 0 }}>
-            {template.newsletter.title}
-          </h2>
-          <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, margin: '0 0 1rem' }}>
-            {template.newsletter.subtitle}
-          </p>
-          <form onSubmit={(e) => { e.preventDefault(); alert("Subscribed!"); }} style={{ display: 'flex', width: '100%', maxWidth: 500, gap: '0.75rem', marginTop: '0.5rem' }} className="sf-newsletter-form">
-            <input
-              type="email"
-              placeholder={template.newsletter.inputPlaceholder}
-              required
-              style={{
-                flex: 1,
-                padding: '0.85rem 1.25rem',
-                borderRadius: 8,
-                border: '1px solid rgba(255,255,255,0.15)',
-                background: 'rgba(255,255,255,0.06)',
-                color: '#ffffff',
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '0.9rem',
-                outline: 'none',
-              }}
-              className="sf-newsletter-input"
-            />
-            <button
-              type="submit"
-              style={{
-                padding: '0.85rem 2rem',
-                borderRadius: 8,
-                background: '#82A996',
-                color: '#1A271C',
-                border: 'none',
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '0.9rem',
-                transition: 'background-color 0.2s',
-              }}
-              className="sf-newsletter-btn"
-            >
-              {template.newsletter.buttonText}
-            </button>
-          </form>
+            )
+          })()}
         </div>
-      </section>
+      ) : (
+        <>
+          {/* HERO SECTION */}
+          <div className="sf-hero-section">
+            {/* Left Half: Headline, Paragraph, CTAs */}
+            <div className="sf-hero-left">
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#82A996', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                {template.hero.eyebrow}
+              </span>
+              <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2rem, 4.5vw, 3.5rem)', fontWeight: 500, color: '#ffffff', margin: 0, lineHeight: 1.1, whiteSpace: 'pre-line' }}>
+                {template.hero.title}
+              </h1>
+              <p style={{ fontSize: '1rem', color: '#B8BCB8', lineHeight: 1.6, margin: '0.5rem 0 1rem' }}>
+                {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                <a
+                  href={template.hero.ctaPrimaryUrl}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.85rem 1.75rem',
+                    backgroundColor: '#82A996',
+                    color: '#1A271C',
+                    borderRadius: 30,
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    transition: 'all 0.2s ease',
+                  }}
+                  className="sf-hero-btn-primary"
+                >
+                  {template.hero.ctaPrimaryText} &rarr;
+                </a>
+                <a
+                  href={template.hero.ctaSecondaryUrl}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.85rem 1.75rem',
+                    backgroundColor: 'transparent',
+                    color: '#ffffff',
+                    borderRadius: 30,
+                    border: '1.5px solid rgba(255,255,255,0.4)',
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    transition: 'all 0.2s ease',
+                  }}
+                  className="sf-hero-btn-secondary"
+                >
+                  {template.hero.ctaSecondaryText}
+                </a>
+              </div>
+            </div>
+
+            {/* Right Half: Stacked Card Composition or Placeholder */}
+            <div className="sf-hero-right">
+              {hasAnyHero ? (
+                <div className="sf-hero-stack-container">
+                  <div className="sf-hero-stack">
+                    {/* Left Card */}
+                    {imgLeft && (
+                      <div className="sf-hero-card sf-hero-card-left">
+                        <img src={imgLeft} alt="" />
+                      </div>
+                    )}
+                    {/* Right Card */}
+                    {imgRight && (
+                      <div className="sf-hero-card sf-hero-card-right">
+                        <img src={imgRight} alt="" />
+                      </div>
+                    )}
+                    {/* Main Card */}
+                    {imgMain && (
+                      <div className="sf-hero-card sf-hero-card-main">
+                        <img src={imgMain} alt="" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="sf-hero-placeholder">
+                  <div className="sf-hero-placeholder-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}><LeafIcon size={48} color="rgba(255,255,255,0.2)" /></div>
+                  <p style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 500 }}>Add your hero images</p>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'Inter, sans-serif' }}>
+                    Go to the store builder settings tab to complete onboarding
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* TRUST BAR */}
+          <div className="sf-trust-bar">
+            {template.hero.trustBar.map((item, idx) => (
+              <div key={idx} className="sf-trust-item">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1E3A2F' }}>
+                  {renderIcon(item.icon, 20, '#1E3A2F')}
+                </div>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1E3A2F', fontFamily: 'Inter, sans-serif' }}>
+                  {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* MAIN CONTAINER */}
+          <main style={{ maxWidth: 1200, margin: '0 auto', padding: '5rem 1.5rem' }}>
+            
+            {/* SHOP BY CATEGORY */}
+            <section style={{ marginBottom: '6rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
+                {template.categories.eyebrow}
+              </span>
+              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 500, color: '#1A271C', margin: '0 0 2rem' }}>
+                {template.categories.title}
+              </h2>
+
+              <div className="sf-category-grid">
+                {(() => {
+                  const isCustom = store && store.categories !== null && store.categories !== undefined;
+                  const items = isCustom ? store.categories : template.categories.items;
+                  const dynamicColors = [
+                    { bg: '#1A271C', text: '#EAE5D9' },
+                    { bg: '#EAE5D9', text: '#1A271C' },
+                    { bg: '#8D9B8E', text: '#1E3A2F' },
+                    { bg: '#3D4A3E', text: '#EAE5D9' }
+                  ];
+                  return items.map((item, idx) => {
+                    const imageUrl = isCustom ? item.image_url : item.image;
+                    const colorIndex = idx % dynamicColors.length;
+                    const fallbackBg = isCustom ? dynamicColors[colorIndex].bg : (item.color || '#EAE5D9');
+                    const catTextColor = imageUrl ? '#ffffff' : (isCustom ? dynamicColors[colorIndex].text : (item.textColor || '#ffffff'));
+                    const linkTarget = isCustom ? item.link_target : item.link;
+
+                    return (
+                      <a
+                        key={item.id || idx}
+                        href={linkTarget || '#'}
+                        style={{
+                          backgroundColor: fallbackBg,
+                          backgroundImage: imageUrl ? `url(${imageUrl})` : 'none',
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          position: 'relative',
+                          borderRadius: 16,
+                          aspectRatio: '4/3',
+                          padding: '2.5rem 2rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'flex-end',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          textDecoration: 'none'
+                        }}
+                        className="sf-cat-card"
+                      >
+                        {imageUrl && (
+                          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', borderRadius: 16, zIndex: 1 }} />
+                        )}
+                        <div style={{ position: 'relative', zIndex: 2 }}>
+                          <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.6rem', color: catTextColor, margin: '0 0 0.5rem', fontWeight: 400 }}>
+                            {item.name}
+                          </h3>
+                          <span style={{ color: catTextColor, opacity: 0.85, fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            Browse &rarr;
+                          </span>
+                        </div>
+                      </a>
+                    )
+                  });
+                })()}
+              </div>
+            </section>
+
+            {/* NEW ARRIVALS / PRODUCT GRID */}
+            <section id="new-arrivals" style={{ marginBottom: '6rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '2.5rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
+                    {template.newArrivals.eyebrow}
+                  </span>
+                  <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 500, color: '#1A271C', margin: 0 }}>
+                    {template.newArrivals.title}
+                  </h2>
+                </div>
+                <a href={template.newArrivals.viewAllUrl} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', fontWeight: 600, color: '#5A8A67', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  {template.newArrivals.viewAllText} &rarr;
+                </a>
+              </div>
+
+              <ProductGrid
+                products={products.length > 0 ? products.slice(0, 4) : template.newArrivals.items}
+                isSample={products.length === 0}
+                categories={store?.categories}
+                onProductClick={openProduct}
+                onAddToCart={(prod) => {
+                  triggerEvent(prod.id, 'add_to_cart');
+                  setCart(prev => {
+                    const existing = prev.find(item => item.product.id === prod.id);
+                    if (existing) {
+                      return prev.map(item => item.product.id === prod.id ? { ...item, quantity: item.quantity + 1 } : item);
+                    }
+                    return [...prev, { product: prod, quantity: 1 }];
+                  });
+                }}
+                currency={currency}
+              />
+            </section>
+
+            {/* BRAND STORY */}
+            <section id="brand-story" className="sf-brand-story" style={{ marginBottom: '2rem' }}>
+              {/* Left half: Brand Photo */}
+              <div style={{ position: 'relative', width: '100%', aspectRatio: '1.1/1', background: '#F5F3E9', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                {(store.cover_image || template.brandStory.image) ? (
+                  <img src={store.cover_image || template.brandStory.image} alt="Brand Story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#7B907D' }}>
+                    <LeafIcon size={40} color="#7B907D" />
+                    <p style={{ margin: '0.5rem 0 0', fontWeight: 500, fontSize: '0.9rem' }}>Brand Photo</p>
+                  </div>
+                )}
+                {/* Small Optimized Badge */}
+                {template.brandStory.showAiBadge !== false && (
+                  <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.65rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block' }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    {template.brandStory.aiBadgeText || "SELORA AI OPTIMIZED"}
+                  </div>
+                )}
+              </div>
+
+              {/* Right half: Text */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', justifyContent: 'center' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  {template.brandStory.eyebrow}
+                </span>
+                <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: '#1A271C', margin: 0, lineHeight: 1.15 }}>
+                  {template.brandStory.title}
+                </h2>
+                <p style={{ fontSize: '0.95rem', color: '#7B907D', lineHeight: 1.7, margin: '0.5rem 0' }}>
+                  {template.brandStory.subtitle}
+                </p>
+                <a href={template.brandStory.ctaUrl} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.9rem', fontWeight: 600, color: '#5A8A67', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  {template.brandStory.ctaText} &rarr;
+                </a>
+              </div>
+            </section>
+
+          </main>
+
+          {/* NEWSLETTER / FOOTER BAND */}
+          <section style={{ backgroundColor: '#1A271C', color: '#ffffff', padding: '5rem 2rem', textAlign: 'center', width: '100%', boxSizing: 'border-box' }} className="sf-newsletter-section">
+            <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#82A996', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                {template.newsletter.eyebrow}
+              </span>
+              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.2rem', fontWeight: 500, color: '#ffffff', margin: 0 }}>
+                {template.newsletter.title}
+              </h2>
+              <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, margin: '0 0 1rem' }}>
+                {template.newsletter.subtitle}
+              </p>
+              <form onSubmit={(e) => { e.preventDefault(); alert("Subscribed!"); }} style={{ display: 'flex', width: '100%', maxWidth: 500, gap: '0.75rem', marginTop: '0.5rem' }} className="sf-newsletter-form">
+                <input
+                  type="email"
+                  placeholder={template.newsletter.inputPlaceholder}
+                  required
+                  style={{
+                    flex: 1,
+                    padding: '0.85rem 1.25rem',
+                    borderRadius: 8,
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'rgba(255,255,255,0.06)',
+                    color: '#ffffff',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                  }}
+                  className="sf-newsletter-input"
+                />
+                <button
+                  type="submit"
+                  style={{
+                    padding: '0.85rem 2rem',
+                    borderRadius: 8,
+                    background: '#82A996',
+                    color: '#1A271C',
+                    border: 'none',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '0.9rem',
+                    transition: 'background-color 0.2s',
+                  }}
+                  className="sf-newsletter-btn"
+                >
+                  {template.newsletter.buttonText}
+                </button>
+              </form>
+            </div>
+          </section>
+        </>
+      )}
 
       {/* Platform Attribution Footer */}
       <footer style={{ borderTop: '1px solid #E4EBE5', padding: '2.5rem 1.5rem', textAlign: 'center', backgroundColor: '#F8FAF8' }}>
@@ -1398,144 +1610,28 @@ export default function Storefront({ previewData = null }) {
         </p>
       </footer>
 
-      {/* Product Detail Modal */}
-      {selected && (
-        <div style={S.overlay} onClick={e => { if(e.target===e.currentTarget) setSelected(null) }}>
-          <div style={S.modal}>
-            {/* Pinned Close Button */}
-            <button style={{ ...S.closeBtn, position: 'absolute', top: '1rem', right: '1rem', zIndex: 100 }} onClick={() => setSelected(null)} aria-label="Close">X</button>
-            
-            {/* Scrollable Container */}
-            <div className="sf-modal-scrollable" style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
-              {/* Image Area with Centering & Aspect Fit */}
-              <div style={{ position:'relative', width: '100%', background: '#F8FAF8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {selected.images?.[activeImageIdx] || selected.images?.[0] ? (
-                  <img
-                    src={selected.images[activeImageIdx] || selected.images[0]}
-                    alt={selected.title}
-                    style={{
-                      width: '100%',
-                      maxHeight: '60vh',
-                      objectFit: 'contain',
-                      display: 'block'
-                    }}
-                    className="sf-modal-img"
-                  />
-                ) : (
-                  <div style={{ width: '100%', height: '40vh', minHeight: 250, maxHeight: '60vh', background:'linear-gradient(135deg,#EDF3EE,#C8DCC9)', display:'flex', alignItems:'center', justifyContent:'center', color: '#5A8A67' }}>
-                    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                  </div>
-                )}
-              </div>
 
-              {/* Scrollable Modal Info Body */}
-              <div style={S.modalBody}>
-                <h2 style={S.modalTitle}>{selected.title}</h2>
-                
-                <div style={{ ...S.priceRow, marginBottom:'1.25rem' }}>
-                  <span style={{ ...S.price, fontSize:'1.5rem' }}>{currency} {Number(selected.price).toFixed(2)}</span>
-                  {selected.compare_at_price && (
-                    <span style={{ ...S.compareAt, fontSize:'1rem' }}>{currency} {Number(selected.compare_at_price).toFixed(2)}</span>
-                  )}
-                  {pct(selected.price, selected.compare_at_price) && (
-                    <span style={{ ...S.discBadge, position:'static', fontSize:'.78rem', verticalAlign:'middle' }}>
-                      -{pct(selected.price, selected.compare_at_price)}% off
-                    </span>
-                  )}
-                </div>
-
-                {selected.description && <p style={S.modalDesc}>{selected.description}</p>}
-
-                {selected.tags?.length > 0 && (
-                  <div style={{ ...S.tags, marginBottom:'1.5rem' }}>
-                    {selected.tags.map(t => <span key={t} style={S.tag}>{t}</span>)}
-                  </div>
-                )}
-
-                {/* Multiple Image Variant Selection */}
-                {selected.images?.length > 1 && (
-                  <div style={{ display:'flex', gap:'.5rem', marginTop:'.5rem', marginBottom: '.5rem', flexWrap:'wrap' }}>
-                    {selected.images.map((url, i) => (
-                      <img
-                        key={i}
-                        src={url}
-                        alt={`${selected.title} ${i+1}`}
-                        style={{
-                          width: 64,
-                          height: 64,
-                          objectFit: 'cover',
-                          borderRadius: 8,
-                          border: `2px solid ${activeImageIdx === i ? '#5A8A67' : 'transparent'}`,
-                          cursor: 'pointer',
-                          transition: 'border-color .15s'
-                        }}
-                        onClick={() => setActiveImageIdx(i)}
-                        onMouseOver={e => { if (activeImageIdx !== i) e.target.style.borderColor='#C7DACB' }}
-                        onMouseOut={e => { if (activeImageIdx !== i) e.target.style.borderColor='transparent' }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Pinned Action Footer Bar */}
-            <div style={{ borderTop: '1px solid #E4EBE5', padding: '1.25rem 2rem', background: '#fff', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.85rem', color: '#1A271C', fontWeight: 600 }}>Stock Availability</span>
-                <p style={{ fontSize:'.82rem', color:'#7B907D', margin: 0 }}>
-                  {selected.inventory > 0 ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
-                      {selected.inventory} in stock
-                    </span>
-                  ) : (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
-                      Currently out of stock
-                    </span>
-                  )}
-                </p>
-              </div>
-
-              <button
-                className="sf-cart-btn"
-                style={{ ...S.cartBtn, background: addedToCart ? '#166534' : '#5A8A67', margin: 0 }}
-                onClick={handleAddToCart}
-                disabled={selected.inventory === 0}
-              >
-                {addedToCart ? 'Added to Cart' : selected.inventory === 0 ? 'Out of Stock' : 'Add to Cart'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Checkout Drawer */}
       {isCartOpen && (
         <>
           <div className="sf-drawer-overlay" onClick={() => {
-            if (paymentStatus !== 'pending') {
-              setIsCartOpen(false);
-              if (pollingInterval) clearInterval(pollingInterval);
-              setCheckoutDetails(null);
-              setPaymentStatus(null);
-            }
+            setIsCartOpen(false);
+            if (pollingInterval) clearInterval(pollingInterval);
+            setCheckoutDetails(null);
+            setPaymentStatus(null);
           }} />
           <div className="sf-drawer">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem', flexShrink: 0 }}>
               <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', margin: 0, color: 'var(--text-primary)' }}>Your Bag</h2>
               <button 
                 onClick={() => {
-                  if (paymentStatus !== 'pending') {
-                    setIsCartOpen(false);
-                    if (pollingInterval) clearInterval(pollingInterval);
-                    setCheckoutDetails(null);
-                    setPaymentStatus(null);
-                  }
+                  setIsCartOpen(false);
+                  if (pollingInterval) clearInterval(pollingInterval);
+                  setCheckoutDetails(null);
+                  setPaymentStatus(null);
                 }}
-                disabled={paymentStatus === 'pending'}
-                style={{ background: 'none', border: 'none', fontSize: '1rem', cursor: paymentStatus === 'pending' ? 'not-allowed' : 'pointer', color: 'var(--text-muted)' }}
+                style={{ background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', color: 'var(--text-muted)' }}
               >
                 X
               </button>
@@ -1704,7 +1800,35 @@ export default function Storefront({ previewData = null }) {
                       )}
                     </button>
                   ) : (
-                    <div style={{ textAlign: 'center', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem', background: 'var(--bg-2)' }}>
+                    <div style={{ textAlign: 'center', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem', background: 'var(--bg-2)', position: 'relative' }}>
+                      <button
+                        onClick={() => {
+                          if (pollingInterval) clearInterval(pollingInterval)
+                          setCheckoutDetails(null)
+                          setPaymentStatus(null)
+                        }}
+                        style={{
+                          position: 'absolute',
+                          top: '0.75rem',
+                          right: '0.75rem',
+                          background: 'none',
+                          border: 'none',
+                          fontSize: '1rem',
+                          cursor: 'pointer',
+                          color: 'var(--text-muted)',
+                          padding: '0.25rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 1
+                        }}
+                        title="Cancel checkout and return to bag"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
                       {paymentStatus === 'pending' && (
                         <div>
                           <p style={{ fontWeight: 600, fontSize: '.9rem', margin: '0 0 .5rem', color: 'var(--text-primary)' }}>Solana Devnet Checkout</p>
