@@ -33,8 +33,19 @@ const getDisplayName = (u) => {
   return 'Seller'
 }
 
+const formatTimeAgo = (date) => {
+  const seconds = Math.floor((new Date() - date) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
 export default function SidebarLayout() {
-  const { user, stores, activeStore, setActiveStore, orders } = useAppContext()
+  const { user, stores, activeStore, setActiveStore, orders, products } = useAppContext()
   const { logout } = useAuth()
   const { messages, loading: chatLoading, sendMessage, loadHistory, loadSessions, sessionId, sessions, selectSession, setOpen, startNewSession, deleteSession, renameSession, pinSession, pendingDelete, setPendingDelete } = useChat()
   const navigate = useNavigate()
@@ -49,6 +60,8 @@ export default function SidebarLayout() {
   const [rightPanelOpen, setRightPanelOpen]      = useState(false)
   const [panelRunning, setPanelRunning]          = useState(false)
   const [latestRunAt, setLatestRunAt]            = useState(null)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const notifRef = useRef(null)
   
   const [lastCheckedTime, setLastCheckedTime] = useState(() => {
     if (!activeStore) return new Date().toISOString()
@@ -74,8 +87,84 @@ export default function SidebarLayout() {
     }
   }, [activeStore])
 
-  const unreadCount = activeStore && orders
-    ? orders.filter(o => o.status === 'paid' && new Date(o.created_at) > new Date(lastCheckedTime)).length
+  const getNotificationsList = () => {
+    if (!activeStore) return []
+    const list = []
+
+    // 1. Order notifications
+    if (orders && orders.length > 0) {
+      orders.forEach(o => {
+        if (o.status === 'pending') {
+          list.push({
+            id: `order-pending-${o.id}`,
+            type: 'order_pending',
+            title: 'New Order Received',
+            message: `New order #${o.id.slice(0, 8)} — $${Number(o.total_usd || 0).toFixed(2)}`,
+            timestamp: new Date(o.created_at),
+            link: '/orders',
+            targetId: o.id,
+          })
+        } else if (o.status === 'paid') {
+          list.push({
+            id: `order-paid-${o.id}`,
+            type: 'order_paid',
+            title: 'Order Confirmed',
+            message: `Order #${o.id.slice(0, 8)} payment confirmed`,
+            timestamp: new Date(o.updated_at || o.created_at),
+            link: '/orders',
+            targetId: o.id,
+          })
+        }
+      })
+    }
+
+    // 2. Product stock / attention flags
+    if (products && products.length > 0) {
+      products.forEach(p => {
+        if (p.inventory === 0) {
+          list.push({
+            id: `product-oos-${p.id}`,
+            type: 'product_oos',
+            title: 'Out of Stock',
+            message: `${p.title} — Out of stock`,
+            timestamp: new Date(p.updated_at || p.created_at || Date.now()),
+            link: `/products/${p.id}`,
+            targetId: p.id,
+          })
+        } else if (p.inventory < 10) {
+          list.push({
+            id: `product-lowstock-${p.id}`,
+            type: 'product_lowstock',
+            title: 'Low Stock Alert',
+            message: `${p.title} — only ${p.inventory} remaining`,
+            timestamp: new Date(p.updated_at || p.created_at || Date.now()),
+            link: `/products/${p.id}`,
+            targetId: p.id,
+          })
+        } else {
+          const cleanDesc = (p.description || '').replace(/<[^>]+>/g, '').trim()
+          if (cleanDesc.length < 50) {
+            list.push({
+              id: `product-attention-${p.id}`,
+              type: 'product_attention',
+              title: 'Needs Attention',
+              message: `${p.title} — description optimization recommended`,
+              timestamp: new Date(p.updated_at || p.created_at || Date.now()),
+              link: `/products/${p.id}`,
+              targetId: p.id,
+            })
+          }
+        }
+      })
+    }
+
+    return list.sort((a, b) => b.timestamp - a.timestamp)
+  }
+
+  const notifications = getNotificationsList()
+
+  const unreadCount = activeStore && notifications
+    ? notifications.filter(item => item.timestamp > new Date(lastCheckedTime)).length
     : 0
 
   const handleNotificationsClick = () => {
@@ -83,7 +172,28 @@ export default function SidebarLayout() {
     const nowStr = new Date().toISOString()
     localStorage.setItem(`last_checked_orders_${activeStore.id}`, nowStr)
     setLastCheckedTime(nowStr)
+    setNotificationsOpen(prev => !prev)
   }
+
+  // Close notification dropdown on Escape or clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotificationsOpen(false)
+      }
+    }
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setNotificationsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
 
   useEffect(() => {
     const handleResize = () => {
@@ -773,38 +883,148 @@ export default function SidebarLayout() {
           </button>
 
           {/* Notification bell */}
-          <button
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.muted, display: 'flex', alignItems: 'center', padding: '.35rem', borderRadius: 8, transition: 'color 0.2s', flexShrink: 0, position: 'relative' }}
-            title="Notifications"
-            onClick={handleNotificationsClick}
-            onMouseEnter={e => e.currentTarget.style.color = c.dark}
-            onMouseLeave={e => e.currentTarget.style.color = c.muted}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-            {unreadCount > 0 && (
-              <span style={{
+          <div style={{ position: 'relative', flexShrink: 0 }} ref={notifRef}>
+            <button
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: notificationsOpen ? c.dark : c.muted, display: 'flex', alignItems: 'center', padding: '.35rem', borderRadius: 8, transition: 'color 0.2s' }}
+              title="Notifications"
+              onClick={handleNotificationsClick}
+              onMouseEnter={e => e.currentTarget.style.color = c.dark}
+              onMouseLeave={e => { if (!notificationsOpen) e.currentTarget.style.color = c.muted }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: 2,
+                  right: 2,
+                  background: '#DC2626',
+                  color: '#fff',
+                  borderRadius: '50%',
+                  width: 14,
+                  height: 14,
+                  fontSize: '8px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 0 4px rgba(220, 38, 38, 0.4)'
+                }}>
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {notificationsOpen && (
+              <div style={{
                 position: 'absolute',
-                top: 2,
-                right: 2,
-                background: '#DC2626',
-                color: '#fff',
-                borderRadius: '50%',
-                width: 14,
-                height: 14,
-                fontSize: '8px',
-                fontWeight: 700,
+                top: '100%',
+                right: 0,
+                marginTop: '0.65rem',
+                width: 320,
+                background: 'var(--bg-1)',
+                border: '1px solid var(--border)',
+                borderRadius: 12,
+                boxShadow: 'var(--card-shadow)',
+                zIndex: 1000,
+                maxHeight: 380,
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 0 4px rgba(220, 38, 38, 0.4)'
+                flexDirection: 'column',
               }}>
-                {unreadCount}
-              </span>
+                {/* Dropdown Header */}
+                <div style={{
+                  padding: '0.85rem 1rem',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>Notifications</span>
+                  {notifications.length > 0 && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--g)', fontWeight: 500 }}>
+                      {notifications.length} total
+                    </span>
+                  )}
+                </div>
+
+                {/* Dropdown Items List */}
+                <div style={{
+                  overflowY: 'auto',
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                }} className="no-scrollbar">
+                  {notifications.length === 0 ? (
+                    <div style={{
+                      padding: '2.5rem 1rem',
+                      textAlign: 'center',
+                      color: 'var(--text-muted)',
+                      fontSize: '0.82rem'
+                    }}>
+                      <div style={{ fontSize: '1.4rem', marginBottom: '0.5rem' }}>🎉</div>
+                      You're all caught up
+                    </div>
+                  ) : (
+                    notifications.map(item => {
+                      const isUnread = item.timestamp > new Date(lastCheckedTime);
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            navigate(item.link);
+                            setNotificationsOpen(false);
+                          }}
+                          style={{
+                            padding: '0.75rem 1rem',
+                            borderBottom: '1px solid var(--border)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            gap: '0.65rem',
+                            alignItems: 'flex-start',
+                            background: isUnread ? 'rgba(90, 138, 103, 0.04)' : 'transparent',
+                            transition: 'background 0.2s',
+                          }}
+                          className="dashboard-notif-item"
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-2)'}
+                          onMouseLeave={e => e.currentTarget.style.background = isUnread ? 'rgba(90, 138, 103, 0.04)' : 'transparent'}
+                        >
+                          {/* Left dot indicator */}
+                          <div style={{ marginTop: '0.35rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {item.type === 'order_pending' && (
+                              <span style={{ display: 'flex', width: 6, height: 6, borderRadius: '50%', background: 'var(--inventory-low-text)' }} />
+                            )}
+                            {item.type === 'order_paid' && (
+                              <span style={{ display: 'flex', width: 6, height: 6, borderRadius: '50%', background: 'var(--g)' }} />
+                            )}
+                            {item.type.startsWith('product_') && (
+                              <span style={{ display: 'flex', width: 6, height: 6, borderRadius: '50%', background: '#EF4444' }} />
+                            )}
+                          </div>
+
+                          {/* Text content & timestamp */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.4rem' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {item.title}
+                              </span>
+                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', flexShrink: 0 }}>
+                                {formatTimeAgo(item.timestamp)}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>
+                              {item.message}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
             )}
-          </button>
+          </div>
 
           {/* Avatar + dropdown */}
           <div style={{ position: 'relative', flexShrink: 0 }}>

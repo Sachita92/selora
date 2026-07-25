@@ -12,6 +12,12 @@ export function AppProvider({ children }) {
   const [stores, setStores] = useState([])
   const [activeStore, setActiveStore] = useState(null)
   const [loading, setLoading] = useState(true)
+  // Safety net: if Privy is ready but loading hasn't resolved after 5 seconds
+  // (e.g. Railway backend cold-start), force-clear loading so the nav renders.
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 5000)
+    return () => clearTimeout(t)
+  }, [])
   const [authModal, setAuthModal] = useState({ open: false, mode: 'login', plan: null })
   const [nameModal, setNameModal] = useState({ open: false })
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -209,7 +215,15 @@ export function AppProvider({ children }) {
         return
       }
       const data = await res.json()
-      setStores(data.stores || [])
+      // Deduplicate stores by ID (defensive guard against backend returning
+      // the same store twice — e.g. skeleton row in stores + selora_stores merge)
+      const seen = new Set()
+      const uniqueStores = (data.stores || []).filter(s => {
+        if (seen.has(s.id)) return false
+        seen.add(s.id)
+        return true
+      })
+      setStores(uniqueStores)
       if (data.user) {
         // Merge DB user info (subscription plan, etc.) with Supabase auth user
         setUser(prev => ({ ...prev, ...data.user }))

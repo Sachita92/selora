@@ -73,8 +73,9 @@ export default function App() {
               <Route path="/features"     element={<FeaturesPage />} />
               <Route path="/how-it-works" element={<HowItWorksPage />} />
               <Route path="/pricing"      element={<PricingPage />} />
-              <Route path="/store/:handle" element={<Storefront />} />
-              <Route path="/store/:handle/product/:productId" element={<Storefront />} />
+              <Route path="/store/:handle" element={<Storefront key="sf-home" />} />
+              <Route path="/store/:handle/product/:productId" element={<Storefront key="sf-pdp" />} />
+              <Route path="/store/:handle/category/:categoryId" element={<Storefront key="sf-cat" />} />
               <Route path="/store/:handle/orders" element={<StorefrontOrders />} />
 
               {/* Protected — standalone (own header/footer) */}

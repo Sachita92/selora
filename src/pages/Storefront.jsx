@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { useAuth } from '../lib/useAuth'
+import { useSignAndSendTransaction, useWallets } from '@privy-io/react-auth/solana'
 
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -378,7 +379,9 @@ export default function Storefront({ previewData = null }) {
   const [addedToCart, setAddedToCart] = useState(false)
   const [activeImageIdx, setActiveImageIdx] = useState(0)
 
-  const { login: connectWallet, logout: disconnectWallet, walletAddress } = useAuth()
+  const { login: connectWallet, logout: disconnectWallet, walletAddress, authenticated, ready } = useAuth()
+  const { signAndSendTransaction } = useSignAndSendTransaction()
+  const { wallets } = useWallets()
 
   // Track whether Phantom is installed and connected (for the direct-pay button)
   const [phantomConnected, setPhantomConnected] = useState(() => !!(window.solana?.isPhantom && window.solana?.isConnected))
@@ -664,6 +667,112 @@ export default function Storefront({ previewData = null }) {
         msg = "Insufficient USDC-Dev or SOL balance. Make sure Phantom has USDC-Dev from spl-token-faucet.com."
       } else if (msg.includes("TokenAccountNotFound") || msg.includes("Account does not exist")) {
         msg = "USDC-Dev token account not found. Make sure you received USDC-Dev from spl-token-faucet.com."
+      }
+      setPaymentError(msg + (err.message && msg !== err.message ? ` — ${err.message}` : ''))
+    } finally {
+      setCheckoutLoading(false)
+    }
+  }
+
+  const handlePrivyWalletPayment = async () => {
+    logPayment('[Payment] handlePrivyWalletPayment called, checkoutDetails:', checkoutDetails)
+    setCheckoutLoading(true)
+    setPaymentError('')
+
+    try {
+      if (!authenticated || !walletAddress) {
+        throw new Error("Privy wallet not connected. Please connect your wallet first.")
+      }
+
+      const privyWallet = wallets.find(w => w.address.toLowerCase() === walletAddress.toLowerCase())
+      if (!privyWallet) {
+        throw new Error("Active wallet not found in Privy. Please reconnect.")
+      }
+
+      logPayment('[Payment] Loading Solana SDK...')
+      const [
+        { Connection, PublicKey, TransactionMessage, VersionedTransaction },
+        { getAssociatedTokenAddressSync, createAssociatedTokenAccountIdempotentInstruction,
+          createTransferCheckedInstruction, TOKEN_PROGRAM_ID, getMint },
+      ] = await Promise.all([
+        import('@solana/web3.js'),
+        import('@solana/spl-token'),
+      ])
+      logPayment('[Payment] SDK loaded ✓')
+
+      const rpcUrl = import.meta.env.VITE_SOLANA_RPC_URL ||
+        `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/rpc/solana`
+      const wsUrl = rpcUrl.includes('127.0.0.1') || rpcUrl.includes('localhost')
+        ? 'wss://api.devnet.solana.com/'
+        : undefined
+      const conn      = new Connection(rpcUrl, { commitment: 'confirmed', wsEndpoint: wsUrl })
+      const mintPk    = new PublicKey(checkoutDetails.spl_token_mint)
+      const recipient = new PublicKey(checkoutDetails.recipient)
+      const reference = new PublicKey(checkoutDetails.reference)
+      const buyerPubkey = new PublicKey(walletAddress)
+
+      let decimals = 6
+      try {
+        const mintInfo = await getMint(conn, mintPk)
+        decimals = mintInfo.decimals
+        logPayment('[Payment] Mint decimals from chain:', decimals)
+      } catch (_) {
+        warnPayment('[Payment] Could not fetch mint info, using decimals=6')
+      }
+
+      const sourceAta = getAssociatedTokenAddressSync(mintPk, buyerPubkey, false, TOKEN_PROGRAM_ID)
+      const destAta   = getAssociatedTokenAddressSync(mintPk, recipient,   false, TOKEN_PROGRAM_ID)
+      logPayment('[Payment] Source ATA:', sourceAta.toString())
+      logPayment('[Payment] Dest ATA:', destAta.toString())
+
+      const amountRaw = BigInt(Math.round(checkoutDetails.amount_usdc * Math.pow(10, decimals)))
+      logPayment('[Payment] Amount raw:', amountRaw.toString())
+
+      const createDestAtaIx = createAssociatedTokenAccountIdempotentInstruction(
+        buyerPubkey, destAta, recipient, mintPk, TOKEN_PROGRAM_ID
+      )
+      const transferIx = createTransferCheckedInstruction(
+        sourceAta, mintPk, destAta,
+        buyerPubkey,
+        amountRaw, decimals, [], TOKEN_PROGRAM_ID
+      )
+      transferIx.keys.push({ pubkey: reference, isSigner: false, isWritable: false })
+      logPayment('[Payment] Instructions built ✓')
+
+      const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('confirmed')
+      logPayment('[Payment] Blockhash:', blockhash)
+      const txMsg = new TransactionMessage({
+        payerKey: buyerPubkey,
+        recentBlockhash: blockhash,
+        instructions: [createDestAtaIx, transferIx],
+      }).compileToV0Message()
+      const versionedTx = new VersionedTransaction(txMsg)
+      logPayment('[Payment] VersionedTransaction built ✓')
+
+      const serializedTx = versionedTx.serialize()
+      logPayment('[Payment] Serialized versionedTx, calling signAndSendTransaction via Privy...')
+      
+      const { signature } = await signAndSendTransaction({
+        transaction: serializedTx,
+        wallet: privyWallet,
+      })
+      logPayment('[Payment] Transaction sent via Privy ✓ signature:', signature)
+
+      logPayment('[Payment] Waiting for on-chain confirmation...')
+      await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed')
+      logPayment('[Payment] Transaction confirmed ✓')
+
+      if (checkoutDetails?.reference) {
+        startPolling(checkoutDetails.reference)
+      }
+
+    } catch (err) {
+      errorPayment('[Payment] FAILED at step above ↑', err)
+      let msg = err.message || "Failed to sign transaction"
+      if (msg.includes("User rejected") || msg.includes("rejected") || msg.includes("cancelled")) {
+        msg = "Transaction was cancelled."
+      } else if (msg.includes("insufficient") || msg.includes("0x1") || msg.includes("balance") || msg.includes("0 lamports")) {
+        msg = "Insufficient USDC-Dev or SOL balance."
       }
       setPaymentError(msg + (err.message && msg !== err.message ? ` — ${err.message}` : ''))
     } finally {
@@ -1623,7 +1732,21 @@ export default function Storefront({ previewData = null }) {
           }} />
           <div className="sf-drawer">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem', flexShrink: 0 }}>
-              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', margin: 0, color: 'var(--text-primary)' }}>Your Bag</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.65rem' }}>
+                <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', margin: 0, color: 'var(--text-primary)' }}>Your Bag</h2>
+                <span style={{
+                  fontSize: '.65rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '.06em',
+                  padding: '.2rem .5rem',
+                  borderRadius: 20,
+                  background: 'rgba(153,102,255,0.12)',
+                  color: '#9966FF',
+                  border: '1px solid rgba(153,102,255,0.3)',
+                  lineHeight: 1.4
+                }}>🛠 Devnet Demo</span>
+              </div>
               <button 
                 onClick={() => {
                   setIsCartOpen(false);
@@ -1836,7 +1959,62 @@ export default function Storefront({ previewData = null }) {
                             Transferring <strong>{checkoutDetails.amount_usdc.toFixed(2)} USDC</strong>
                           </p>
 
-                          {/* Connected Wallet Button or Connect Wallet Action */}
+                          {/* 1. Privy Embedded/Connected Wallet Option */}
+                          {walletAddress ? (
+                            <button
+                              onClick={handlePrivyWalletPayment}
+                              disabled={checkoutLoading}
+                              style={{
+                                width: '100%',
+                                padding: '.75rem',
+                                background: '#5A8A67', // Privy green
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 8,
+                                fontSize: '.85rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '.5rem',
+                                marginBottom: '0.75rem',
+                                transition: 'all .15s'
+                              }}
+                            >
+                              {checkoutLoading ? (
+                                <div style={{ width: 14, height: 14, border: '2px solid #fff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin .6s linear infinite' }} />
+                              ) : (
+                                `Pay with Privy Wallet (${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)})`
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={connectWallet}
+                              disabled={checkoutLoading}
+                              style={{
+                                width: '100%',
+                                padding: '.75rem',
+                                background: 'transparent',
+                                color: 'var(--text-primary)',
+                                border: '1.5px solid var(--border)',
+                                borderRadius: 8,
+                                fontSize: '.85rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '.5rem',
+                                marginBottom: '0.75rem',
+                                transition: 'all .15s'
+                              }}
+                            >
+                              Connect Privy Wallet (Email/Social)
+                            </button>
+                          )}
+
+                          {/* 2. Phantom Extension Option */}
                           {(phantomConnected || window.solana?.isPhantom) ? (
                             <button
                               onClick={handleWalletPayment}
@@ -1855,13 +2033,14 @@ export default function Storefront({ previewData = null }) {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 gap: '.5rem',
-                                marginBottom: '1rem'
+                                marginBottom: '1rem',
+                                transition: 'all .15s'
                               }}
                             >
                               {checkoutLoading ? (
                                 <div style={{ width: 14, height: 14, border: '2px solid #fff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin .6s linear infinite' }} />
                               ) : (
-                                "Pay with Connected Wallet"
+                                "Pay with Phantom Wallet"
                               )}
                             </button>
                           ) : (
@@ -1894,7 +2073,8 @@ export default function Storefront({ previewData = null }) {
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   gap: '.5rem',
-                                  marginBottom: '.5rem'
+                                  marginBottom: '.5rem',
+                                  transition: 'all .15s'
                                 }}
                               >
                                 {window.solana?.isPhantom ? 'Connect Phantom to Pay' : 'Install Phantom Wallet'}
@@ -1930,7 +2110,7 @@ export default function Storefront({ previewData = null }) {
                         <div>
                           <p style={{ fontWeight: 600, fontSize: '.9rem', margin: '0 0 .5rem', color: '#DC2626' }}>Verification Timeout</p>
                           <p style={{ fontSize: '.8rem', color: 'var(--text-muted)', margin: '0 0 1.25rem' }}>
-                            Still waiting? Ensure your wallet transaction completed on Devnet, then re-check manually.
+                            Still waiting? Make sure your wallet transaction was sent successfully, then tap “Check Again”.
                           </p>
                           <div style={{ display: 'flex', gap: '.5rem' }}>
                             <button

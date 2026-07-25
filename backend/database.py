@@ -155,10 +155,12 @@ def increment_store_run_count(store_id: str) -> int:
     """Increment the run count of a store this month."""
     client = db()
     store = client.table("stores").select("run_count_this_month").eq("id", store_id).execute()
-    current_count = store.data[0].get("run_count_this_month", 0) if store.data else 0
-    new_count = current_count + 1
-    client.table("stores").update({"run_count_this_month": new_count}).eq("id", store_id).execute()
-    return new_count
+    if store.data:
+        current_count = store.data[0].get("run_count_this_month", 0) if store.data else 0
+        new_count = current_count + 1
+        client.table("stores").update({"run_count_this_month": new_count}).eq("id", store_id).execute()
+        return new_count
+    return 0
 
 
 def check_store_run_limit(store_id: str) -> bool:
@@ -171,12 +173,29 @@ def check_store_run_limit(store_id: str) -> bool:
     client = db()
     # Join store and user to find the subscription_plan
     store_res = client.table("stores").select("user_id, run_count_this_month").eq("id", store_id).execute()
-    if not store_res.data:
-        return False  # store doesn't exist
+    
+    if store_res.data:
+        store = store_res.data[0]
+        run_count = store.get("run_count_this_month", 0) or 0
+    else:
+        # Fallback to selora_stores
+        store_res = client.table("selora_stores").select("user_id").eq("id", store_id).execute()
+        if not store_res.data:
+            return False  # store doesn't exist
+        store = store_res.data[0]
+        
+        # Count reports created in the current month dynamically
+        from datetime import datetime
+        now = datetime.utcnow()
+        start_of_month = f"{now.year}-{now.month:02d}-01T00:00:00"
+        try:
+            reports_res = client.table("reports").select("created_at").eq("store_id", store_id).gte("created_at", start_of_month).execute()
+            run_count = len(reports_res.data) if reports_res.data else 0
+        except Exception as e:
+            print(f"Failed to query reports run count: {e}")
+            run_count = 0
 
-    store = store_res.data[0]
     user_id = store["user_id"]
-    run_count = store.get("run_count_this_month", 0)
 
     user = get_user_by_id(user_id)
     if not user:
@@ -251,9 +270,32 @@ def get_stores_for_user(user_id: str) -> list:
 
 
 def get_all_active_stores() -> list:
-    """Get ALL active stores across all users — used by the agent scheduler."""
+    """Get ALL active stores across all users — used by the agent scheduler.
+    Includes both Shopify-connected stores (from `stores` table) and
+    native Selora stores (from `selora_stores` table).
+    Excludes skeleton 'selora' platform rows in the `stores` table to
+    avoid double-running native stores.
+    """
+    # Shopify/connected stores (exclude selora skeleton rows)
     result = db().table("stores").select("*").eq("is_active", True).execute()
-    return result.data or []
+    shopify_stores = [s for s in (result.data or []) if s.get("platform") != "selora"]
+
+    # Native Selora stores
+    native_result = db().table("selora_stores").select("*").eq("is_public", True).execute()
+    native_stores = []
+    for s in (native_result.data or []):
+        native_stores.append({
+            "id": s["id"],
+            "user_id": s["user_id"],
+            "platform": "selora",
+            "shop_url": f"/store/{s['handle']}",
+            "shop_name": s["name"],
+            "access_token": "",
+            "is_active": True,
+            "created_at": s.get("created_at"),
+        })
+
+    return shopify_stores + native_stores
 
 
 def get_store_by_id(store_id: str) -> dict:
@@ -329,9 +371,26 @@ def save_store_settings(store_id: str, settings: dict) -> dict:
 
 # ─── Agent Logs ───────────────────────────────────────────────────────────────
 
+_selora_store_id_cache: set = set()
+
+def _is_selora_native_store(store_id: str) -> bool:
+    """Return True if store_id belongs to selora_stores (not the Shopify stores table)."""
+    if store_id in _selora_store_id_cache:
+        return True
+    res = db().table("selora_stores").select("id").eq("id", store_id).execute()
+    if res.data:
+        _selora_store_id_cache.add(store_id)
+        return True
+    return False
+
+def _logs_table(store_id: str) -> str:
+    """Return the correct agent logs table name for a given store_id."""
+    return "selora_agent_logs" if _is_selora_native_store(store_id) else "agent_logs"
+
 def save_agent_log(store_id: str, action_type: str, product_id: str = None, reason: str = None, data: dict = None, success: bool = True):
     """Save a single agent action to the logs table."""
-    db().table("agent_logs").insert({
+    table = _logs_table(store_id)
+    db().table(table).insert({
         "store_id": store_id,
         "action_type": action_type,
         "product_id": product_id,
@@ -361,7 +420,8 @@ def save_agent_actions(store_id: str, actions: list):
 
 def get_recent_logs(store_id: str, limit: int = 20) -> list:
     """Get the most recent agent logs for a store."""
-    result = db().table("agent_logs").select("*").eq("store_id", store_id).order("created_at", desc=True).limit(limit).execute()
+    table = _logs_table(store_id)
+    result = db().table(table).select("*").eq("store_id", store_id).order("created_at", desc=True).limit(limit).execute()
     return result.data or []
 
 
@@ -386,18 +446,6 @@ def get_recent_reports(store_id: str, limit: int = 7) -> list:
 
 
 # ─── Chat Messages ───────────────────────────────────────────────────────────
-
-_selora_store_id_cache: set = set()
-
-def _is_selora_native_store(store_id: str) -> bool:
-    """Return True if store_id belongs to selora_stores (not the Shopify stores table)."""
-    if store_id in _selora_store_id_cache:
-        return True
-    res = db().table("selora_stores").select("id").eq("id", store_id).execute()
-    if res.data:
-        _selora_store_id_cache.add(store_id)
-        return True
-    return False
 
 
 def _chat_table(store_id: str) -> str:

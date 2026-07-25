@@ -39,9 +39,9 @@ Selora Native Stores support **Solana Pay checkout**, letting buyers pay in USDC
 1. Buyer adds items to their bag (no wallet needed at this stage).
 2. At checkout, buyer chooses:
    - **Scan & Pay** — a standard Solana Pay QR code (`solana:<recipient>?amount=...`) is generated. Any Solana wallet app (Phantom, Solflare, Backpack, Glow, etc.) can scan and complete payment on mobile.
-   - **Pay with Connected Wallet** — a one-click desktop flow using Phantom directly in-browser (via `window.solana`).
+    - **Pay with Connected Wallet** — a one-click flow using Phantom directly in-browser (`window.solana`) or their connected **Privy Wallet** (supporting embedded/social/email logins).
 3. For the direct-browser path, the frontend builds a versioned transaction: creates the buyer's Associated Token Account if needed, and a `transferChecked` instruction moving USDC to the store's payout wallet — resolved **server-side** from the store's saved settings, never from client input.
-4. Buyer approves the payment in their wallet.
+4. Buyer approves the payment in their wallet (or via Privy's embedded signature overlay).
 5. Backend polls Solana Devnet for on-chain confirmation, comparing pre/post token balances at the merchant's wallet to confirm the transfer actually landed.
 6. Order status flips to `confirmed`, product stock decrements, and the buyer sees a confirmation screen with a link to view the transaction on Solana Explorer (Devnet).
 
@@ -49,11 +49,11 @@ Selora Native Stores support **Solana Pay checkout**, letting buyers pay in USDC
 | Flow | Supported wallets |
 |---|---|
 | QR code checkout (mobile) | Any Solana wallet app |
-| Direct browser checkout (desktop) | Phantom only (`window.solana`) |
+| Direct browser checkout | Phantom (`window.solana`) OR **Privy Embedded Wallet** (Email/Google/Social) |
 | "My Orders" tracking lookup | Phantom only |
 | Merchant/seller login (Store Builder & Dashboard) | Multiple wallets + social login, via Privy |
 
-Broadening direct-browser checkout and order lookup to other wallets (Solflare, Backpack, etc.) via `@solana/wallet-adapter-react` is on the roadmap.
+Direct Privy integration solves the mobile and browser-extension barrier: customers without Phantom installed can log in with their email, instantly spin up a Privy Solana embedded wallet, and execute the payment signature on-chain.
 
 ### Testing it yourself
 - Get Devnet SOL (for fees): https://faucet.solana.com

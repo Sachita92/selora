@@ -7,7 +7,10 @@ import { useAuth } from '../lib/useAuth'
 export default function Navbar() {
   const { user, openAuthModal, loading } = useAppContext()
   const { login, logout, authenticated, ready, walletAddress, user: privyUser, triggerSync, syncing } = useAuth()
-  const isCheckingSession = !ready || loading || syncing
+  // Only show the skeleton on genuine initial load.
+  // Do NOT blank the nav during a background re-sync (when Supabase token
+  // expires) — if Privy already says authenticated we know who the user is.
+  const isCheckingSession = !ready || (loading && !authenticated)
   const [darkMode, toggleTheme] = useDarkMode()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)

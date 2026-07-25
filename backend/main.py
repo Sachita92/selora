@@ -204,7 +204,11 @@ def get_stores(request: Request):
 
     stores = get_stores_for_user(user["id"])
 
-    # Don't expose access tokens in API response
+    # Don't expose access tokens in API response.
+    # IMPORTANT: exclude skeleton 'selora' platform rows from the `stores` table —
+    # those are only inserted to satisfy FK constraints. Native Selora stores are
+    # fetched and appended from `selora_stores` below, so including them here
+    # would cause the same store to appear twice in the sidebar.
     safe_stores = [{
         "id": s["id"],
         "platform": s["platform"],
@@ -214,7 +218,7 @@ def get_stores(request: Request):
         "last_synced_at": s["last_synced_at"],
         "created_at": s["created_at"],
         "run_count_this_month": s.get("run_count_this_month", 0),
-    } for s in stores]
+    } for s in stores if s.get("platform") != "selora"]
 
     # Fetch and merge native Selora stores
     from database import db as _db
@@ -1142,11 +1146,15 @@ def _run_agent_task(store: dict, dry_run: bool):
     print(f"\n🌱 Running agent on {store['shop_name']}...")
 
     try:
-        # Create adapter with this store's credentials
-        adapter = ShopifyAdapter(
-            shop_url=store["shop_url"],
-            access_token=store["access_token"],
-        )
+        # Create adapter based on platform
+        if store.get("platform") == "selora":
+            from adapters.native import SeloraNativeAdapter
+            adapter = SeloraNativeAdapter(store_id=store["id"])
+        else:
+            adapter = ShopifyAdapter(
+                shop_url=store["shop_url"],
+                access_token=store["access_token"],
+            )
 
         # Fetch store data
         snapshot = adapter.get_store_snapshot()
@@ -2526,17 +2534,17 @@ async def upload_hero_image(store_id: str, role: str, request: Request):
         raise HTTPException(status_code=404, detail='Store not found')
     if existing.data[0]['user_id'] != user_id:
         raise HTTPException(status_code=403, detail='Forbidden')
-        
+
     body_json = await request.json()
     file_data_b64 = body_json.get('file_data', '')
     content_type = body_json.get('content_type', 'image/jpeg')
     file_bytes = base64.b64decode(file_data_b64)
-    
+
     path = f'hero-images/{store_id}/{role}.jpg'
     supabase_url = os.getenv('SUPABASE_URL')
     bucket = 'selora-products'
     storage = _db().storage.from_(bucket)
-    
+
     try:
         try:
             storage.remove(path)
@@ -2545,13 +2553,13 @@ async def upload_hero_image(store_id: str, role: str, request: Request):
         storage.upload(path, file_bytes, {'content-type': content_type, 'upsert': 'true'})
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Storage upload failed: {str(e)}")
-        
+
     public_url = f'{supabase_url}/storage/v1/object/public/{bucket}/{path}'
-    
+
     # Save the public URL into store settings database
     db_field = f"hero_image_{role}"
     _db().table('selora_stores').update({db_field: public_url}).eq('id', store_id).execute()
-    
+
     return {'url': public_url}
 
 
@@ -2559,107 +2567,13 @@ async def upload_hero_image(store_id: str, role: str, request: Request):
 async def classify_image(store_id: str, request: Request):
     """
     Call Claude API to classify product image against dynamic category list.
-    NOTE: This endpoint is currently unused in the single-product creation flow,
-    but is intentionally kept in the codebase for future bulk-import/bulk-upload features.
+    NOTE: Currently disabled — ANTHROPIC_API_KEY not configured.
+    Returns 'Uncategorized' gracefully so the product upload flow is unaffected.
+    To re-enable: add ANTHROPIC_API_KEY to .env and restore the Anthropic logic.
     """
-    import base64
-    import httpx
-    import json
-    import re
-    from database import db as _db
-    user_id, _ = _get_user_id_from_token(request)
-    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
-    if not existing.data:
-        raise HTTPException(status_code=404, detail='Store not found')
-    if existing.data[0]['user_id'] != user_id:
-        raise HTTPException(status_code=403, detail='Forbidden')
-
-    body_json = await request.json()
-    image_data_b64 = body_json.get('image_data', '')
-    categories = body_json.get('categories', [])
-
-    if not image_data_b64:
-        raise HTTPException(status_code=400, detail="Image data is required")
-    if not categories:
-        return {"category": "Uncategorized", "confidence": "low"}
-
-    # Extract base64 data and media type
-    media_type = "image/jpeg"
-    base64_data = image_data_b64
-    if "," in image_data_b64:
-        header, base64_data = image_data_b64.split(",", 1)
-        if "image/png" in header:
-            media_type = "image/png"
-        elif "image/webp" in header:
-            media_type = "image/webp"
-
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-    if not anthropic_key:
-        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY is not configured")
-
-    prompt = (
-        f"You are a fashion product classifier.\n"
-        f"Analyze the attached product image and classify it into exactly one of these categories: {json.dumps(categories)}.\n"
-        f"Do not invent new categories. If none of these categories are a reasonable fit, respond with 'Uncategorized'.\n"
-        f"Respond ONLY with a strict JSON object containing 'category' (the selected category name or 'Uncategorized') and 'confidence' ('high', 'medium', or 'low').\n"
-        f"Example: {{\"category\": \"Tops\", \"confidence\": \"high\"}}"
-    )
-
-    headers = {
-        "x-api-key": anthropic_key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json"
-    }
-
-    body = {
-        "model": "claude-3-5-sonnet-20241022",
-        "max_tokens": 1024,
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": base64_data
-                        }
-                    },
-                    {
-                        "type": "text",
-                        "text": prompt
-                    }
-                ]
-            }
-        ]
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            res = await client.post("https://api.anthropic.com/v1/messages", json=body, headers=headers)
-            if res.status_code != 200:
-                print(f"Anthropic API error: {res.status_code} - {res.text}")
-                raise HTTPException(status_code=502, detail="Failed to communicate with Claude API")
-            
-            data = res.json()
-            content_text = data["content"][0]["text"].strip()
-            
-            json_match = re.search(r"\{.*?\}", content_text, re.DOTALL)
-            if json_match:
-                result = json.loads(json_match.group(0))
-                selected = result.get("category", "Uncategorized")
-                if selected not in categories and selected != "Uncategorized":
-                    selected = "Uncategorized"
-                return {
-                    "category": selected,
-                    "confidence": result.get("confidence", "low")
-                }
-            else:
-                raise ValueError("No JSON block found in response")
-    except Exception as e:
-        print(f"Classification error: {e}")
-        raise HTTPException(status_code=500, detail=f"Image classification failed: {str(e)}")
+    # Graceful no-op: return Uncategorized so product upload flow continues
+    # uninterrupted without an API key configured.
+    return {"category": "Uncategorized", "confidence": "low"}
 
 
 @app.post('/selora-stores/{store_id}/upload-product-image/{product_id}')
@@ -3254,7 +3168,7 @@ def verify_solana_checkout(reference: str):
                 
         if confirmed_signature:
             # 3. Update status in database
-            _db().table("selora_orders").update({"status": "paid"}).eq("id", order["id"]).execute()
+            _db().table("selora_orders").update({"status": "paid", "signature": confirmed_signature}).eq("id", order["id"]).execute()
             
             # 3.5 Decrement product inventory (stock)
             try:

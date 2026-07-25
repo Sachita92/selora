@@ -619,6 +619,26 @@ export default function Dashboard() {
 
             {/* ── QUICK ACTIONS (1a: no duplicate Run Agent) ────────────────── */}
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+              <button
+                onClick={runAgent}
+                disabled={running}
+                className="qa-card"
+                style={{
+                  background: 'var(--bg-1)',
+                  border: '1px solid var(--border)',
+                  cursor: running ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit',
+                  fontSize: 'inherit',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  color: 'var(--text-primary)',
+                  outline: 'none'
+                }}
+              >
+                <IconPlay />
+                {running ? 'Running...' : 'Run Agent Now'}
+              </button>
               <Link to="/reports" className="qa-card">
                 <IconReport />
                 View Last Report
@@ -662,7 +682,7 @@ export default function Dashboard() {
                       </thead>
                       <tbody>
                         {pendingOrders.slice(0, 3).map(order => (
-                          <tr key={order.id} style={{ borderBottom: '1px solid rgba(217, 119, 6, 0.1)', color: '#1A271C' }}>
+                          <tr key={order.id} style={{ borderBottom: '1px solid rgba(217, 119, 6, 0.1)', color: 'var(--text-primary)' }}>
                             <td style={{ padding: '0.75rem 0.5rem', fontFamily: 'monospace', fontWeight: 500 }} data-label="Order ID">
                               #{order.id.slice(0, 8)}
                             </td>
