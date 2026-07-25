@@ -1100,7 +1100,8 @@ export default function Storefront({ previewData = null }) {
           top: 0;
           height: 100vh;
           width: 420px;
-          background: #fff;
+          background: #ffffff;
+          color: #1A271C;
           box-shadow: -10px 0 40px rgba(26,39,28,.15);
           z-index: 300;
           padding: 2rem 1.5rem;
@@ -1731,9 +1732,9 @@ export default function Storefront({ previewData = null }) {
             setPaymentStatus(null);
           }} />
           <div className="sf-drawer">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem', flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #E4EBE5', paddingBottom: '1rem', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '.65rem' }}>
-                <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', margin: 0, color: 'var(--text-primary)' }}>Your Bag</h2>
+                <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', margin: 0, color: '#1A271C' }}>Your Bag</h2>
                 <span style={{
                   fontSize: '.65rem',
                   fontWeight: 700,
@@ -1754,7 +1755,7 @@ export default function Storefront({ previewData = null }) {
                   setCheckoutDetails(null);
                   setPaymentStatus(null);
                 }}
-                style={{ background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', color: 'var(--text-muted)' }}
+                style={{ background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', color: '#6B7280' }}
               >
                 X
               </button>
@@ -1834,7 +1835,7 @@ export default function Storefront({ previewData = null }) {
                 {/* Cart Items List */}
                 <div style={{ flex: 1, overflowY: 'auto', paddingRight: '.25rem' }} className="no-scrollbar">
                   {cart.map(item => (
-                    <div key={item.product.id} style={{ display: 'flex', gap: '1rem', padding: '1rem 0', borderBottom: '1px solid var(--border)' }}>
+                    <div key={item.product.id} style={{ display: 'flex', gap: '1rem', padding: '1rem 0', borderBottom: '1px solid #E4EBE5' }}>
                       {item.product.images?.[0] ? (
                         <img src={item.product.images[0]} alt={item.product.title} style={{ width: 70, height: 85, objectFit: 'cover', borderRadius: 8 }} />
                       ) : (
@@ -1843,7 +1844,7 @@ export default function Storefront({ previewData = null }) {
                         </div>
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 600, fontSize: '.9rem', margin: '0 0 .25rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product.title}</p>
+                        <p style={{ fontWeight: 600, fontSize: '.9rem', margin: '0 0 .25rem', color: '#1A271C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product.title}</p>
                         <p style={{ fontSize: '.85rem', color: 'var(--g)', fontWeight: 700, margin: '0 0 .5rem' }}>{currency} {Number(item.product.price).toFixed(2)}</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
                           <button 
@@ -1851,17 +1852,17 @@ export default function Storefront({ previewData = null }) {
                               setCart(prev => prev.map(x => x.product.id === item.product.id ? { ...x, quantity: Math.max(1, x.quantity - 1) } : x));
                             }}
                             disabled={paymentStatus === 'pending'}
-                            style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.9rem' }}
+                            style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid #D1D5DB', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.9rem', color: '#1A271C' }}
                           >
                             -
                           </button>
-                          <span style={{ fontSize: '.85rem', fontWeight: 600 }}>{item.quantity}</span>
+                          <span style={{ fontSize: '.85rem', fontWeight: 600, color: '#1A271C' }}>{item.quantity}</span>
                           <button 
                             onClick={() => {
                               setCart(prev => prev.map(x => x.product.id === item.product.id ? { ...x, quantity: x.quantity + 1 } : x));
                             }}
                             disabled={paymentStatus === 'pending'}
-                            style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.9rem' }}
+                            style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid #D1D5DB', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.9rem', color: '#1A271C' }}
                           >
                             +
                           </button>
@@ -1881,8 +1882,8 @@ export default function Storefront({ previewData = null }) {
                 </div>
 
                 {/* Checkout Summary & Action */}
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem', background: '#fff', marginTop: 'auto', flexShrink: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: '1.05rem', marginBottom: '1.25rem', color: 'var(--text-primary)' }}>
+                <div style={{ borderTop: '1px solid #E4EBE5', paddingTop: '1.25rem', background: '#ffffff', marginTop: 'auto', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: '1.05rem', marginBottom: '1.25rem', color: '#1A271C' }}>
                     <span>Total USD</span>
                     <span>{currency} {cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0).toFixed(2)}</span>
                   </div>
@@ -1959,62 +1960,9 @@ export default function Storefront({ previewData = null }) {
                             Transferring <strong>{checkoutDetails.amount_usdc.toFixed(2)} USDC</strong>
                           </p>
 
-                          {/* 1. Privy Embedded/Connected Wallet Option */}
-                          {walletAddress ? (
-                            <button
-                              onClick={handlePrivyWalletPayment}
-                              disabled={checkoutLoading}
-                              style={{
-                                width: '100%',
-                                padding: '.75rem',
-                                background: '#5A8A67', // Privy green
-                                color: '#fff',
-                                border: 'none',
-                                borderRadius: 8,
-                                fontSize: '.85rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '.5rem',
-                                marginBottom: '0.75rem',
-                                transition: 'all .15s'
-                              }}
-                            >
-                              {checkoutLoading ? (
-                                <div style={{ width: 14, height: 14, border: '2px solid #fff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin .6s linear infinite' }} />
-                              ) : (
-                                `Pay with Privy Wallet (${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)})`
-                              )}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={connectWallet}
-                              disabled={checkoutLoading}
-                              style={{
-                                width: '100%',
-                                padding: '.75rem',
-                                background: 'transparent',
-                                color: 'var(--text-primary)',
-                                border: '1.5px solid var(--border)',
-                                borderRadius: 8,
-                                fontSize: '.85rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '.5rem',
-                                marginBottom: '0.75rem',
-                                transition: 'all .15s'
-                              }}
-                            >
-                              Connect Privy Wallet (Email/Social)
-                            </button>
-                          )}
 
-                          {/* 2. Phantom Extension Option */}
+                          {/* Phantom Wallet Option */}
+
                           {(phantomConnected || window.solana?.isPhantom) ? (
                             <button
                               onClick={handleWalletPayment}
