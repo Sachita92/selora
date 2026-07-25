@@ -32,6 +32,11 @@ export function AppProvider({ children }) {
   const syncAttemptsRef = useRef(0)
   const lastSyncFailureTimeRef = useRef(0)
   const isSyncingRef = useRef(false)
+  // Keep latest Privy values accessible inside the stable onAuthStateChange closure.
+  const readyRef = useRef(ready)
+  const authenticatedRef = useRef(authenticated)
+  useEffect(() => { readyRef.current = ready }, [ready])
+  useEffect(() => { authenticatedRef.current = authenticated }, [authenticated])
 
   // Fallback: if the backend never responds (Render cold-start can take 10-30s),
   // force-clear loading after 10s so unauthenticated visitors see the nav.
@@ -112,10 +117,10 @@ export function AppProvider({ children }) {
       const token = await getAccessToken()
       if (!token) throw new Error("Could not retrieve Privy token")
 
-      // Sign out of Supabase first to clear stale/corrupted token data
-      try {
-        await supabase.auth.signOut()
-      } catch (_) {}
+      // NOTE: Do NOT call supabase.auth.signOut() here.
+      // Doing so fires onAuthStateChange(null) which sets mounted=false in the
+      // subscription closure, causing the subsequent setSession() callback to be
+      // silently dropped — leaving user stuck on the spinner forever.
 
       const walletAddress = getWalletAddress(privyUser)
 
@@ -136,14 +141,25 @@ export function AppProvider({ children }) {
 
       const data = await res.json()
       if (data.session) {
-        const { error: supabaseErr } = await supabase.auth.setSession({
+        // setSession() returns { data: { session, user }, error } in Supabase v2.
+        // We read the user directly from the return value rather than waiting for
+        // onAuthStateChange, which may not fire if the subscription was rebuilt.
+        const { data: sessionData, error: supabaseErr } = await supabase.auth.setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
         })
         if (supabaseErr) throw supabaseErr
 
+        // Immediately update user so isMidSync resolves and ProtectedRoute
+        // re-renders the dashboard without waiting for any secondary callbacks.
+        const restoredUser = sessionData?.user ?? data.session.user ?? null
+        if (restoredUser) {
+          setUser(restoredUser)
+        }
+
         console.log(`[Auth] Silent sync SUCCESS (attempt ${syncAttemptsRef.current}/3) — Supabase session restored.`)
         syncAttemptsRef.current = 0
+        // Refresh stores/profile data in the background (non-blocking).
         fetchStores()
       } else {
         throw new Error("No session returned")
@@ -176,7 +192,7 @@ export function AppProvider({ children }) {
           setLoading(false)
 
           // Detect if Supabase session failed to refresh unexpectedly while Privy is still authenticated
-          if (!isLoggingOutRef.current && ready && authenticated) {
+          if (!isLoggingOutRef.current && readyRef.current && authenticatedRef.current) {
             console.log("Session lost/expired unexpectedly while Privy is authenticated. Triggering silent sync...")
             if (attemptSilentSyncRef.current) {
               await attemptSilentSyncRef.current()
@@ -203,7 +219,10 @@ export function AppProvider({ children }) {
         authSubscriptionRef.current = null
       }
     }
-  }, [ready, authenticated])
+  // Run once on mount. The subscription must never be torn down during a
+  // sync cycle, so the dependency array is intentionally empty.
+  // `ready` and `authenticated` are read via closure-captured refs where needed.
+  }, [])
 
   const fetchStores = useCallback(async () => {
     try {
