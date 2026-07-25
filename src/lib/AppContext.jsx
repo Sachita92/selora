@@ -12,12 +12,8 @@ export function AppProvider({ children }) {
   const [stores, setStores] = useState([])
   const [activeStore, setActiveStore] = useState(null)
   const [loading, setLoading] = useState(true)
-  // Safety net: if Privy is ready but loading hasn't resolved after 5 seconds
-  // (e.g. Railway backend cold-start), force-clear loading so the nav renders.
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 5000)
-    return () => clearTimeout(t)
-  }, [])
+  // Ref to the fallback loading timer so fetchStores can cancel it early.
+  const loadingTimeoutRef = useRef(null)
   const [authModal, setAuthModal] = useState({ open: false, mode: 'login', plan: null })
   const [nameModal, setNameModal] = useState({ open: false })
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -36,6 +32,27 @@ export function AppProvider({ children }) {
   const syncAttemptsRef = useRef(0)
   const lastSyncFailureTimeRef = useRef(0)
   const isSyncingRef = useRef(false)
+
+  // Fallback: if the backend never responds (Render cold-start can take 10-30s),
+  // force-clear loading after 10s so unauthenticated visitors see the nav.
+  // Rules:
+  //   • Gated on !authenticated — if Privy says the user is logged in, we're
+  //     mid-sync; skip the force-clear and let the real fetch finish.
+  //   • fetchStores cancels this timer early via loadingTimeoutRef when it
+  //     resolves, so there's no stale setState race.
+  useEffect(() => {
+    loadingTimeoutRef.current = setTimeout(() => {
+      if (!authenticated) {
+        // Safe to force-clear: visitor is genuinely not logged in.
+        setLoading(false)
+      }
+      // If authenticated, the silent-sync will call fetchStores which
+      // clears loading in its finally block — don't interfere.
+    }, 10000)
+    return () => {
+      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current)
+    }
+  }, [authenticated])
 
   useEffect(() => {
     isLoggingOutRef.current = isLoggingOut
@@ -241,6 +258,13 @@ export function AppProvider({ children }) {
     } catch (e) {
       console.error('Failed to fetch stores:', e)
     } finally {
+      // Cancel the fallback loading timeout — real data (or a real error) has
+      // arrived, so we don't want the timer firing a redundant setLoading(false)
+      // after the fact and potentially confusing state.
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
+      }
       setLoading(false)
     }
   }, [])

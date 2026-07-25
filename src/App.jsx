@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { ChatProvider } from './lib/ChatContext'
 import { AppProvider, useAppContext } from './lib/AppContext'
+import { usePrivy } from '@privy-io/react-auth'
 import ChatWidget from './components/ChatWidget'
 import SidebarLayout from './components/SidebarLayout'
 import AuthModal from './components/AuthModal'
@@ -34,14 +35,24 @@ import Orders         from './pages/Orders'
 // ─── Protected route wrapper ──────────────────────────────────────────────────
 function ProtectedRoute({ children }) {
   const { user, loading, openAuthModal, isLoggingOut } = useAppContext()
+  const { authenticated, ready } = usePrivy()
+
+  // If Privy hasn't initialised yet, or AppContext is still on the initial load,
+  // render nothing (don't redirect yet).
+  const isInitialLoad = !ready || loading
+
+  // If Privy is authenticated but the Supabase user isn't set yet, we're
+  // mid-sync (token refresh). Stay on the page — don't redirect to /.
+  const isMidSync = ready && authenticated && !user
 
   useEffect(() => {
-    if (!loading && !user && !isLoggingOut) {
+    // Only open the auth modal when we're definitely not authenticated anywhere
+    if (!isInitialLoad && !isMidSync && !user && !isLoggingOut) {
       openAuthModal('login')
     }
-  }, [loading, user, openAuthModal, isLoggingOut])
+  }, [isInitialLoad, isMidSync, user, openAuthModal, isLoggingOut])
 
-  if (loading) return null
+  if (isInitialLoad || isMidSync) return null
   if (!user) return <Navigate to="/" replace />
   return children
 }
