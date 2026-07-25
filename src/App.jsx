@@ -32,27 +32,53 @@ import Reports        from './pages/Reports'
 import Profile        from './pages/Profile'
 import Orders         from './pages/Orders'
 
+// ─── Full-page loading spinner shown while auth state is resolving ───────────
+function SyncingSpinner({ label = 'Reconnecting\u2026' }) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: '1rem',
+      background: 'var(--bg, #F8FAF8)', fontFamily: 'Inter, sans-serif', zIndex: 9999,
+    }}>
+      <style>{`
+        @keyframes _pr-spin { to { transform: rotate(360deg) } }
+        ._pr-ring {
+          width: 44px; height: 44px; border-radius: 50%;
+          border: 3px solid var(--border, #E4EBE5);
+          border-top-color: var(--g, #5A8A67);
+          animation: _pr-spin .75s linear infinite;
+        }
+      `}</style>
+      <div className="_pr-ring" />
+      <p style={{ margin: 0, fontSize: '.85rem', color: 'var(--muted, #6B7280)', fontWeight: 500 }}>
+        {label}
+      </p>
+    </div>
+  )
+}
+
 // ─── Protected route wrapper ──────────────────────────────────────────────────
 function ProtectedRoute({ children }) {
   const { user, loading, openAuthModal, isLoggingOut } = useAppContext()
   const { authenticated, ready } = usePrivy()
 
-  // If Privy hasn't initialised yet, or AppContext is still on the initial load,
-  // render nothing (don't redirect yet).
+  // True while Privy SDK is booting or AppContext first fetchStores is in-flight.
   const isInitialLoad = !ready || loading
 
-  // If Privy is authenticated but the Supabase user isn't set yet, we're
-  // mid-sync (token refresh). Stay on the page — don't redirect to /.
+  // True when Privy is still authenticated but the Supabase session has lapsed
+  // and the silent-sync is in the process of restoring it.
   const isMidSync = ready && authenticated && !user
 
   useEffect(() => {
-    // Only open the auth modal when we're definitely not authenticated anywhere
+    // Only open the auth modal when we are definitively not authenticated anywhere.
     if (!isInitialLoad && !isMidSync && !user && !isLoggingOut) {
       openAuthModal('login')
     }
   }, [isInitialLoad, isMidSync, user, openAuthModal, isLoggingOut])
 
-  if (isInitialLoad || isMidSync) return null
+  // Show a branded spinner instead of a blank white page while loading / syncing.
+  if (isInitialLoad) return <SyncingSpinner label="Loading\u2026" />
+  if (isMidSync)     return <SyncingSpinner label="Reconnecting session\u2026" />
   if (!user) return <Navigate to="/" replace />
   return children
 }

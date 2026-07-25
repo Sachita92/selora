@@ -85,7 +85,9 @@ export function AppProvider({ children }) {
     isSyncingRef.current = true
 
     if (syncAttemptsRef.current >= 3) {
-      console.warn("Max silent sync attempts reached. Prompting for reconnect.")
+      console.warn(
+        `[Auth] Silent sync FAILED after 3 attempts — giving up and prompting for re-login.`
+      )
       handleSignOutAndPrompt()
       isSyncingRef.current = false
       return
@@ -104,7 +106,8 @@ export function AppProvider({ children }) {
       return
     }
     try {
-      console.log(`Attempting silent token recovery sync via Privy (Attempt ${syncAttemptsRef.current + 1})...`)
+      const attempt = syncAttemptsRef.current + 1
+      console.log(`[Auth] Silent token recovery attempt ${attempt}/3 via Privy...`)
       syncAttemptsRef.current++
       const token = await getAccessToken()
       if (!token) throw new Error("Could not retrieve Privy token")
@@ -139,14 +142,14 @@ export function AppProvider({ children }) {
         })
         if (supabaseErr) throw supabaseErr
 
-        console.log("Silent recovery sync successful, Supabase session restored!")
+        console.log(`[Auth] Silent sync SUCCESS (attempt ${syncAttemptsRef.current}/3) — Supabase session restored.`)
         syncAttemptsRef.current = 0
         fetchStores()
       } else {
         throw new Error("No session returned")
       }
     } catch (err) {
-      console.error("Silent recovery sync failed:", err)
+      console.error(`[Auth] Silent sync FAILED (attempt ${syncAttemptsRef.current}/3):`, err.message)
       lastSyncFailureTimeRef.current = Date.now()
       handleSignOutAndPrompt()
     } finally {
