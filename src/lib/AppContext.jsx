@@ -423,7 +423,8 @@ export function AppProvider({ children }) {
       authModal, openAuthModal, closeAuthModal,
       nameModal, setNameModal,
       isLoggingOut, setIsLoggingOut,
-      authMessage, setAuthMessage
+      authMessage, setAuthMessage,
+      triggerSync: attemptSilentSync
     }}>
       {children}
     </AppContext.Provider>

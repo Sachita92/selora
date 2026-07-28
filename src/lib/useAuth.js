@@ -10,7 +10,7 @@ let justLoggedInFlag = false
 
 export function useAuth() {
   const { user, login, logout: privyLogout, authenticated, ready, getAccessToken } = usePrivy()
-  const { user: supabaseUser, setUser, setNameModal, setStores, setActiveStore, setIsLoggingOut } = useAppContext()
+  const { user: supabaseUser, setUser, setNameModal, setStores, setActiveStore, setIsLoggingOut, triggerSync } = useAppContext()
   const navigate = useNavigate()
   const location = useLocation()
   const [syncing, setSyncing] = useState(false)
@@ -33,106 +33,6 @@ export function useAuth() {
     )
     return solanaAccount?.address || null
   }, [user])
-
-  // Sync Privy authentication with our database and Supabase Auth
-  const triggerSync = useCallback(async () => {
-    if (!ready || !authenticated || !user) return
-    if (syncingRef.current) return
-    syncingRef.current = true
-    setSyncing(true)
-    setError(null)
-    try {
-      // Clear stale Supabase session data first to avoid conflict
-      try {
-        await supabase.auth.signOut()
-      } catch (_) {}
-
-      const token = await getAccessToken()
-      if (!token) throw new Error("Could not retrieve Privy token")
-
-      // Decode and log JWT expiration/claims client-side
-      try {
-        const parts = token.split('.')
-        if (parts.length === 3) {
-          const payload = JSON.parse(window.atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
-          const now = Math.floor(Date.now() / 1000)
-          console.log("[Auth] useAuth Client-decoded Privy Token Payload:", payload)
-          console.log(`[Auth] useAuth Current time: ${now}, Token exp: ${payload.exp}, Diff: ${payload.exp - now}s (${payload.exp > now ? "Valid" : "EXPIRED"})`)
-          console.log(`[Auth] useAuth Time since issued (iat): ${now - payload.iat}s`)
-        } else {
-          console.warn("[Auth] useAuth Token does not have 3 parts:", token)
-        }
-      } catch (decodeErr) {
-        console.error("[Auth] useAuth Failed to decode Privy JWT client-side:", decodeErr)
-      }
-
-      console.log("[Auth] useAuth Sending privy-sync request with wallet:", walletAddress)
-
-      // Call backend to sync user / update wallet_address
-      const res = await fetch(`${API_URL}/api/auth/privy-sync`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          privy_token: token,
-          wallet_address: walletAddress,
-        }),
-      })
-
-      // Clone response to print raw text body/status on failure or success
-      try {
-        const resClone = res.clone()
-        const rawBody = await resClone.text()
-        console.log(`[Auth] useAuth Received privy-sync response (status: ${res.status}):`, rawBody)
-      } catch (cloneErr) {
-        console.error("[Auth] useAuth Failed to clone/read response:", cloneErr)
-      }
-
-      if (!res.ok) {
-        const errData = await res.json()
-        throw new Error(errData.detail || "Failed to sync authentication with backend")
-      }
-
-      const data = await res.json()
-      if (data.session) {
-        // Set Supabase session using access_token and refresh_token
-        const { error: supabaseErr } = await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        })
-        if (supabaseErr) throw supabaseErr
-
-        if (data.needs_display_name) {
-          setNameModal({ open: true })
-        } else {
-          // Redirect to dashboard only if user is on dedicated auth pages or just logged in
-          const authPaths = ['/login', '/signup']
-          if (authPaths.includes(location.pathname) || justLoggedInFlag) {
-            justLoggedInFlag = false
-            navigate('/dashboard')
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Privy-Supabase auth sync failed:", err)
-      setError(err.message || "Auth synchronization error")
-    } finally {
-      setSyncing(false)
-      syncingRef.current = false
-    }
-  }, [ready, authenticated, user, walletAddress, location.pathname, navigate, setNameModal])
-
-  // Sync Privy authentication automatically on load
-  useEffect(() => {
-    let active = true
-    if (ready && authenticated && user && !supabaseUser) {
-      triggerSync()
-    }
-    return () => {
-      active = false
-    }
-  }, [ready, authenticated, user, supabaseUser, triggerSync])
 
   // Redirect to dashboard only if session is active and user is on a dedicated auth route
   useEffect(() => {
