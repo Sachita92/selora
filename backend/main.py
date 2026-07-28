@@ -2196,8 +2196,16 @@ def privy_sync(body: PrivySyncRequest, request: Request):
             }
         }
     except Exception as e:
-        print(f"⚠️ Privy sync error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        print("⚠️ Privy sync error occurred!")
+        print(f"Error class: {e.__class__.__name__}")
+        print(f"Error message: {str(e)}")
+        print("Token prefix/suffix/length check:")
+        token_len = len(privy_token) if privy_token else 0
+        token_preview = f"{privy_token[:15]}...{privy_token[-15:]}" if token_len > 30 else "too short"
+        print(f"Token length: {token_len}, Preview: {token_preview}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Privy token verification failed ({e.__class__.__name__}): {str(e)}")
 
 
 def _get_user_id_from_token(request: Request) -> tuple[str, str]:

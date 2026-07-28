@@ -50,6 +50,24 @@ export function useAuth() {
       const token = await getAccessToken()
       if (!token) throw new Error("Could not retrieve Privy token")
 
+      // Decode and log JWT expiration/claims client-side
+      try {
+        const parts = token.split('.')
+        if (parts.length === 3) {
+          const payload = JSON.parse(window.atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+          const now = Math.floor(Date.now() / 1000)
+          console.log("[Auth] useAuth Client-decoded Privy Token Payload:", payload)
+          console.log(`[Auth] useAuth Current time: ${now}, Token exp: ${payload.exp}, Diff: ${payload.exp - now}s (${payload.exp > now ? "Valid" : "EXPIRED"})`)
+          console.log(`[Auth] useAuth Time since issued (iat): ${now - payload.iat}s`)
+        } else {
+          console.warn("[Auth] useAuth Token does not have 3 parts:", token)
+        }
+      } catch (decodeErr) {
+        console.error("[Auth] useAuth Failed to decode Privy JWT client-side:", decodeErr)
+      }
+
+      console.log("[Auth] useAuth Sending privy-sync request with wallet:", walletAddress)
+
       // Call backend to sync user / update wallet_address
       const res = await fetch(`${API_URL}/api/auth/privy-sync`, {
         method: 'POST',
@@ -61,6 +79,15 @@ export function useAuth() {
           wallet_address: walletAddress,
         }),
       })
+
+      // Clone response to print raw text body/status on failure or success
+      try {
+        const resClone = res.clone()
+        const rawBody = await resClone.text()
+        console.log(`[Auth] useAuth Received privy-sync response (status: ${res.status}):`, rawBody)
+      } catch (cloneErr) {
+        console.error("[Auth] useAuth Failed to clone/read response:", cloneErr)
+      }
 
       if (!res.ok) {
         const errData = await res.json()

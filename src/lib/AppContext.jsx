@@ -117,10 +117,21 @@ export function AppProvider({ children }) {
       const token = await getAccessToken()
       if (!token) throw new Error("Could not retrieve Privy token")
 
-      // NOTE: Do NOT call supabase.auth.signOut() here.
-      // Doing so fires onAuthStateChange(null) which sets mounted=false in the
-      // subscription closure, causing the subsequent setSession() callback to be
-      // silently dropped — leaving user stuck on the spinner forever.
+      // Decode and log JWT expiration/claims client-side
+      try {
+        const parts = token.split('.')
+        if (parts.length === 3) {
+          const payload = JSON.parse(window.atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+          const now = Math.floor(Date.now() / 1000)
+          console.log("[Auth] Client-decoded Privy Token Payload:", payload)
+          console.log(`[Auth] Current time: ${now}, Token exp: ${payload.exp}, Diff: ${payload.exp - now}s (${payload.exp > now ? "Valid" : "EXPIRED"})`)
+          console.log(`[Auth] Time since issued (iat): ${now - payload.iat}s`)
+        } else {
+          console.warn("[Auth] Token does not have 3 parts:", token)
+        }
+      } catch (decodeErr) {
+        console.error("[Auth] Failed to decode Privy JWT client-side:", decodeErr)
+      }
 
       const walletAddress = getWalletAddress(privyUser)
 
