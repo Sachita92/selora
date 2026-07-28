@@ -124,6 +124,12 @@ export function AppProvider({ children }) {
 
       const walletAddress = getWalletAddress(privyUser)
 
+      const payload = {
+        privy_token: token ? (token.substring(0, 15) + "...") : null,
+        wallet_address: walletAddress,
+      }
+      console.log("[Auth] Sending privy-sync request with payload:", payload)
+
       const res = await fetch(`${API_URL}/api/auth/privy-sync`, {
         method: 'POST',
         headers: {
@@ -135,8 +141,17 @@ export function AppProvider({ children }) {
         }),
       })
 
+      // Clone the response so we can log its text/body without consuming the stream
+      try {
+        const resClone = res.clone()
+        const rawBody = await resClone.text()
+        console.log(`[Auth] Received privy-sync response (status: ${res.status}):`, rawBody)
+      } catch (cloneErr) {
+        console.error("[Auth] Failed to clone/read privy-sync response:", cloneErr)
+      }
+
       if (!res.ok) {
-        throw new Error("Sync failed")
+        throw new Error(`Sync failed with HTTP status ${res.status}`)
       }
 
       const data = await res.json()
@@ -165,7 +180,7 @@ export function AppProvider({ children }) {
         throw new Error("No session returned")
       }
     } catch (err) {
-      console.error(`[Auth] Silent sync FAILED (attempt ${syncAttemptsRef.current}/3):`, err.message)
+      console.error(`[Auth] Silent sync FAILED (attempt ${syncAttemptsRef.current}/3) with error:`, err)
       lastSyncFailureTimeRef.current = Date.now()
       handleSignOutAndPrompt()
     } finally {
