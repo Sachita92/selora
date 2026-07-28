@@ -156,14 +156,26 @@ export function AppProvider({ children }) {
 
       const data = await res.json()
       if (data.session) {
-        // setSession() returns { data: { session, user }, error } in Supabase v2.
-        // We read the user directly from the return value rather than waiting for
-        // onAuthStateChange, which may not fire if the subscription was rebuilt.
-        const { data: sessionData, error: supabaseErr } = await supabase.auth.setSession({
+        console.log("[Auth] Invoking supabase.auth.setSession()...")
+
+        // 5-second timeout wrapper to prevent setSession from hanging indefinitely
+        const setSessionPromise = supabase.auth.setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
         })
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("supabase.auth.setSession timed out after 5 seconds")), 5000)
+        )
+
+        const { data: sessionData, error: supabaseErr } = await Promise.race([
+          setSessionPromise,
+          timeoutPromise
+        ])
+
         if (supabaseErr) throw supabaseErr
+
+        console.log("[Auth] supabase.auth.setSession completed successfully.")
 
         // Immediately update user so isMidSync resolves and ProtectedRoute
         // re-renders the dashboard without waiting for any secondary callbacks.
