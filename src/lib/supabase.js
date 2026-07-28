@@ -43,4 +43,10 @@ if (!supabaseUrl || !supabaseKey) {
   console.error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    lock: async (_name, _acquireTimeout, fn) => {
+      return await fn()
+    },
+  },
+})

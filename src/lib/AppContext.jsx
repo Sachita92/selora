@@ -222,7 +222,9 @@ export function AppProvider({ children }) {
           if (!isLoggingOutRef.current && readyRef.current && authenticatedRef.current) {
             console.log("Session lost/expired unexpectedly while Privy is authenticated. Triggering silent sync...")
             if (attemptSilentSyncRef.current) {
-              await attemptSilentSyncRef.current()
+              setTimeout(() => {
+                attemptSilentSyncRef.current()
+              }, 0)
             }
           }
         } else {
