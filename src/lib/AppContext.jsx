@@ -238,6 +238,14 @@ export function AppProvider({ children }) {
     attemptSilentSyncRef.current = attemptSilentSync
   }, [attemptSilentSync])
 
+  // Trigger silent sync automatically on startup once Privy resolves to ready & authenticated
+  useEffect(() => {
+    if (ready && authenticated && !user && !isLoggingOut) {
+      console.log("[Auth] Privy resolved to ready and authenticated, but no Supabase session exists. Initiating silent sync...")
+      attemptSilentSync()
+    }
+  }, [ready, authenticated, user, isLoggingOut, attemptSilentSync])
+
   // Auth check & store fetch
   useEffect(() => {
     let mounted = true
