@@ -26,7 +26,7 @@ export default function PrivyProviderWrapper({ children }) {
           walletChainType: 'solana-only',
           theme: 'dark',
           accentColor: '#5F8D76', // Selora brand green
-          walletList: ['detected_solana_wallets'],
+          walletList: ['phantom', 'solflare'],
         },
         externalWallets: {
           solana: {

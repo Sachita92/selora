@@ -61,6 +61,19 @@ function SyncingSpinner({ label = 'Reconnecting\u2026' }) {
 function ProtectedRoute({ children }) {
   const { user, loading, openAuthModal, isLoggingOut } = useAppContext()
   const { authenticated, ready } = usePrivy()
+  const [privyTimeout, setPrivyTimeout] = useState(false)
+
+  // 12-second hard timeout on Privy initialization
+  useEffect(() => {
+    if (!ready) {
+      const timer = setTimeout(() => {
+        setPrivyTimeout(true)
+      }, 12000)
+      return () => clearTimeout(timer)
+    } else {
+      setPrivyTimeout(false)
+    }
+  }, [ready])
 
   // True while Privy SDK is booting or AppContext first fetchStores is in-flight.
   const isInitialLoad = !ready || loading
@@ -75,6 +88,33 @@ function ProtectedRoute({ children }) {
       openAuthModal('login')
     }
   }, [isInitialLoad, isMidSync, user, openAuthModal, isLoggingOut])
+
+  // Gracefully degrade if Privy fails to initialize/load within the timeout window
+  if (!ready && privyTimeout) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: '1rem',
+        background: 'var(--bg, #F8FAF8)', fontFamily: 'Inter, sans-serif', padding: '2rem', textAlign: 'center'
+      }}>
+        <p style={{ margin: 0, fontSize: '1rem', color: '#DC2626', fontWeight: 600 }}>
+          Wallet service took too long to load.
+        </p>
+        <p style={{ margin: 0, fontSize: '.85rem', color: 'var(--muted, #6B7280)' }}>
+          Please check your connection or try refreshing the page.
+        </p>
+        <button 
+          onClick={() => window.location.reload()} 
+          style={{
+            marginTop: '1rem', padding: '.65rem 1.3rem', background: '#5A8A67',
+            color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600
+          }}
+        >
+          Refresh Page
+        </button>
+      </div>
+    )
+  }
 
   // Show a branded spinner instead of a blank white page while loading / syncing.
   if (isInitialLoad) return <SyncingSpinner label="Loading\u2026" />

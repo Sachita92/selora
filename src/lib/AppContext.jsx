@@ -5,6 +5,29 @@ import { supabase } from './supabase'
 const AppContext = createContext(null)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+// Retrieve Privy access token with up to 3 retries and a 5s timeout on each try
+const getAccessTokenWithRetry = async (getAccessTokenFn, retries = 3, delayMs = 1000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(`[Auth] Retrieving Privy access token (attempt ${i + 1}/${retries})...`)
+      const tokenPromise = getAccessTokenFn()
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("getAccessToken call timed out")), 5000)
+      )
+      const token = await Promise.race([tokenPromise, timeoutPromise])
+      if (token) {
+        return token
+      }
+    } catch (err) {
+      console.warn(`[Auth] getAccessToken attempt ${i + 1}/${retries} failed:`, err.message || err)
+      if (i < retries - 1) {
+        await new Promise(r => setTimeout(r, delayMs))
+      }
+    }
+  }
+  throw new Error("Could not retrieve Privy token after multiple attempts")
+}
+
 export function AppProvider({ children }) {
   const { user: privyUser, authenticated, ready, getAccessToken } = usePrivy()
   const [authMessage, setAuthMessage] = useState(null)
@@ -114,7 +137,7 @@ export function AppProvider({ children }) {
       const attempt = syncAttemptsRef.current + 1
       console.log(`[Auth] Silent token recovery attempt ${attempt}/3 via Privy...`)
       syncAttemptsRef.current++
-      const token = await getAccessToken()
+      const token = await getAccessTokenWithRetry(getAccessToken)
       if (!token) throw new Error("Could not retrieve Privy token")
 
       // Decode and log JWT expiration/claims client-side
