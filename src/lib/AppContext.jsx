@@ -146,14 +146,16 @@ export function AppProvider({ children }) {
         if (parts.length === 3) {
           const payload = JSON.parse(window.atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
           const now = Math.floor(Date.now() / 1000)
-          console.log("[Auth] Client-decoded Privy Token Payload:", payload)
-          console.log(`[Auth] Current time: ${now}, Token exp: ${payload.exp}, Diff: ${payload.exp - now}s (${payload.exp > now ? "Valid" : "EXPIRED"})`)
-          console.log(`[Auth] Time since issued (iat): ${now - payload.iat}s`)
+          if (import.meta.env.DEV) {
+            console.log("[Auth] Client-decoded Privy Token Payload:", payload)
+            console.log(`[Auth] Current time: ${now}, Token exp: ${payload.exp}, Diff: ${payload.exp - now}s (${payload.exp > now ? "Valid" : "EXPIRED"})`)
+            console.log(`[Auth] Time since issued (iat): ${now - payload.iat}s`)
+          }
         } else {
-          console.warn("[Auth] Token does not have 3 parts:", token)
+          console.warn("[Auth] Token does not have 3 parts: [Redacted]")
         }
       } catch (decodeErr) {
-        console.error("[Auth] Failed to decode Privy JWT client-side:", decodeErr)
+        console.error("[Auth] Failed to decode Privy JWT client-side:", decodeErr?.message || 'Unknown error')
       }
 
       const walletAddress = getWalletAddress(privyUser)
@@ -162,7 +164,9 @@ export function AppProvider({ children }) {
         privy_token: token ? (token.substring(0, 15) + "...") : null,
         wallet_address: walletAddress,
       }
-      console.log("[Auth] Sending privy-sync request with payload:", payload)
+      if (import.meta.env.DEV) {
+        console.log("[Auth] Sending privy-sync request with payload:", payload)
+      }
 
       const res = await fetch(`${API_URL}/api/auth/privy-sync`, {
         method: 'POST',
@@ -179,9 +183,11 @@ export function AppProvider({ children }) {
       try {
         const resClone = res.clone()
         const rawBody = await resClone.text()
-        console.log(`[Auth] Received privy-sync response (status: ${res.status}):`, rawBody)
+        if (import.meta.env.DEV) {
+          console.log(`[Auth] Received privy-sync response (status: ${res.status}):`, rawBody)
+        }
       } catch (cloneErr) {
-        console.error("[Auth] Failed to clone/read privy-sync response:", cloneErr)
+        console.error("[Auth] Failed to clone/read privy-sync response:", cloneErr?.message || 'Unknown error')
       }
 
       if (!res.ok) {
@@ -190,7 +196,9 @@ export function AppProvider({ children }) {
 
       const data = await res.json()
       if (data.session) {
-        console.log("[Auth] Invoking supabase.auth.setSession()...")
+        if (import.meta.env.DEV) {
+          console.log("[Auth] Invoking supabase.auth.setSession()...")
+        }
 
         // 5-second timeout wrapper to prevent setSession from hanging indefinitely
         const setSessionPromise = supabase.auth.setSession({
@@ -209,7 +217,9 @@ export function AppProvider({ children }) {
 
         if (supabaseErr) throw supabaseErr
 
-        console.log("[Auth] supabase.auth.setSession completed successfully.")
+        if (import.meta.env.DEV) {
+          console.log("[Auth] supabase.auth.setSession completed successfully.")
+        }
 
         // Immediately update user so isMidSync resolves and ProtectedRoute
         // re-renders the dashboard without waiting for any secondary callbacks.
@@ -226,7 +236,7 @@ export function AppProvider({ children }) {
         throw new Error("No session returned")
       }
     } catch (err) {
-      console.error(`[Auth] Silent sync FAILED (attempt ${syncAttemptsRef.current}/3) with error:`, err)
+      console.error(`[Auth] Silent sync FAILED (attempt ${syncAttemptsRef.current}/3) with error:`, err?.message || 'Unknown error')
       lastSyncFailureTimeRef.current = Date.now()
       handleSignOutAndPrompt()
     } finally {

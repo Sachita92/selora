@@ -920,7 +920,7 @@ function CheckoutForm({ onClose, priceAmount, billingPeriod, planName, clientSec
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', borderBottom: '1px solid var(--border)', paddingBottom: '.8rem' }}>
           <h3 style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.15rem', fontWeight: 500, color: 'var(--dark)' }}>Secure Card Payment</h3>
           <span style={{ fontSize: '.7rem', background: 'var(--gpale)', color: 'var(--g)', fontWeight: 700, padding: '.25rem .6rem', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.05em' }}>
-            🔒 Stripe Secured
+            Stripe Secured
           </span>
         </div>
 
@@ -1046,19 +1046,6 @@ function CheckoutForm({ onClose, priceAmount, billingPeriod, planName, clientSec
         </p>
       </div>
 
-      {/* Trust Badges */}
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.2rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.5rem', textAlign: 'center' }}>
-        {[
-          { icon: '🔒', label: 'SSL Encrypted' },
-          { icon: '✓', label: 'Cancel Anytime' },
-          { icon: '✓', label: '14-Day Trial' },
-        ].map(item => (
-          <div key={item.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.25rem' }}>
-            <span style={{ fontSize: '1rem' }}>{item.icon}</span>
-            <span style={{ fontSize: '.68rem', fontWeight: 500, color: 'var(--text-muted)' }}>{item.label}</span>
-          </div>
-        ))}
-      </div>
     </form>
   )
 }
@@ -1180,7 +1167,6 @@ function CheckoutModal({ planSlug, billingPeriod, onClose, user }) {
             </div>
 
             <div style={{ display: 'flex', gap: '.5rem', marginTop: 'auto', borderTop: '1px solid var(--border)', paddingTop: '1.2rem' }}>
-              <span style={{ fontSize: '1rem' }}>🔒</span>
               <span style={{ fontSize: '.68rem', color: 'var(--text-muted)', lineHeight: 1.4, fontWeight: 300 }}>
                 PCI-DSS Compliant. We never store or handle your credit card data.
               </span>
