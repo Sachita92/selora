@@ -73,7 +73,7 @@ const PLANS = [
     price: '4.99',
     desc: 'Designed for active fashion stores looking to scale operations.',
     features: ['1 Store connection', 'Unlimited products', '30 optimizations / month', 'Full overnight growth agent', 'Automatic smart pricing', 'AI listing rewriter', 'Standard email support'],
-    cta: 'Start Free Trial',
+    cta: 'Upgrade to Growth',
     feat: true,
     slug: 'growth',
   },

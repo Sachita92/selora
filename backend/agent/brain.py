@@ -157,6 +157,7 @@ Instructions:
                 tools=tools,
                 tool_choice="auto",
                 max_tokens=4096,
+                temperature=0.1,
             )
 
             message = response.choices[0].message

@@ -122,10 +122,29 @@ def main():
     url = "http://localhost:8000/api/billing/webhook"
     print(f"\nStep 3: Sending mock event to local webhook endpoint: {url} ...")
     
+    # Calculate real signature if STRIPE_WEBHOOK_SECRET is set
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    stripe_signature = "t=123,v1=mock_signature"
+    if webhook_secret and webhook_secret != "":
+        import hmac
+        import hashlib
+        import time
+        import json
+        payload_str = json.dumps(mock_event)
+        timestamp = int(time.time())
+        signed_payload = f"{timestamp}.{payload_str}"
+        signature = hmac.new(
+            webhook_secret.encode('utf-8'),
+            signed_payload.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+        stripe_signature = f"t={timestamp},v1={signature}"
+        print("   Signed mock event payload with STRIPE_WEBHOOK_SECRET.")
+
     try:
         headers = {
             "Content-Type": "application/json",
-            "stripe-signature": "t=123,v1=mock_signature"
+            "stripe-signature": stripe_signature
         }
         res = requests.post(url, json=mock_event, headers=headers)
         if res.status_code == 200:
