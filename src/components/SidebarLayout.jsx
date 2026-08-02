@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
 import { useAppContext } from '../lib/AppContext'
 import { useChat } from '../lib/ChatContext'
 import { supabase } from '../lib/supabase'
@@ -248,10 +249,16 @@ export default function SidebarLayout() {
     }
   }, [activeStore])
 
-  // Scroll to bottom of message list on updates
+  // Scroll to latest message (start for agent, bottom for user)
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    if (!messages || messages.length === 0) return
+    const lastMsg = messages[messages.length - 1]
+    const isUser = lastMsg.role?.toLowerCase().trim() === 'user'
+
+    if (isUser) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    } else {
+      lastMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [messages])
 
@@ -261,6 +268,9 @@ export default function SidebarLayout() {
 
     const text = inputText.trim()
     setInputText('')
+    if (e.target?.querySelector('textarea')) {
+      e.target.querySelector('textarea').style.height = 'auto'
+    }
 
     // Cross-store detection: if user mentions a different store by name, switch to it first
     if (stores?.length > 1) {
@@ -1471,6 +1481,7 @@ export default function SidebarLayout() {
                 {messages.map((msg, i) => (
                   <div
                     key={i}
+                    ref={i === messages.length - 1 ? lastMessageRef : null}
                     style={{
                       alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                       maxWidth: '85%',
@@ -1485,7 +1496,13 @@ export default function SidebarLayout() {
                       whiteSpace: 'pre-line',
                     }}
                   >
-                    {msg.content}
+                    {msg.role === 'user' ? (
+                      msg.content
+                    ) : (
+                      <div className="markdown-content">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {chatLoading && (
@@ -1543,15 +1560,27 @@ export default function SidebarLayout() {
               )}
 
               {/* Chat Input Bar */}
-              <form id="sidebar-chat-form" onSubmit={handleSend} style={{ padding: '.85rem 1rem', borderTop: `1px solid ${c.border}`, display: 'flex', gap: '.5rem', alignItems: 'center', width: '100%', boxSizing: 'border-box', background: c.card, flexShrink: 0 }}>
-                <input
-                  type="text"
+              <form id="sidebar-chat-form" onSubmit={handleSend} style={{ padding: '.85rem 1rem', borderTop: `1px solid ${c.border}`, display: 'flex', gap: '.5rem', alignItems: 'flex-end', width: '100%', boxSizing: 'border-box', background: c.card, flexShrink: 0 }}>
+                <textarea
                   value={inputText}
-                  onChange={e => setInputText(e.target.value)}
+                  onChange={e => {
+                    setInputText(e.target.value)
+                    e.target.style.height = 'auto'
+                    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleSend(e)
+                    }
+                  }}
                   disabled={chatLoading}
                   placeholder="Ask Selora anything..."
+                  rows={1}
                   style={{
                     flex: 1,
+                    minWidth: 0,
+                    width: '100%',
                     padding: '.6rem .85rem',
                     borderRadius: 8,
                     border: `1px solid ${c.border}`,
@@ -1560,7 +1589,15 @@ export default function SidebarLayout() {
                     outline: 'none',
                     background: 'var(--bg-0)',
                     color: c.dark,
-                    minWidth: 0,
+                    resize: 'none',
+                    lineHeight: 1.5,
+                    minHeight: '36px',
+                    maxHeight: '120px',
+                    overflowY: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    boxSizing: 'border-box',
                   }}
                 />
                 <button

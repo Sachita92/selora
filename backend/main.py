@@ -616,10 +616,20 @@ def chat_with_agent(store_id: str, body: ChatRequest, request: Request):
         except Exception as db_val_err:
             pass
 
-        # 1. Per-session limit: 8 messages per guest session
+        # 1. Per-session limit: 8 messages per guest session (DB-backed + in-memory fallback)
         global _guest_session_counts
         session_key = body.session_id
         current_session_count = _guest_session_counts.get(session_key, 0)
+        try:
+            from database import db as _db
+            msg_res = _db().table("chat_messages").select("id", count="exact").eq("store_id", store_id).eq("session_id", session_key).eq("role", "user").execute()
+            if msg_res.count is not None:
+                current_session_count = max(msg_res.count, current_session_count)
+            elif msg_res.data:
+                current_session_count = max(len(msg_res.data), current_session_count)
+        except Exception:
+            pass
+
         if current_session_count >= 8:
             return {
                 "response": "You've had a good look around! Sign in or create a free account to keep the conversation going and start optimizing your actual store.",

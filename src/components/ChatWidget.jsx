@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
 import { useChat } from '../lib/ChatContext'
 import { useAppContext } from '../lib/AppContext'
 
@@ -37,6 +38,7 @@ export default function ChatWidget({ storeId, isGuest = false }) {
   const [showWelcomeBubble, setShowWelcomeBubble] = useState(false)
   const [bottomOffset] = useState(28)
   const messagesEndRef = useRef(null)
+  const lastMessageRef = useRef(null)
   const inputRef = useRef(null)
   const widgetRef = useRef(null)
   const navigate = useNavigate()
@@ -50,10 +52,6 @@ export default function ChatWidget({ storeId, isGuest = false }) {
       return () => clearTimeout(timer)
     }
   }, [isGuest, open])
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
 
   // Load chat history when the widget mounts or when storeId changes
   useEffect(() => {
@@ -76,7 +74,16 @@ export default function ChatWidget({ storeId, isGuest = false }) {
   }, [open])
 
   useEffect(() => {
-    scrollToBottom()
+    if (!messages || messages.length === 0) return
+    const lastMsg = messages[messages.length - 1]
+    const isUser = lastMsg.role?.toLowerCase().trim() === 'user'
+
+    if (isUser) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    } else {
+      // Scroll to the top of the new assistant message so user reads top-down
+      lastMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
   }, [messages])
 
   useEffect(() => {
@@ -108,6 +115,9 @@ export default function ChatWidget({ storeId, isGuest = false }) {
     }
 
     setInput('')
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto'
+    }
     await sendGlobalMessage(text, storeId, isGuest)
   }
 
@@ -299,6 +309,7 @@ export default function ChatWidget({ storeId, isGuest = false }) {
               return (
                 <div
                   key={i}
+                  ref={i === messages.length - 1 ? lastMessageRef : null}
                   style={{
                     display: 'flex',
                     justifyContent: isUser ? 'flex-end' : 'flex-start',
@@ -323,7 +334,13 @@ export default function ChatWidget({ storeId, isGuest = false }) {
                       ? '0 2px 8px rgba(90,138,103,.2)'
                       : '0 1px 4px rgba(0,0,0,.04)',
                   }}>
-                    {content}
+                    {isUser ? (
+                      content
+                    ) : (
+                      <div className="markdown-content">
+                        <ReactMarkdown>{content}</ReactMarkdown>
+                      </div>
+                    )}
                     {isErrorMessage && (
                       <div style={{ marginTop: '0.6rem', borderTop: `1px solid ${c.border}`, paddingTop: '0.6rem' }}>
                         <button
@@ -455,12 +472,18 @@ export default function ChatWidget({ storeId, isGuest = false }) {
             <textarea
               ref={inputRef}
               value={input}
-              onChange={e => setInput(e.target.value)}
+              onChange={e => {
+                setInput(e.target.value)
+                e.target.style.height = 'auto'
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Ask Selora anything..."
               rows={1}
               style={{
                 flex: 1,
+                minWidth: 0,
+                width: '100%',
                 padding: '.6rem .8rem',
                 border: `1px solid ${c.border}`,
                 borderRadius: 10,
@@ -471,8 +494,13 @@ export default function ChatWidget({ storeId, isGuest = false }) {
                 background: c.bg,
                 color: c.dark,
                 lineHeight: 1.5,
-                maxHeight: 80,
+                minHeight: '38px',
+                maxHeight: '120px',
                 overflowY: 'auto',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                overflowWrap: 'break-word',
+                boxSizing: 'border-box',
               }}
               onFocus={e => e.currentTarget.style.borderColor = c.green}
               onBlur={e => e.currentTarget.style.borderColor = c.border}
@@ -510,6 +538,12 @@ export default function ChatWidget({ storeId, isGuest = false }) {
           from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        .markdown-content p { margin: 0 0 0.4rem 0; }
+        .markdown-content p:last-child { margin-bottom: 0; }
+        .markdown-content ul, .markdown-content ol { margin: 0.35rem 0; padding-left: 1.2rem; }
+        .markdown-content li { margin-bottom: 0.25rem; }
+        .markdown-content strong { font-weight: 600; }
+        .markdown-content code { background: rgba(0,0,0,0.06); padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 0.88em; }
       `}</style>
     </>
   )
