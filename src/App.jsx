@@ -213,5 +213,5 @@ function GlobalChatWidget() {
   const storeId = activeStore?.id || demoStoreId
   if (!storeId) return null
 
-  return <ChatWidget storeId={storeId} isLandingPage={!activeStore} />
+  return <ChatWidget storeId={storeId} isGuest={!activeStore} />
 }

@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useChat } from '../lib/ChatContext'
 import { useAppContext } from '../lib/AppContext'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-
 const c = {
   green: 'var(--g)', green2: 'var(--g2)', greenPale: 'var(--gpale)',
   dark: 'var(--text-primary)', text: 'var(--text-secondary)', muted: 'var(--text-muted)',
@@ -18,40 +16,7 @@ const SUGGESTIONS = [
   "Give me a quick store health check",
 ]
 
-const getDemoRewrite = (title) => {
-  const t = title.trim().toLowerCase();
-  if (t.includes('floral') && t.includes('wrap') && t.includes('dress')) {
-    return "Effortless floral wrap dress — flowy, flattering, brunch-to-backyard.";
-  }
-  if (t.includes('linen') && t.includes('blazer')) {
-    return "Classic white linen blazer — breathable, crisp, sunset-dinner ready.";
-  }
-  if (t.includes('leather') && (t.includes('boots') || t.includes('boot'))) {
-    return "Handcrafted black leather boots — weather-resistant, all-day cushioned walk.";
-  }
-  
-  // Generic rule-based enhancers that look very AI-like and stylish
-  const adjectives = [
-    "Effortless", "Elevated", "Sophisticated", "Contemporary", "Timeless", "Modern", "Classic"
-  ];
-  const descriptors = [
-    "relaxed drape", "flattering fit", "premium breathable fabric", "designed for everyday versatility", "perfect for transition styling", "luxe look and feel"
-  ];
-  const occasions = [
-    "brunch-to-dinner style", "day-to-night transitions", "weekend lounging", "office-to-evening wear", "sunset dinners", "polished everyday dressing"
-  ];
-  
-  const adj = adjectives[title.length % adjectives.length];
-  const desc = descriptors[(title.length * 3) % descriptors.length];
-  const occ = occasions[(title.length * 7) % occasions.length];
-  
-  let cleanTitle = title.trim();
-  cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
-  
-  return `${adj} ${cleanTitle.toLowerCase()} — ${desc}, ${occ}.`;
-};
-
-export default function ChatWidget({ storeId, isLandingPage = false }) {
+export default function ChatWidget({ storeId, isGuest = false }) {
   const {
     messages,
     loading,
@@ -70,100 +35,21 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
 
   const [input, setInput] = useState('')
   const [showWelcomeBubble, setShowWelcomeBubble] = useState(false)
-  const [bottomOffset, setBottomOffset] = useState(28)
+  const [bottomOffset] = useState(28)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const widgetRef = useRef(null)
   const navigate = useNavigate()
   const { stores, activeStore, setActiveStore } = useAppContext()
 
-  const [demoState, setDemoState] = useState('input') // 'input', 'loading', 'result', 'already_used', 'rate_limited', 'error', 'chat', 'refused'
-  const [demoInput, setDemoInput] = useState('')
-  const [demoResult, setDemoResult] = useState(null)
-  const [loadingPhraseIndex, setLoadingPhraseIndex] = useState(0)
-
-  const LOADING_PHRASES = [
-    "Reading your listing...",
-    "Drafting styling tips...",
-    "Polishing the description..."
-  ]
-
   useEffect(() => {
-    if (demoState !== 'loading') return
-    const interval = setInterval(() => {
-      setLoadingPhraseIndex(prev => (prev + 1) % 3)
-    }, 800)
-    return () => clearInterval(interval)
-  }, [demoState])
-
-  const getCookie = (name) => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
-  };
-
-  const handleDemoSubmit = () => {
-    let text = demoInput.trim()
-    if (!text) return
-    
-    // Cap at 150 characters
-    if (text.length > 150) {
-      text = text.slice(0, 150)
-    }
-
-    // Check cookie limit
-    if (getCookie('selora_demo_used') === '1') {
-      setDemoState('already_used')
-      return
-    }
-
-    setDemoState('loading')
-
-    fetch(`${API_URL}/api/landing/rewrite-demo`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: text })
-    })
-      .then(res => {
-        if (res.status === 429) {
-          throw new Error('RATE_LIMIT')
-        }
-        if (!res.ok) {
-          throw new Error('API_ERROR')
-        }
-        return res.json()
-      })
-      .then(data => {
-        if (data.refused) {
-          setDemoState('refused')
-        } else {
-          setDemoResult(data)
-          // Set short-lived cookie for 48 hours (172800 seconds)
-          document.cookie = "selora_demo_used=1; max-age=172800; path=/;"
-          setDemoState('result')
-        }
-      })
-      .catch(err => {
-        console.error("Demo rewrite failed:", err)
-        if (err.message === 'RATE_LIMIT') {
-          setDemoState('rate_limited')
-        } else {
-          setDemoState('error')
-        }
-      })
-  }
-
-
-
-  useEffect(() => {
-    if (isLandingPage && !open && window.location.pathname === '/') {
+    if (isGuest && !open && window.location.pathname === '/') {
       const timer = setTimeout(() => {
         setShowWelcomeBubble(true)
       }, 1500)
       return () => clearTimeout(timer)
     }
-  }, [isLandingPage, open])
+  }, [isGuest, open])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -204,7 +90,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
     if (!text || loading || !storeId) return
 
     // Cross-store detection: if user mentions a different store by name, switch to it first
-    if (!isLandingPage && stores?.length > 1) {
+    if (!isGuest && stores?.length > 1) {
       const lowerText = text.toLowerCase()
       const mentionedStore = stores.find(st => {
         const name = (st.shop_name || '').toLowerCase().trim()
@@ -216,13 +102,13 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
         setActiveStore(mentionedStore)
         navigate('/dashboard')
         // Send message to the MENTIONED store's ID, not the old storeId
-        await sendGlobalMessage(text, mentionedStore.id, isLandingPage)
+        await sendGlobalMessage(text, mentionedStore.id, isGuest)
         return
       }
     }
 
     setInput('')
-    await sendGlobalMessage(text, storeId, isLandingPage)
+    await sendGlobalMessage(text, storeId, isGuest)
   }
 
   const handleKeyDown = (e) => {
@@ -238,7 +124,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
       if (!text.trim() || loading || !storeId) return
 
       // Cross-store detection for suggestions
-      if (!isLandingPage && stores?.length > 1) {
+      if (!isGuest && stores?.length > 1) {
         const lowerText = text.toLowerCase()
         const mentionedStore = stores.find(st => {
           const name = (st.shop_name || '').toLowerCase().trim()
@@ -248,25 +134,24 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
           setInput('')
           setActiveStore(mentionedStore)
           navigate('/dashboard')
-          await sendGlobalMessage(text, mentionedStore.id, isLandingPage)
+          await sendGlobalMessage(text, mentionedStore.id, isGuest)
           return
         }
       }
 
       setInput('')
-      sendGlobalMessage(text, storeId, isLandingPage)
+      sendGlobalMessage(text, storeId, isGuest)
     }, 50)
   }
-
 
   if (!storeId) return null
 
   return (
     <>
-      {/* Welcome Bubble */}
+      {/* Welcome Bubble for guests */}
       {!open && showWelcomeBubble && (
         <div 
-          className={`cn-chat-widget${isLandingPage ? ' landing-scoped' : ''}`}
+          className="cn-chat-widget landing-scoped"
           style={{
             position: 'fixed', bottom: bottomOffset + 70, right: 28, zIndex: 1000,
             background: c.card, border: `1px solid ${c.border}`,
@@ -283,8 +168,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
             <span>Selora Agent</span>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#86EFAC', display: 'inline-block' }} />
           </div>
-          Welcome! Paste one of your product titles and I'll show you what I'd do with it. 🌸
-          {/* Close button for bubble */}
+          Welcome! Ask me anything about Selora or explore demo store insights. 🌸
           <button 
             onClick={(e) => { e.stopPropagation(); setShowWelcomeBubble(false); }}
             style={{
@@ -294,7 +178,6 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
           >
             ✕
           </button>
-          {/* Arrow */}
           <div style={{
             position: 'absolute', bottom: -6, right: 24, width: 12, height: 12,
             background: c.card, borderRight: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`,
@@ -332,7 +215,7 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
       )}
 
       {open && (
-        <div ref={widgetRef} className={`cn-chat-widget${isLandingPage ? ' landing-scoped' : ''}`} style={{
+        <div ref={widgetRef} className={`cn-chat-widget${isGuest ? ' landing-scoped' : ''}`} style={{
           position: 'fixed', bottom: bottomOffset - 4, right: 24, zIndex: 1001,
           width: 400, maxWidth: 'calc(100vw - 32px)', height: 560, maxHeight: 'calc(100vh - 100px)',
           background: c.card, borderRadius: 20,
@@ -364,12 +247,12 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
                 <div style={{ fontSize: '.9rem', fontWeight: 600, color: '#fff' }}>Selora Agent</div>
                 <div style={{ fontSize: '.65rem', color: 'rgba(255,255,255,.7)', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#86EFAC', display: 'inline-block' }} />
-                  {isLandingPage ? 'Online — Demo Mode' : 'Online — connected to your store'}
+                  {isGuest ? 'Online — Demo Mode' : 'Online — connected to your store'}
                 </div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-              {!isLandingPage && (
+              {!isGuest && (
                 <button
                   onClick={() => startNewSession(storeId)}
                   style={{
@@ -398,727 +281,217 @@ export default function ChatWidget({ storeId, isLandingPage = false }) {
             </div>
           </div>
 
-          {/* Messages or Guest Demo */}
-          {isLandingPage && demoState !== 'chat' ? (
-            demoState === 'input' ? (
-              <>
-                <div style={{
-                  flex: 1,
-                  padding: '1.5rem',
-                  background: c.bg,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  textAlign: 'center',
-                  gap: '1rem'
-                }}>
-                  <div style={{ width: 56, height: 56, borderRadius: 14, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <img src="/s-logo.jpg" alt="Selora S Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: c.dark, lineHeight: 1.4, marginBottom: '.2rem' }}>
-                    Fashion Listing AI Rewriter
-                  </h3>
-                  <p style={{ fontSize: '.84rem', color: c.muted, lineHeight: 1.5, maxWidth: 280 }}>
-                    Welcome to Selora — paste one of your product titles below and I'll show you what I'd do with it.
-                  </p>
-                  <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '.4rem' }}>
-                    {['denim jacket', 'silk dress', 'leather boots'].map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => setDemoInput(item)}
-                        style={{
-                          padding: '.35rem .6rem',
-                          borderRadius: 8,
-                          border: '1px solid var(--border)',
-                          background: 'var(--bg-2)',
-                          color: 'var(--text-secondary)',
-                          fontSize: '.72rem',
-                          cursor: 'pointer',
-                          fontFamily: 'Inter, sans-serif',
-                          fontWeight: 500,
-                          transition: 'all 0.15s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--gpale)'; e.currentTarget.style.borderColor = 'var(--g)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-2)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
-                      >
-                        Try "{item}"
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div style={{
-                  padding: '.75rem 1rem',
-                  borderTop: `1px solid ${c.border}`,
-                  display: 'flex', gap: '.6rem', alignItems: 'center',
-                  background: c.card,
-                  flexShrink: 0,
-                }}>
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    maxLength={150}
-                    value={demoInput}
-                    onChange={e => setDemoInput(e.target.value.slice(0, 150))}
-                    placeholder="e.g., Floral wrap dress"
-                    style={{
-                      flex: 1,
-                      padding: '.6rem .8rem',
-                      border: `1px solid ${c.border}`,
-                      borderRadius: 10,
-                      fontSize: '.84rem',
-                      fontFamily: 'Inter, sans-serif',
-                      outline: 'none',
-                      background: c.bg,
-                      color: c.dark,
-                    }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && demoInput.trim()) {
-                        handleDemoSubmit();
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={handleDemoSubmit}
-                    disabled={!demoInput.trim()}
-                    style={{
-                      padding: '.6rem 1rem',
-                      borderRadius: 10,
-                      background: demoInput.trim() ? c.green : '#D1D5DB',
-                      color: '#fff', border: 'none', cursor: demoInput.trim() ? 'pointer' : 'not-allowed',
-                      fontSize: '.82rem', fontWeight: 600,
-                      fontFamily: 'Inter, sans-serif',
-                      transition: 'background .2s',
-                    }}
-                  >
-                    Rewrite
-                  </button>
-                </div>
-              </>
-            ) : demoState === 'loading' ? (
-              <>
-                <div style={{
-                  flex: 1,
-                  padding: '1.5rem',
-                  background: c.bg,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: '1.5rem'
-                }}>
-                  <div style={{
-                    alignSelf: 'flex-end',
-                    maxWidth: '82%',
-                    padding: '.7rem 1rem',
-                    borderRadius: '14px 14px 4px 14px',
-                    backgroundColor: c.green,
-                    backgroundImage: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
-                    color: '#fff',
-                    fontSize: '.82rem',
-                    lineHeight: 1.65,
-                  }}>
-                    {demoInput}
-                  </div>
-                  <div style={{
-                    alignSelf: 'flex-start',
-                    padding: '.7rem 1rem',
-                    borderRadius: '14px 14px 14px 4px',
-                    background: c.card,
-                    border: `1px solid ${c.border}`,
-                    display: 'flex', flexDirection: 'column', gap: '.5rem',
-                    alignItems: 'flex-start',
-                  }}>
-                    <div style={{ display: 'flex', gap: '.3rem', alignItems: 'center' }}>
-                      {[0, 1, 2].map(i => (
-                        <span key={i} style={{
-                          width: 7, height: 7, borderRadius: '50%',
-                          background: c.muted, display: 'inline-block',
-                          animation: `chatDot 1.4s infinite ${i * .2}s`,
-                          opacity: .4,
-                        }} />
-                      ))}
-                    </div>
-                    <span style={{ fontSize: '.76rem', color: c.muted, fontFamily: 'Inter, sans-serif' }}>
-                      {LOADING_PHRASES[loadingPhraseIndex]}
-                    </span>
-                  </div>
-                </div>
-                <div style={{
-                  padding: '.75rem 1rem',
-                  borderTop: `1px solid ${c.border}`,
-                  display: 'flex', gap: '.6rem', alignItems: 'center',
-                  background: c.card,
-                  flexShrink: 0,
-                  opacity: 0.6,
-                  pointerEvents: 'none'
-                }}>
-                  <input
-                    disabled
-                    type="text"
-                    value={demoInput}
-                    style={{
-                      flex: 1,
-                      padding: '.6rem .8rem',
-                      border: `1px solid ${c.border}`,
-                      borderRadius: 10,
-                      fontSize: '.84rem',
-                      background: c.bg,
-                      color: c.dark,
-                    }}
-                  />
-                  <button style={{
-                    padding: '.6rem 1rem',
-                    borderRadius: 10,
-                    background: '#D1D5DB',
-                    color: '#fff', border: 'none',
-                    fontSize: '.82rem', fontWeight: 600,
-                  }}>
-                    Rewrite
-                  </button>
-                </div>
-              </>
-            ) : demoState === 'refused' ? (
-              <div style={{
-                flex: 1,
-                padding: '2rem 1.5rem',
-                background: c.bg,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                textAlign: 'center',
-                gap: '1rem'
-              }}>
-                <div style={{ fontSize: '2.5rem' }}>👗</div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: c.dark, lineHeight: 1.4 }}>
-                  Not a fashion product?
-                </h3>
-                <p style={{ fontSize: '.84rem', color: c.muted, lineHeight: 1.6, maxWidth: 280 }}>
-                  I'm specialized in fashion and apparel listings. Please enter a style or item related to clothing, footwear, or accessories.
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', width: '100%', maxWidth: 280, marginTop: '.8rem' }}>
-                  <button
-                    onClick={() => {
-                      setDemoState('input');
-                      setDemoInput('');
-                    }}
-                    style={{
-                      padding: '.65rem',
-                      borderRadius: 10,
-                      background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
-                      color: '#fff',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '.82rem',
-                      fontWeight: 600,
-                      fontFamily: 'Inter, sans-serif',
-                      boxShadow: '0 4px 12px rgba(90, 138, 103, 0.2)',
-                    }}
-                  >
-                    🔄 Try again
-                  </button>
-                </div>
-              </div>
-            ) : demoState === 'already_used' ? (
-              <div style={{
-                flex: 1,
-                padding: '2rem 1.5rem',
-                background: c.bg,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                textAlign: 'center',
-                gap: '1rem'
-              }}>
-                <div style={{ fontSize: '2.5rem' }}>✨</div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: c.dark, lineHeight: 1.4 }}>
-                  You've already seen what I can do!
-                </h3>
-                <p style={{ fontSize: '.84rem', color: c.muted, lineHeight: 1.6, maxWidth: 280 }}>
-                  Connect your store and I'll do this for everything you sell.
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', width: '100%', maxWidth: 280, marginTop: '.8rem' }}>
-                  <a
-                    href="/connect"
-                    style={{
-                      padding: '.65rem',
-                      borderRadius: 10,
-                      background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
-                      color: '#fff',
-                      textAlign: 'center',
-                      textDecoration: 'none',
-                      fontSize: '.82rem',
-                      fontWeight: 600,
-                      fontFamily: 'Inter, sans-serif',
-                      boxShadow: '0 4px 12px rgba(90, 138, 103, 0.2)',
-                    }}
-                  >
-                    Connect your store →
-                  </a>
-                  <button
-                    onClick={() => setDemoState('chat')}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: c.muted,
-                      fontSize: '.72rem',
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      marginTop: '.4rem'
-                    }}
-                  >
-                    Skip to normal chat agent
-                  </button>
-                </div>
-              </div>
-            ) : demoState === 'rate_limited' ? (
-              <div style={{
-                flex: 1,
-                padding: '2rem 1.5rem',
-                background: c.bg,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                textAlign: 'center',
-                gap: '1rem'
-              }}>
-                <div style={{ fontSize: '2.5rem' }}>⚠️</div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: c.dark, lineHeight: 1.4 }}>
-                  Too many requests
-                </h3>
-                <p style={{ fontSize: '.84rem', color: c.muted, lineHeight: 1.6, maxWidth: 280 }}>
-                  Please try again later.
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', width: '100%', maxWidth: 280, marginTop: '.8rem' }}>
-                  <button
-                    onClick={() => setDemoState('chat')}
-                    style={{
-                      padding: '.65rem',
-                      borderRadius: 10,
-                      background: c.card,
-                      border: `1px solid ${c.green}`,
-                      color: c.green,
-                      fontSize: '.82rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      fontFamily: 'Inter, sans-serif',
-                    }}
-                  >
-                    Skip to normal chat agent
-                  </button>
-                </div>
-              </div>
-            ) : demoState === 'error' ? (
-              <div style={{
-                flex: 1,
-                padding: '2rem 1.5rem',
-                background: c.bg,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                textAlign: 'center',
-                gap: '1rem'
-              }}>
-                <div style={{ fontSize: '2.5rem' }}>❌</div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: c.dark, lineHeight: 1.4 }}>
-                  Something went wrong
-                </h3>
-                <p style={{ fontSize: '.84rem', color: c.muted, lineHeight: 1.6, maxWidth: 280 }}>
-                  Something went wrong on my end — try again in a moment.
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', width: '100%', maxWidth: 280, marginTop: '.8rem' }}>
-                  <button
-                    onClick={handleDemoSubmit}
-                    style={{
-                      padding: '.65rem',
-                      borderRadius: 10,
-                      background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
-                      color: '#fff',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '.82rem',
-                      fontWeight: 600,
-                      fontFamily: 'Inter, sans-serif',
-                      boxShadow: '0 4px 12px rgba(90, 138, 103, 0.2)',
-                    }}
-                  >
-                    🔄 Try again
-                  </button>
-                  <button
-                    onClick={() => setDemoState('input')}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: c.muted,
-                      fontSize: '.72rem',
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      marginTop: '.4rem'
-                    }}
-                  >
-                    Go back
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div style={{
-                  flex: 1,
-                  padding: '1.5rem',
-                  background: c.bg,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1.2rem',
-                  overflowY: 'auto'
-                }}>
-                  {/* Before Title Box */}
-                  <div>
-                    <div style={{ fontSize: '.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: c.muted, marginBottom: '.35rem' }}>
-                      before
-                    </div>
-                    <div style={{
-                      padding: '1rem',
-                      background: c.card,
-                      border: `1px solid ${c.border}`,
-                      borderRadius: 12,
-                      fontSize: '.85rem',
-                      color: c.muted,
-                      lineHeight: 1.5,
-                    }}>
-                      {demoResult.before}
-                    </div>
-                  </div>
+          {/* Messages */}
+          <div style={{
+            flex: 1, overflowY: 'auto', padding: '1rem',
+            display: 'flex', flexDirection: 'column', gap: '.8rem',
+            background: c.bg,
+          }}>
+            {messages.map((msg, i) => {
+              const isUser = msg.role?.toLowerCase().trim() === 'user'
+              let content = msg.content
+              if (i === 0 && isGuest && msg.role === 'assistant') {
+                content = "Welcome to Selora! I'm your AI fashion growth agent.\n\nI automatically optimize pricing, list products, manage inventory, and grow sales. I've loaded a demo store context for you so you can see what I can do!\n\nTry asking me:\n• 'Which products are selling the best?'\n• 'How can I improve my store's pricing?'\n• 'What features does Selora offer?'"
+              }
 
-                  {/* After Title Box */}
-                  <div>
-                    <div style={{ fontSize: '.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: c.green, marginBottom: '.35rem' }}>
-                      after (AI Optimized)
-                    </div>
-                    <div style={{
-                      padding: '1rem',
-                      background: 'var(--g-tint)',
-                      border: `1px solid ${c.green}`,
-                      borderRadius: 12,
-                      fontSize: '.85rem',
-                      color: c.green,
-                      fontWeight: 500,
-                      lineHeight: 1.5,
-                      whiteSpace: 'pre-wrap',
-                    }}>
-                      {demoResult.after}
-                    </div>
-                  </div>
+              const isErrorMessage = !isUser && content === "Sorry, something went wrong on my end — please try again in a moment."
 
-                  {/* Try Again & CTA Buttons */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem', marginTop: '1rem' }}>
-                    <p style={{ fontSize: '.78rem', color: c.muted, lineHeight: 1.4, textAlign: 'center', margin: '.2rem 0' }}>
-                      Want this done automatically for your whole collection, every night?
-                    </p>
-                    
-                    <a
-                      href="/connect"
-                      style={{
-                        padding: '.65rem',
-                        borderRadius: 10,
-                        background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
-                        color: '#fff',
-                        textAlign: 'center',
-                        textDecoration: 'none',
-                        fontSize: '.82rem',
-                        fontWeight: 600,
-                        fontFamily: 'Inter, sans-serif',
-                        boxShadow: '0 4px 12px rgba(90, 138, 103, 0.2)',
-                      }}
-                    >
-                      Connect your store →
-                    </a>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '.4rem' }}>
-                      <button
-                        onClick={() => {
-                          setDemoState('input');
-                          setDemoInput('');
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: c.green,
-                          fontSize: '.72rem',
-                          cursor: 'pointer',
-                          textDecoration: 'underline',
-                        }}
-                      >
-                        🔄 Try another title
-                      </button>
-                      <button
-                        onClick={() => setDemoState('chat')}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: c.muted,
-                          fontSize: '.72rem',
-                          cursor: 'pointer',
-                          textDecoration: 'underline',
-                        }}
-                      >
-                        Skip to normal chat agent
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )
-          ) : (
-            <>
-              {/* Messages */}
-              <div style={{
-                flex: 1, overflowY: 'auto', padding: '1rem',
-                display: 'flex', flexDirection: 'column', gap: '.8rem',
-                background: c.bg,
-              }}>
-                {messages.map((msg, i) => {
-                  const isUser = msg.role?.toLowerCase().trim() === 'user'
-                  let content = msg.content
-                  if (i === 0 && isLandingPage && msg.role === 'assistant') {
-                    content = "Welcome to Selora! I'm your AI fashion growth agent.\n\nI automatically optimize pricing, list products, manage inventory, and grow sales. I've loaded a demo store context for you so you can see what I can do!\n\nTry asking me:\n• 'Which products are selling the best?'\n• 'How can I improve my store's pricing?'\n• 'Rewrite a listing for a dress'"
-                  }
-
-                  const hasRewriteRedirect = !isUser && content && content.includes('[TRY_REWRITE_DEMO]')
-                  if (hasRewriteRedirect) {
-                    content = content.replace('[TRY_REWRITE_DEMO]', '').trim()
-                  }
-
-                  const isErrorMessage = !isUser && content === "Sorry, something went wrong on my end — please try again in a moment."
-
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        display: 'flex',
-                        justifyContent: isUser ? 'flex-end' : 'flex-start',
-                      }}
-                    >
-                      <div style={{
-                        maxWidth: '82%',
-                        padding: '.7rem 1rem',
-                        borderRadius: isUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-                        backgroundColor: isUser ? c.green : c.card,
-                        backgroundImage: isUser
-                          ? `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`
-                          : 'none',
-                        color: isUser ? '#fff' : c.dark,
-                        border: isUser ? 'none' : `1px solid ${c.border}`,
-                        fontSize: '.82rem',
-                        lineHeight: 1.65,
-                        fontWeight: 300,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                        boxShadow: isUser
-                          ? '0 2px 8px rgba(90,138,103,.2)'
-                          : '0 1px 4px rgba(0,0,0,.04)',
-                      }}>
-                        {content}
-                        {hasRewriteRedirect && (
-                          <div style={{ marginTop: '0.6rem', borderTop: `1px solid ${c.border}`, paddingTop: '0.6rem' }}>
-                            <button
-                              onClick={() => {
-                                setDemoState('input');
-                                setDemoInput('');
-                              }}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '.45rem .8rem',
-                                borderRadius: 8,
-                                background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
-                                color: '#fff',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: '.76rem',
-                                fontWeight: 600,
-                                fontFamily: 'Inter, sans-serif',
-                                boxShadow: '0 2px 6px rgba(90, 138, 103, 0.15)',
-                              }}
-                            >
-                              Try Listing Rewriter Demo
-                            </button>
-                          </div>
-                        )}
-                        {isErrorMessage && (
-                          <div style={{ marginTop: '0.6rem', borderTop: `1px solid ${c.border}`, paddingTop: '0.6rem' }}>
-                            <button
-                              onClick={() => retryLastMessage(storeId, isLandingPage)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '.45rem .8rem',
-                                borderRadius: 8,
-                                background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
-                                color: '#fff',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: '.76rem',
-                                fontWeight: 600,
-                                fontFamily: 'Inter, sans-serif',
-                                boxShadow: '0 2px 6px rgba(90, 138, 103, 0.15)',
-                              }}
-                            >
-                              Retry
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-
-                {loading && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                    <div style={{
-                      padding: '.7rem 1rem',
-                      borderRadius: '14px 14px 14px 4px',
-                      background: c.card,
-                      border: `1px solid ${c.border}`,
-                      display: 'flex', gap: '.3rem', alignItems: 'center',
-                    }}>
-                      {[0, 1, 2].map(i => (
-                        <span key={i} style={{
-                          width: 7, height: 7, borderRadius: '50%',
-                          background: c.muted, display: 'inline-block',
-                          animation: `chatDot 1.4s infinite ${i * .2}s`,
-                          opacity: .4,
-                        }} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Suggestions — only show when there's just the greeting */}
-              {messages.length <= 1 && !loading && (
-                <div style={{
-                  padding: '.5rem 1rem .2rem',
-                  display: 'flex', flexWrap: 'wrap', gap: '.4rem',
-                  background: c.bg,
-                }}>
-                  {SUGGESTIONS.map((s, i) => (
-                    <button key={i} onClick={() => { setInput(s); }}
-                      style={{
-                        padding: '.35rem .7rem',
-                        borderRadius: 8,
-                        border: '1px solid var(--border)',
-                        background: 'var(--bg-2)',
-                        color: 'var(--text-secondary)',
-                        fontSize: '.7rem',
-                        cursor: 'pointer',
-                        fontFamily: 'Inter, sans-serif',
-                        fontWeight: 500,
-                        whiteSpace: 'nowrap',
-                        transition: 'all .15s',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--gpale)'; e.currentTarget.style.borderColor = 'var(--g)' }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-2)'; e.currentTarget.style.borderColor = 'var(--border)' }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Delete Confirmation Banner */}
-              {pendingDelete && (
-                <div style={{
-                  margin: '0 1rem 0.5rem',
-                  padding: '0.75rem 1rem',
-                  background: 'rgba(239, 68, 68, 0.08)',
-                  border: '1px solid rgba(239, 68, 68, 0.35)',
-                  borderRadius: 10,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.5rem',
-                  flexShrink: 0,
-                }}>
-                  <div style={{ fontSize: '.78rem', fontWeight: 600, color: '#EF4444' }}>
-                    Confirm deletion
-                  </div>
-                  <div style={{ fontSize: '.76rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                    Are you sure you want to permanently delete this product? This cannot be undone.
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
-                    <button
-                      onClick={() => { setPendingDelete(null); setInput('yes, delete it'); setTimeout(() => handleSend(), 50) }}
-                      style={{ flex: 1, padding: '.45rem', borderRadius: 7, border: 'none', background: '#EF4444', color: '#fff', fontSize: '.75rem', fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      Yes, Delete It
-                    </button>
-                    <button
-                      onClick={() => { setPendingDelete(null); sendGlobalMessage('cancel', storeId, isLandingPage) }}
-                      style={{ flex: 1, padding: '.45rem', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-primary)', fontSize: '.75rem', fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Input */}
-              <div style={{
-                padding: '.75rem 1rem',
-                borderTop: `1px solid ${c.border}`,
-                display: 'flex', gap: '.6rem', alignItems: 'flex-end',
-                background: c.card,
-                flexShrink: 0,
-              }}>
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask Selora anything..."
-                  rows={1}
+              return (
+                <div
+                  key={i}
                   style={{
-                    flex: 1,
-                    padding: '.6rem .8rem',
-                    border: `1px solid ${c.border}`,
-                    borderRadius: 10,
-                    fontSize: '.84rem',
-                    fontFamily: 'Inter, sans-serif',
-                    outline: 'none',
-                    resize: 'none',
-                    background: c.bg,
-                    color: c.dark,
-                    lineHeight: 1.5,
-                    maxHeight: 80,
-                    overflowY: 'auto',
-                  }}
-                  onFocus={e => e.currentTarget.style.borderColor = c.green}
-                  onBlur={e => e.currentTarget.style.borderColor = c.border}
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={!input.trim() || loading}
-                  style={{
-                    width: 38, height: 38, borderRadius: 10,
-                    background: input.trim() && !loading ? c.green : '#D1D5DB',
-                    color: '#fff', border: 'none', cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '1rem', flexShrink: 0,
-                    transition: 'background .2s',
+                    display: 'flex',
+                    justifyContent: isUser ? 'flex-end' : 'flex-start',
                   }}
                 >
-                  ↑
+                  <div style={{
+                    maxWidth: '82%',
+                    padding: '.7rem 1rem',
+                    borderRadius: isUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                    backgroundColor: isUser ? c.green : c.card,
+                    backgroundImage: isUser
+                      ? `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`
+                      : 'none',
+                    color: isUser ? '#fff' : c.dark,
+                    border: isUser ? 'none' : `1px solid ${c.border}`,
+                    fontSize: '.82rem',
+                    lineHeight: 1.65,
+                    fontWeight: 300,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    boxShadow: isUser
+                      ? '0 2px 8px rgba(90,138,103,.2)'
+                      : '0 1px 4px rgba(0,0,0,.04)',
+                  }}>
+                    {content}
+                    {isErrorMessage && (
+                      <div style={{ marginTop: '0.6rem', borderTop: `1px solid ${c.border}`, paddingTop: '0.6rem' }}>
+                        <button
+                          onClick={() => retryLastMessage(storeId, isGuest)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '.45rem .8rem',
+                            borderRadius: 8,
+                            background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
+                            color: '#fff',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '.76rem',
+                            fontWeight: 600,
+                            fontFamily: 'Inter, sans-serif',
+                            boxShadow: '0 2px 6px rgba(90, 138, 103, 0.15)',
+                          }}
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+
+            {loading && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <div style={{
+                  padding: '.7rem 1rem',
+                  borderRadius: '14px 14px 14px 4px',
+                  background: c.card,
+                  border: `1px solid ${c.border}`,
+                  display: 'flex', gap: '.3rem', alignItems: 'center',
+                }}>
+                  {[0, 1, 2].map(i => (
+                    <span key={i} style={{
+                      width: 7, height: 7, borderRadius: '50%',
+                      background: c.muted, display: 'inline-block',
+                      animation: `chatDot 1.4s infinite ${i * .2}s`,
+                      opacity: .4,
+                    }} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Suggestions — only show when there's just the greeting */}
+          {messages.length <= 1 && !loading && (
+            <div style={{
+              padding: '.5rem 1rem .2rem',
+              display: 'flex', flexWrap: 'wrap', gap: '.4rem',
+              background: c.bg,
+            }}>
+              {SUGGESTIONS.map((s, i) => (
+                <button key={i} onClick={() => handleSuggestion(s)}
+                  style={{
+                    padding: '.35rem .7rem',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-2)',
+                    color: 'var(--text-secondary)',
+                    fontSize: '.7rem',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 500,
+                    whiteSpace: 'nowrap',
+                    transition: 'all .15s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--gpale)'; e.currentTarget.style.borderColor = 'var(--g)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-2)'; e.currentTarget.style.borderColor = 'var(--border)' }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Delete Confirmation Banner */}
+          {pendingDelete && (
+            <div style={{
+              margin: '0 1rem 0.5rem',
+              padding: '0.75rem 1rem',
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              borderRadius: 10,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+              flexShrink: 0,
+            }}>
+              <div style={{ fontSize: '.78rem', fontWeight: 600, color: '#EF4444' }}>
+                Confirm deletion
+              </div>
+              <div style={{ fontSize: '.76rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                Are you sure you want to permanently delete this product? This cannot be undone.
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+                <button
+                  onClick={() => { setPendingDelete(null); setInput('yes, delete it'); setTimeout(() => handleSend(), 50) }}
+                  style={{ flex: 1, padding: '.45rem', borderRadius: 7, border: 'none', background: '#EF4444', color: '#fff', fontSize: '.75rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Yes, Delete It
+                </button>
+                <button
+                  onClick={() => { setPendingDelete(null); sendGlobalMessage('cancel', storeId, isGuest) }}
+                  style={{ flex: 1, padding: '.45rem', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-primary)', fontSize: '.75rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancel
                 </button>
               </div>
-            </>
+            </div>
           )}
+
+          {/* Input */}
+          <div style={{
+            padding: '.75rem 1rem',
+            borderTop: `1px solid ${c.border}`,
+            display: 'flex', gap: '.6rem', alignItems: 'flex-end',
+            background: c.card,
+            flexShrink: 0,
+          }}>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask Selora anything..."
+              rows={1}
+              style={{
+                flex: 1,
+                padding: '.6rem .8rem',
+                border: `1px solid ${c.border}`,
+                borderRadius: 10,
+                fontSize: '.84rem',
+                fontFamily: 'Inter, sans-serif',
+                outline: 'none',
+                resize: 'none',
+                background: c.bg,
+                color: c.dark,
+                lineHeight: 1.5,
+                maxHeight: 80,
+                overflowY: 'auto',
+              }}
+              onFocus={e => e.currentTarget.style.borderColor = c.green}
+              onBlur={e => e.currentTarget.style.borderColor = c.border}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || loading}
+              style={{
+                width: 38, height: 38, borderRadius: 10,
+                background: input.trim() && !loading ? c.green : '#D1D5DB',
+                color: '#fff', border: 'none', cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1rem', flexShrink: 0,
+                transition: 'background .2s',
+              }}
+            >
+              ↑
+            </button>
+          </div>
 
         </div>
       )}
