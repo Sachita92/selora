@@ -319,6 +319,8 @@ function SignupForm({ plan, onSuccess, onSwitch, dark }) {
       // Supabase silently succeeds but returns empty identities when the email
       // is already registered — this is by design to prevent email enumeration.
       setAccountExists(true); setLoading(false)
+    } else if (data?.session || data?.user?.role === 'authenticated') {
+      onSuccess(data.user || data.session?.user, plan)
     } else {
       setSuccess(true); setLoading(false)
     }
@@ -454,7 +456,7 @@ function SignupForm({ plan, onSuccess, onSwitch, dark }) {
 
 // ── AuthModal ─────────────────────────────────────────────────────────────────
 export default function AuthModal() {
-  const { authModal, closeAuthModal, authMessage, setAuthMessage } = useAppContext()
+  const { authModal, closeAuthModal, authMessage, setAuthMessage, user } = useAppContext()
   const { open, mode, plan } = authModal
   const [currentMode, setCurrentMode] = useState(mode)
   const navigate = useNavigate()
@@ -466,6 +468,22 @@ export default function AuthModal() {
     if (setAuthMessage) setAuthMessage(null)
     closeAuthModal()
   }, [closeAuthModal, setAuthMessage])
+
+  const handleSuccess = useCallback((u, p) => {
+    handleClose()
+    if (p && p !== 'free') {
+      navigate(`/pricing?plan=${p}`)
+    } else {
+      navigate('/dashboard')
+    }
+  }, [handleClose, navigate])
+
+  // Automatically redirect & close modal when user state becomes active while AuthModal is open
+  useEffect(() => {
+    if (open && user) {
+      handleSuccess(user, plan)
+    }
+  }, [open, user, plan, handleSuccess])
 
   // Sync mode when opened with a specific mode
   useEffect(() => {
@@ -488,15 +506,6 @@ export default function AuthModal() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [open, handleClose])
-
-  function handleSuccess(user, plan) {
-    handleClose()
-    if (plan && plan !== 'free') {
-      navigate(`/pricing?plan=${plan}`)
-    } else {
-      navigate('/dashboard')
-    }
-  }
 
   function switchMode() {
     setCurrentMode(m => m === 'login' ? 'signup' : 'login')

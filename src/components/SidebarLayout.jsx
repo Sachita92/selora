@@ -240,6 +240,7 @@ export default function SidebarLayout() {
   const [activeMenuSessionId, setActiveMenuSessionId] = useState(null)
   const [deletingSessionId, setDeletingSessionId] = useState(null)
   const messagesEndRef = useRef(null)
+  const lastMessageRef = useRef(null)
 
   // Load chat history and sessions when active store changes
   useEffect(() => {
