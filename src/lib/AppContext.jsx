@@ -42,6 +42,9 @@ export function AppProvider({ children }) {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const openAuthModal = useCallback((mode = 'login', plan = null) => setAuthModal({ open: true, mode, plan }), [])
   const closeAuthModal = useCallback(() => setAuthModal({ open: false, mode: 'login', plan: null }), [])
+  const [connectStoreModalOpen, setConnectStoreModalOpen] = useState(false)
+  const openConnectStoreModal = useCallback(() => setConnectStoreModalOpen(true), [])
+  const closeConnectStoreModal = useCallback(() => setConnectStoreModalOpen(false), [])
   const [products, setProducts] = useState([])
   const [fetchingProducts, setFetchingProducts] = useState(false)
   const [productsStats, setProductsStats] = useState({ revenue: 0, orders: 0 })
@@ -465,7 +468,8 @@ export function AppProvider({ children }) {
       nameModal, setNameModal,
       isLoggingOut, setIsLoggingOut,
       authMessage, setAuthMessage,
-      triggerSync: attemptSilentSync
+      triggerSync: attemptSilentSync,
+      connectStoreModalOpen, openConnectStoreModal, closeConnectStoreModal
     }}>
       {children}
     </AppContext.Provider>

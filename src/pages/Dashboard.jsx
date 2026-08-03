@@ -300,7 +300,7 @@ function getRelativeTime(dateString) {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { user, stores, activeStore, setActiveStore, loading, products, fetchingProducts, productsStats, fetchProducts, orders, fetchingOrders } = useAppContext()
+  const { user, stores, activeStore, setActiveStore, loading, products, fetchingProducts, productsStats, fetchProducts, orders, fetchingOrders, openConnectStoreModal } = useAppContext()
   const { sendMessage, setOpen } = useChat()
   const [logs, setLogs]         = useState([])
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -561,7 +561,7 @@ export default function Dashboard() {
             <p style={{ marginBottom: '1.5rem', fontWeight: 300 }}>
               Connect your Shopify store or launch a native storefront, and Selora will start growing it tonight.
             </p>
-            <Link to="/connect" style={s.btnP}>Set Up Your Store →</Link>
+            <button onClick={openConnectStoreModal} style={s.btnP}>Set Up Your Store →</button>
           </div>
         )}
 
@@ -649,10 +649,17 @@ export default function Dashboard() {
                   Review Flagged
                 </Link>
               )}
-              <Link to={activeStore?.platform === 'selora' ? "/store-builder" : "/connect"} className="qa-card">
-                <IconLink />
-                Manage Store
-              </Link>
+              {activeStore?.platform === 'selora' ? (
+                <Link to="/store-builder" className="qa-card">
+                  <IconLink />
+                  Manage Store
+                </Link>
+              ) : (
+                <button onClick={openConnectStoreModal} className="qa-card" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+                  <IconLink />
+                  Manage Store
+                </button>
+              )}
             </div>
 
             {/* ── PENDING/NEEDS-REVIEW ORDERS ────────────────────────────────── */}

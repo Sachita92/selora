@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAppContext } from '../lib/AppContext'
+import { setJustLoggedIn } from '../lib/useAuth'
 
 // ── Detect current dark mode from the html element class ─────────────────────
 function useIsDark() {
@@ -470,6 +471,7 @@ export default function AuthModal() {
   }, [closeAuthModal, setAuthMessage])
 
   const handleSuccess = useCallback((u, p) => {
+    setJustLoggedIn(true)
     handleClose()
     if (p && p !== 'free') {
       navigate(`/pricing?plan=${p}`)

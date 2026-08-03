@@ -46,7 +46,7 @@ const formatTimeAgo = (date) => {
 }
 
 export default function SidebarLayout() {
-  const { user, stores, activeStore, setActiveStore, orders, products } = useAppContext()
+  const { user, stores, activeStore, setActiveStore, orders, products, openConnectStoreModal } = useAppContext()
   const { logout } = useAuth()
   const { messages, loading: chatLoading, sendMessage, loadHistory, loadSessions, sessionId, sessions, selectSession, setOpen, startNewSession, deleteSession, renameSession, pinSession, pendingDelete, setPendingDelete } = useChat()
   const navigate = useNavigate()
@@ -530,15 +530,6 @@ export default function SidebarLayout() {
                 </svg>
               )
             },
-            {
-              name: 'Connect Store',
-              path: '/connect',
-              icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-              )
-            },
           ].map(nav => {
             const active = location.pathname === nav.path
             return (
@@ -590,6 +581,48 @@ export default function SidebarLayout() {
               </Link>
             )
           })}
+
+          {/* Connect Store — opens modal instead of navigating */}
+          <button
+            onClick={openConnectStoreModal}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isCollapsed && !isMobile ? 'center' : 'flex-start',
+              gap: isCollapsed && !isMobile ? '0' : '.75rem',
+              padding: isCollapsed && !isMobile ? '.75rem' : '.65rem 1rem',
+              borderRadius: 10,
+              background: 'transparent',
+              color: c.muted,
+              fontWeight: 500,
+              fontSize: '.88rem',
+              transition: 'all 0.2s ease',
+              border: 'none',
+              borderLeft: '3px solid transparent',
+              borderTopLeftRadius: 10,
+              borderBottomLeftRadius: 10,
+              cursor: 'pointer',
+              width: '100%',
+              fontFamily: 'inherit',
+              boxSizing: 'border-box',
+            }}
+            title={isCollapsed && !isMobile ? 'Connect Store' : undefined}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = c.bg2
+              e.currentTarget.style.color = c.dark
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.color = c.muted
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.muted, transition: 'color 0.2s' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </span>
+            {(!isCollapsed || isMobile) && <span>Connect Store</span>}
+          </button>
 
           {/* Theme Toggler Link-styled Button */}
           <button

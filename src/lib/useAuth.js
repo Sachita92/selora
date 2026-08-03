@@ -8,6 +8,10 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 let justLoggedInFlag = false
 
+export function setJustLoggedIn(flag = true) {
+  justLoggedInFlag = flag
+}
+
 export function useAuth() {
   const { user, login, logout: privyLogout, authenticated, ready, getAccessToken } = usePrivy()
   const { user: supabaseUser, setUser, setNameModal, setStores, setActiveStore, setIsLoggingOut, triggerSync } = useAppContext()
@@ -18,6 +22,7 @@ export function useAuth() {
   const syncingRef = useRef(false)
 
   const loginWithFlag = useCallback(() => {
+    console.log('[Auth Flow] User initiated Privy login/signup')
     justLoggedInFlag = true
     login()
   }, [login])
@@ -34,10 +39,12 @@ export function useAuth() {
     return solanaAccount?.address || null
   }, [user])
 
-  // Redirect to dashboard only if session is active and user is on a dedicated auth route
+  // Redirect to dashboard whenever session becomes active after login/signup action or on dedicated auth route
   useEffect(() => {
     const authPaths = ['/login', '/signup']
-    if (supabaseUser && authPaths.includes(location.pathname)) {
+    if (supabaseUser && (justLoggedInFlag || authPaths.includes(location.pathname))) {
+      console.log(`[Auth Flow] Session active for ${supabaseUser.email || supabaseUser.id}. Navigating to /dashboard (justLoggedIn: ${justLoggedInFlag}, path: ${location.pathname})`)
+      justLoggedInFlag = false
       navigate('/dashboard')
     }
   }, [supabaseUser, location.pathname, navigate])

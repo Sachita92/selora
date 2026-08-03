@@ -8,6 +8,7 @@ import ChatWidget from './components/ChatWidget'
 import SidebarLayout from './components/SidebarLayout'
 import AuthModal from './components/AuthModal'
 import NameCollectionModal from './components/NameCollectionModal'
+import ConnectStoreModal from './components/ConnectStoreModal'
 import PrivyProviderWrapper from './components/PrivyProviderWrapper'
 
 import Selora        from './Selora'
@@ -119,7 +120,7 @@ function ProtectedRoute({ children }) {
   // Show a branded spinner instead of a blank white page while loading / syncing.
   if (isInitialLoad) return <SyncingSpinner label="Loading\u2026" />
   if (isMidSync)     return <SyncingSpinner label="Reconnecting session\u2026" />
-  if (!user) return <Navigate to="/" replace />
+  if (!user)         return <SyncingSpinner label="Verifying session\u2026" />
   return children
 }
 
@@ -175,6 +176,7 @@ export default function App() {
             </Routes>
             <AuthModal />
             <NameCollectionModal />
+            <GlobalConnectStoreModal />
             <GlobalChatWidget />
           </BrowserRouter>
         </ChatProvider>
@@ -214,4 +216,15 @@ function GlobalChatWidget() {
   if (!storeId) return null
 
   return <ChatWidget storeId={storeId} isGuest={!activeStore} />
+}
+
+// ─── Global Connect Store Modal ────────────────────────────────────────────────
+function GlobalConnectStoreModal() {
+  const { connectStoreModalOpen, closeConnectStoreModal } = useAppContext()
+  return (
+    <ConnectStoreModal
+      isOpen={connectStoreModalOpen}
+      onClose={closeConnectStoreModal}
+    />
+  )
 }

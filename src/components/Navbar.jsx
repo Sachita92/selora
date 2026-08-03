@@ -121,10 +121,6 @@ export default function Navbar() {
           background: var(--g);
           border-radius: 99px;
         }
-        .site-nav-link-demo {
-          color: var(--g);
-          font-weight: 600 !important;
-        }
         .site-nav-actions-desktop {
           display: flex;
           align-items: center;
@@ -191,7 +187,7 @@ export default function Navbar() {
             <Link
               key={link.label}
               to={link.path}
-              className={`site-nav-link ${isLinkActive(link.path) ? 'active' : ''} ${link.label === 'Book a Demo' ? 'site-nav-link-demo' : ''}`}
+              className={`site-nav-link ${isLinkActive(link.path) ? 'active' : ''}`}
             >
               {link.label}
             </Link>
