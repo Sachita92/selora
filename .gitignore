@@ -34,3 +34,8 @@ __pycache__/
 backend/venv/
 venv/
 .venv/
+
+# Test keypairs and secrets
+test_payer_wallet.json
+*payer_wallet.json
+

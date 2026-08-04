@@ -4,6 +4,7 @@ import argparse
 from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from dotenv import load_dotenv
 
 if hasattr(sys.stdout, 'reconfigure'):
@@ -34,6 +35,111 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ─── x402 Payment Middleware (scoped to /api/x402/ prefix) ────────────────────
+# Reads config from env:
+#   X402_PAY_TO_ADDRESS  – required, Solana devnet wallet address (no default)
+#   X402_NETWORK         – CAIP-2 network id  (default: solana:devnet)
+#   X402_PRICE           – price in USDC       (default: 0.001)
+#   X402_FACILITATOR_URL – facilitator base URL (default: https://x402.org/facilitator)
+
+_X402_PAY_TO   = os.getenv("X402_PAY_TO_ADDRESS", "").strip()
+_X402_NETWORK  = os.getenv("X402_NETWORK", "solana:devnet").strip()
+_X402_PRICE    = float(os.getenv("X402_PRICE", "0.001"))
+_X402_FACIL    = os.getenv("X402_FACILITATOR_URL", "https://x402.org/facilitator").strip()
+
+if _X402_PAY_TO:
+    try:
+        from x402.http.middleware.fastapi import (
+            payment_middleware,
+            PaywallConfig,
+        )
+        from x402.http.types import RouteConfig, PaymentOption
+        from x402.http.facilitator_client import HTTPFacilitatorClient
+        from x402.server import x402ResourceServer
+        from x402.schemas import AssetAmount
+
+        # Map network aliases to CAIP-2 identifiers for facilitator compatibility
+        NETWORK_MAP = {
+            "solana:devnet": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+            "solana-devnet": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+        }
+        effective_network = NETWORK_MAP.get(_X402_NETWORK.lower(), _X402_NETWORK)
+
+        # Facilitator-backed SVM scheme for verifying/settling payments via https://x402.org/facilitator
+        class FacilitatorSvmScheme:
+            scheme = "exact"
+
+            def __init__(self, client: HTTPFacilitatorClient):
+                self.facilitator = client
+
+            def parse_price(self, price: float | str, network: str) -> AssetAmount:
+                if isinstance(price, (int, float)):
+                    atomic = str(int(price * 1_000_000))
+                else:
+                    atomic = str(price)
+                # Circle Devnet USDC Mint address
+                usdc_mint = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
+                return AssetAmount(amount=atomic, asset=usdc_mint)
+
+            def parse_payment_payload(self, payload: dict) -> dict:
+                return payload
+
+            def enhance_payment_requirements(self, requirements, supported_kind, extensions):
+                if supported_kind and getattr(supported_kind, "extra", None):
+                    requirements.extra.update(supported_kind.extra)
+                return requirements
+
+            async def verify_payment(self, payload, requirements, **kwargs):
+                print("\n[x402 Server] Verifying payment with facilitator...")
+                try:
+                    res = await self.facilitator.verify(payload, requirements)
+                    print(f"[x402 Server] Facilitator response: valid={res.is_valid}, invalid_reason={getattr(res, 'invalid_reason', None)}")
+                    return res.is_valid
+                except Exception as ex:
+                    print(f"[x402 Server] Facilitator verify exception: {ex}")
+                    return False
+
+            async def settle_payment(self, payload, requirements, **kwargs):
+                return await self.facilitator.settle(payload, requirements)
+
+        _x402_facilitator = HTTPFacilitatorClient({"url": _X402_FACIL})
+        _x402_server = x402ResourceServer(_x402_facilitator)
+        _x402_server.register(effective_network, FacilitatorSvmScheme(_x402_facilitator))
+
+        _x402_route_config = RouteConfig(
+            accepts=PaymentOption(
+                scheme="exact",
+                pay_to=_X402_PAY_TO,
+                price=_X402_PRICE,
+                network=effective_network,
+            ),
+            description="Selora AI chat — $0.001 USDC per call (Solana devnet)",
+        )
+
+        _x402_routes: dict = {
+            "POST /api/x402/chat": _x402_route_config,
+        }
+
+        _x402_dispatch = payment_middleware(
+            routes=_x402_routes,
+            server=_x402_server,
+            sync_facilitator_on_start=True,
+        )
+
+        # Wrap the dispatch function in BaseHTTPMiddleware so FastAPI accepts it.
+        class _X402Middleware(BaseHTTPMiddleware):
+            async def dispatch(self, request: Request, call_next):
+                return await _x402_dispatch(request, call_next)
+
+        app.add_middleware(_X402Middleware)
+        print(f"[x402] Payment middleware registered — POST /api/x402/chat requires payment")
+        print(f"[x402] pay_to={_X402_PAY_TO} | network={effective_network} | price=${_X402_PRICE} USDC")
+    except Exception as _x402_init_err:
+        print(f"[x402] WARNING: Failed to initialise payment middleware: {_x402_init_err}")
+else:
+    print("[x402] WARNING: X402_PAY_TO_ADDRESS is not set — /api/x402/chat endpoint is UNPROTECTED")
 
 
 # ─── Health Check ─────────────────────────────────────────────────────────────
@@ -1216,6 +1322,47 @@ Agent: {final_response[:300]}"""
         "actions": actions_taken,
     }
 
+
+
+# ─── x402-Protected Chat Endpoint ────────────────────────────────────────────
+# This endpoint is payment-gated via the x402 middleware registered above.
+# It accepts the same request body as POST /api/chat/{store_id} and proxies to
+# the same underlying chat logic.
+# The store_id is passed in the request body so AI agents can specify which
+# store context they want to chat against.
+
+class X402ChatRequest(ChatRequest):
+    """Extended ChatRequest that also accepts an explicit store_id."""
+    store_id: str = "demo"
+
+
+@app.post("/api/x402/chat", tags=["x402"])
+def x402_chat(body: X402ChatRequest, request: Request):
+    """
+    [x402-protected] Chat with the Selora AI agent.
+
+    Requires a valid x402 USDC payment header on Solana devnet.
+    Accepts the same request body as POST /api/chat/{store_id}, plus:
+    - store_id: the target store UUID (or 'demo' for the public demo store)
+
+    Price: $0.001 USDC per call
+    Network: solana:devnet
+    """
+    # Delegate entirely to the existing chat_with_agent handler.
+    # We create a vanilla ChatRequest from the extended body to keep
+    # the existing function signature unchanged.
+    chat_body = ChatRequest(
+        message=body.message,
+        session_id=body.session_id,
+        history=body.history,
+        is_guest=body.is_guest,
+        confirm_delete=body.confirm_delete,
+    )
+    return chat_with_agent(
+        store_id=body.store_id,
+        body=chat_body,
+        request=request,
+    )
 
 
 def _run_agent_task(store: dict, dry_run: bool):
