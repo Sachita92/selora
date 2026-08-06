@@ -50,6 +50,7 @@ export default function Footer() {
       links: [
         { label: "Docs", path: "#" },
         { label: "Support", path: "/support" },
+        { label: "x402 Demo", path: "/x402-demo" },
         { label: "Privacy Policy", path: "/privacy" },
         { label: "Terms of Service", path: "/terms" },
       ]

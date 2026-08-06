@@ -45,6 +45,14 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
+    // Disable Supabase's internal auto-refresh timer. When Chrome suspends an
+    // inactive tab, this timer fires stale refresh requests on wake, causing
+    // "Invalid Refresh Token: Already Used" loops. We take over 100% of token
+    // refresh responsibility via the visibilitychange handler and the proactive
+    // periodic interval in AppContext.jsx.
+    autoRefreshToken: false,
+    // Keep the session in localStorage so it survives page reloads.
+    persistSession: true,
     lock: async (_name, _acquireTimeout, fn) => {
       return await fn()
     },

@@ -4,6 +4,10 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    port: 5173,
+    strictPort: true, // fail loudly if 5173 is busy instead of silently switching ports
+  },
   envPrefix: ['VITE_', 'NEXT_PUBLIC_'],
   define: {
     // Needed by @solana/web3.js in browser

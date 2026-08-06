@@ -32,6 +32,7 @@ import StorefrontOrders from './pages/StorefrontOrders'
 import Reports        from './pages/Reports'
 import Profile        from './pages/Profile'
 import Orders         from './pages/Orders'
+import X402Demo       from './pages/X402Demo'
 
 // ─── Full-page loading spinner shown while auth state is resolving ───────────
 function SyncingSpinner({ label = 'Reconnecting\u2026' }) {
@@ -151,6 +152,7 @@ export default function App() {
               <Route path="/features"     element={<FeaturesPage />} />
               <Route path="/how-it-works" element={<HowItWorksPage />} />
               <Route path="/pricing"      element={<PricingPage />} />
+              <Route path="/x402-demo"    element={<X402Demo />} />
               <Route path="/store/:handle" element={<Storefront key="sf-home" />} />
               <Route path="/store/:handle/product/:productId" element={<Storefront key="sf-pdp" />} />
               <Route path="/store/:handle/category/:categoryId" element={<Storefront key="sf-cat" />} />

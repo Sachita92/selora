@@ -1365,6 +1365,290 @@ def x402_chat(body: X402ChatRequest, request: Request):
     )
 
 
+# ─── x402 Demo Endpoint ───────────────────────────────────────────────────────
+# POST /api/x402/demo-run  — runs the full agent-payment loop end-to-end and
+# streams each step as JSON lines so the frontend can display them live.
+# GET  /api/x402/payer-balance — returns the devnet USDC balance of the test wallet.
+#
+# Ports the logic from backend/test_x402_payer.py without modifying that file.
+# Does NOT touch /api/x402/chat or its middleware.
+
+import asyncio
+import time as _time
+from fastapi.responses import StreamingResponse
+
+# Simple in-memory cooldown: maps IP → last_run_timestamp
+_demo_cooldown: dict = {}
+_DEMO_COOLDOWN_S = 15  # seconds between runs per IP
+
+USDC_MINT_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
+DEVNET_RPC_URL   = "https://api.devnet.solana.com"
+
+
+def _get_payer_keypair():
+    """Load and return the test payer keypair from test_payer_wallet.json."""
+    import json
+    wallet_path = os.path.join(os.path.dirname(__file__), "test_payer_wallet.json")
+    if not os.path.exists(wallet_path):
+        raise FileNotFoundError(f"test_payer_wallet.json not found at {wallet_path}")
+    with open(wallet_path, "r") as f:
+        secret_bytes = json.load(f)
+    from solders.keypair import Keypair
+    return Keypair.from_bytes(secret_bytes)
+
+
+def _get_usdc_balance(pubkey_str: str) -> float:
+    """Return the USDC token balance (as float USDC) for the given pubkey on devnet."""
+    import httpx, json
+    rpc_payload = {
+        "jsonrpc": "2.0", "id": 1,
+        "method": "getTokenAccountsByOwner",
+        "params": [
+            pubkey_str,
+            {"mint": USDC_MINT_DEVNET},
+            {"encoding": "jsonParsed"},
+        ],
+    }
+    resp = httpx.post(DEVNET_RPC_URL, json=rpc_payload, timeout=10.0)
+    data = resp.json()
+    accounts = data.get("result", {}).get("value", [])
+    if not accounts:
+        return 0.0
+    amount_str = accounts[0]["account"]["data"]["parsed"]["info"]["tokenAmount"]["uiAmountString"]
+    return float(amount_str)
+
+
+@app.get("/api/x402/payer-balance", tags=["x402"])
+def get_payer_balance():
+    """Return the devnet USDC balance of the test payer wallet."""
+    try:
+        kp = _get_payer_keypair()
+        balance = _get_usdc_balance(str(kp.pubkey()))
+        return {
+            "success": True,
+            "balance_usdc": balance,
+            "pubkey": str(kp.pubkey()),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "balance_usdc": None}
+
+
+@app.post("/api/x402/demo-run", tags=["x402"])
+async def x402_demo_run(request: Request):
+    """
+    Run the full x402 agent-payment loop and stream each step as JSON lines.
+
+    Each line is a JSON object: { "step": int, "label": str, "detail": str|null, "done": bool, "error": bool }
+    The final success line also includes: { "tx_sig": str, "ai_response": str, "balance_after": float }
+    """
+    # ── Cooldown guard ──────────────────────────────────────────────────────
+    client_ip = request.client.host if request.client else "unknown"
+    now = _time.time()
+    last_run = _demo_cooldown.get(client_ip, 0)
+    wait_s = _DEMO_COOLDOWN_S - (now - last_run)
+    if wait_s > 0:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Cooldown active — please wait {int(wait_s) + 1} more seconds.",
+        )
+    _demo_cooldown[client_ip] = now
+
+    async def stream():
+        import json, base64, httpx
+
+        def emit(step: int, label: str, detail=None, done=False, error=False, **extra):
+            obj = {"step": step, "label": label, "detail": detail, "done": done, "error": error}
+            obj.update(extra)
+            return json.dumps(obj) + "\n"
+
+        # Step 0: initialise wallet
+        yield emit(0, "Loading payer wallet…")
+        try:
+            kp = _get_payer_keypair()
+            pubkey_str = str(kp.pubkey())
+        except Exception as e:
+            yield emit(0, "Failed to load payer wallet", detail=str(e), done=True, error=True)
+            return
+
+        yield emit(0, "Wallet loaded", detail=f"Payer: {pubkey_str[:12]}…{pubkey_str[-6:]}", done=False)
+
+        # Step 1: first request — expect 402
+        yield emit(1, "Agent requesting access…", detail="POST /api/x402/chat (no payment)")
+        await asyncio.sleep(0.05)
+
+        base_url = os.getenv("BACKEND_SELF_URL", "http://localhost:8000")
+        chat_url = f"{base_url}/api/x402/chat"
+        chat_payload = {
+            "message": "Hello Selora! Give me a quick store health tip.",
+            "session_id": "demo-ui-session",
+            "store_id": "demo",
+            "is_guest": True,
+        }
+
+        payment_header_raw = None
+        req_json = None
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as http:
+                resp1 = await http.post(chat_url, json=chat_payload)
+
+            if resp1.status_code != 402:
+                yield emit(1, f"Unexpected status {resp1.status_code} (expected 402)",
+                           detail=resp1.text[:300], done=True, error=True)
+                return
+
+            payment_header_raw = resp1.headers.get("payment-required") or resp1.headers.get("PAYMENT-REQUIRED")
+            if not payment_header_raw:
+                yield emit(1, "402 received but PAYMENT-REQUIRED header is missing",
+                           detail=str(dict(resp1.headers))[:300], done=True, error=True)
+                return
+
+            req_json = json.loads(base64.b64decode(payment_header_raw).decode("utf-8"))
+        except Exception as e:
+            yield emit(1, "Request to /api/x402/chat failed", detail=str(e), done=True, error=True)
+            return
+
+        accepts = req_json.get("accepts", [])
+        if not accepts:
+            yield emit(1, "402 response has no payment options in 'accepts'",
+                       done=True, error=True)
+            return
+        opt = accepts[0]
+        amount_atomic = opt.get("amount", "1000")
+        amount_usdc = float(amount_atomic) / 1_000_000
+
+        yield emit(1, "402 Payment Required",
+                   detail=f"Price: ${amount_usdc:.4f} USDC | Pay to: {opt.get('payTo','?')[:12]}… | Network: {opt.get('network','?')}",
+                   done=False)
+
+        # Step 2: sign payment
+        yield emit(2, "Signing payment on Solana devnet…", detail="Building USDC transfer transaction")
+        await asyncio.sleep(0.1)
+
+        sig_header_val = None
+        try:
+            from x402.mechanisms.svm.exact.client import ExactSvmScheme
+            from x402.mechanisms.svm.signers import KeypairSigner
+            from x402.schemas import PaymentRequirements
+
+            signer = KeypairSigner(kp)
+            from solana.rpc.api import Client as SolanaClient
+            rpc = SolanaClient(DEVNET_RPC_URL)
+            scheme_client = ExactSvmScheme(signer, rpc_url=DEVNET_RPC_URL)
+
+            extra_dict = dict(opt.get("extra") or {})
+            extra_dict.setdefault("feePayer", pubkey_str)
+
+            req_obj = PaymentRequirements(
+                scheme=opt.get("scheme", "exact"),
+                network=opt.get("network"),
+                asset=opt.get("asset", "USDC"),
+                amount=amount_atomic,
+                pay_to=opt.get("payTo"),
+                max_timeout_seconds=opt.get("maxTimeoutSeconds", 300),
+                extra=extra_dict,
+            )
+
+            inner_payload = scheme_client.create_payment_payload(req_obj)
+            payment_payload = {
+                "x402Version": req_json.get("x402Version", 2),
+                "accepted": opt,
+                "resource": req_json.get("resource"),
+                "payload": inner_payload,
+            }
+            sig_header_val = base64.b64encode(
+                json.dumps(payment_payload).encode("utf-8")
+            ).decode("utf-8")
+
+        except Exception as e:
+            yield emit(2, "Failed to sign payment", detail=str(e), done=True, error=True)
+            return
+
+        yield emit(2, "Payment signed", detail="Transaction built and signed locally — not yet broadcast", done=False)
+
+        # Step 3: send payment and retry
+        yield emit(3, "Payment sent — retrying request…", detail="POST /api/x402/chat with PAYMENT-SIGNATURE header")
+        await asyncio.sleep(0.1)
+
+        resp2 = None
+        try:
+            headers2 = {
+                "PAYMENT-SIGNATURE": sig_header_val,
+                "X-Payment": sig_header_val,
+                "Content-Type": "application/json",
+            }
+            async with httpx.AsyncClient(timeout=60.0) as http:
+                resp2 = await http.post(chat_url, json=chat_payload, headers=headers2)
+        except Exception as e:
+            yield emit(3, "Paid request failed", detail=str(e), done=True, error=True)
+            return
+
+        if resp2.status_code != 200:
+            yield emit(3, f"Payment rejected — status {resp2.status_code}",
+                       detail=resp2.text[:400], done=True, error=True)
+            return
+
+        yield emit(3, "Payment accepted by server", detail=f"HTTP {resp2.status_code} OK", done=False)
+
+        # Step 4: extract transaction signature
+        yield emit(4, "Verifying on-chain…", detail="Decoding PAYMENT-RESPONSE header")
+        await asyncio.sleep(0.1)
+
+        tx_sig = None
+        pay_resp_hdr = (
+            resp2.headers.get("payment-response")
+            or resp2.headers.get("PAYMENT-RESPONSE")
+            or resp2.headers.get("x-payment-response")
+        )
+        if pay_resp_hdr:
+            try:
+                settle_data = json.loads(base64.b64decode(pay_resp_hdr).decode("utf-8"))
+                tx_sig = (
+                    settle_data.get("transaction")
+                    or settle_data.get("tx")
+                    or settle_data.get("signature")
+                    or settle_data.get("txHash")
+                    or settle_data.get("txId")
+                )
+                if not tx_sig and isinstance(settle_data, dict):
+                    # Try nested payload
+                    for v in settle_data.values():
+                        if isinstance(v, str) and len(v) > 40:
+                            tx_sig = v
+                            break
+            except Exception:
+                pass
+
+        # Also try to parse from response body
+        ai_response = ""
+        try:
+            body_data = resp2.json()
+            ai_response = body_data.get("response", "") or str(body_data)
+        except Exception:
+            ai_response = resp2.text[:600]
+
+        # Get updated balance
+        balance_after = None
+        try:
+            balance_after = _get_usdc_balance(pubkey_str)
+        except Exception:
+            pass
+
+        explorer_url = f"https://explorer.solana.com/tx/{tx_sig}?cluster=devnet" if tx_sig else None
+        yield emit(
+            4,
+            "Payment confirmed — on-chain!",
+            detail=f"Tx: {tx_sig[:20]}…" if tx_sig else "No tx signature in response headers",
+            done=True,
+            error=False,
+            tx_sig=tx_sig,
+            explorer_url=explorer_url,
+            ai_response=ai_response,
+            balance_after=balance_after,
+        )
+
+    return StreamingResponse(stream(), media_type="application/x-ndjson")
+
+
 def _run_agent_task(store: dict, dry_run: bool):
     """Background task that runs the agent on a store and saves results."""
     from adapters.shopify import ShopifyAdapter

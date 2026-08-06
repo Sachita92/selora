@@ -58,6 +58,14 @@ export function AppProvider({ children }) {
   const syncAttemptsRef = useRef(0)
   const lastSyncFailureTimeRef = useRef(0)
   const isSyncingRef = useRef(false)
+  // Guard: only one recovery attempt fires per visibilitychange wake event.
+  const tabWakeRecoveryInProgressRef = useRef(false)
+  // Timestamp (ms) of the last successful silent sync. Used to suppress
+  // the transient null-session event that setSession() emits before the new
+  // session is fully committed, preventing a re-trigger of another sync.
+  const lastSyncSuccessTimeRef = useRef(0)
+  // How long (ms) to suppress null-session-triggered syncs after a success.
+  const SYNC_COOLDOWN_MS = 5000
   // Keep latest Privy values accessible inside the stable onAuthStateChange closure.
   const readyRef = useRef(ready)
   const authenticatedRef = useRef(authenticated)
@@ -233,6 +241,9 @@ export function AppProvider({ children }) {
 
         console.log(`[Auth] Silent sync SUCCESS (attempt ${syncAttemptsRef.current}/3) — Supabase session restored.`)
         syncAttemptsRef.current = 0
+        // Stamp success time so the transient null-session event from setSession()
+        // is suppressed in onAuthStateChange for SYNC_COOLDOWN_MS.
+        lastSyncSuccessTimeRef.current = Date.now()
         // Refresh stores/profile data in the background (non-blocking).
         fetchStores()
       } else {
@@ -244,6 +255,9 @@ export function AppProvider({ children }) {
       handleSignOutAndPrompt()
     } finally {
       isSyncingRef.current = false
+      // Always reset the tab-wake guard so the next wake event can trigger a
+      // fresh recovery check regardless of success or failure.
+      tabWakeRecoveryInProgressRef.current = false
     }
   }, [ready, authenticated, privyUser, getAccessToken, getWalletAddress, handleSignOutAndPrompt])
 
@@ -259,6 +273,102 @@ export function AppProvider({ children }) {
     }
   }, [ready, authenticated, user, isLoggingOut, attemptSilentSync])
 
+  // Tab-wake recovery: when the user returns to a backgrounded/suspended tab,
+  // check if the session is still valid and trigger a single recovery attempt if not.
+  // This is the primary trigger for refresh now that autoRefreshToken is disabled.
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') return
+      // Only run if user is supposed to be authenticated
+      if (!readyRef.current || !authenticatedRef.current || isLoggingOutRef.current) return
+      // Guard: prevent multiple concurrent recovery attempts from rapid visibility events
+      if (tabWakeRecoveryInProgressRef.current) {
+        console.log('[Auth] Tab wake recovery already in progress — skipping duplicate event.')
+        return
+      }
+      tabWakeRecoveryInProgressRef.current = true
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error || !session) {
+          console.log('[Auth] Tab woke — session missing or errored. Triggering recovery...')
+          if (attemptSilentSyncRef.current) {
+            await attemptSilentSyncRef.current()
+          } else {
+            tabWakeRecoveryInProgressRef.current = false
+          }
+          return
+        }
+        // Check if token expires within 60 seconds
+        const expiresAt = session.expires_at // Unix timestamp in seconds
+        const secondsUntilExpiry = expiresAt - Math.floor(Date.now() / 1000)
+        if (secondsUntilExpiry < 60) {
+          console.log(`[Auth] Tab woke — token expires in ${secondsUntilExpiry}s. Triggering recovery...`)
+          if (attemptSilentSyncRef.current) {
+            await attemptSilentSyncRef.current()
+          } else {
+            tabWakeRecoveryInProgressRef.current = false
+          }
+        } else {
+          console.log(`[Auth] Tab woke — session valid (${secondsUntilExpiry}s remaining). No action needed.`)
+          tabWakeRecoveryInProgressRef.current = false
+        }
+      } catch (e) {
+        console.error('[Auth] Tab wake visibility check error:', e?.message || e)
+        tabWakeRecoveryInProgressRef.current = false
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  // Intentionally stable: runs once on mount. Privy state is read via refs.
+  }, [])
+
+  // Proactive periodic refresh: since autoRefreshToken is disabled, we must
+  // proactively refresh the token for users who keep the tab open and focused
+  // for longer than the 1-hour JWT lifetime without ever triggering a
+  // visibilitychange event.
+  // Runs every 4 minutes. If the token expires within 5 minutes, attempt a
+  // lightweight refreshSession() first. Falls back to full attemptSilentSync()
+  // if the refresh token itself is stale or revoked.
+  useEffect(() => {
+    const PROACTIVE_CHECK_INTERVAL_MS = 4 * 60 * 1000 // 4 minutes
+    const EXPIRY_THRESHOLD_S = 5 * 60 // refresh if <5 min remaining
+
+    const proactiveRefresh = async () => {
+      // Skip if already syncing or not authenticated
+      if (isSyncingRef.current) return
+      if (!readyRef.current || !authenticatedRef.current || isLoggingOutRef.current) return
+      // Skip if tab is hidden — visibilitychange wake handler covers that case
+      if (document.visibilityState !== 'visible') return
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error || !session) {
+          console.log('[Auth] Proactive check — no session found. Triggering silent sync...')
+          if (attemptSilentSyncRef.current) attemptSilentSyncRef.current()
+          return
+        }
+        const secondsUntilExpiry = session.expires_at - Math.floor(Date.now() / 1000)
+        if (secondsUntilExpiry > EXPIRY_THRESHOLD_S) return // Token still healthy
+
+        console.log(`[Auth] Proactive refresh — token expires in ${secondsUntilExpiry}s. Refreshing session...`)
+        const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession()
+        if (refreshErr || !refreshData?.session) {
+          // Refresh token is stale/revoked — fall back to full Privy-based sync
+          console.warn('[Auth] Proactive refreshSession() failed, falling back to full silent sync:', refreshErr?.message)
+          if (attemptSilentSyncRef.current) attemptSilentSyncRef.current()
+        } else {
+          console.log('[Auth] Proactive refreshSession() succeeded — token rotated.')
+          lastSyncSuccessTimeRef.current = Date.now()
+        }
+      } catch (e) {
+        console.error('[Auth] Proactive refresh error:', e?.message || e)
+      }
+    }
+
+    const intervalId = setInterval(proactiveRefresh, PROACTIVE_CHECK_INTERVAL_MS)
+    return () => clearInterval(intervalId)
+  // Intentionally stable: runs once on mount. State is accessed via refs.
+  }, [])
+
   // Auth check & store fetch
   useEffect(() => {
     let mounted = true
@@ -273,14 +383,25 @@ export function AppProvider({ children }) {
           setActiveStore(null)
           setLoading(false)
 
-          // Detect if Supabase session failed to refresh unexpectedly while Privy is still authenticated
-          if (!isLoggingOutRef.current && readyRef.current && authenticatedRef.current) {
+          // Detect if Supabase session failed to refresh unexpectedly while Privy is still authenticated.
+          // But suppress this path for SYNC_COOLDOWN_MS after a successful sync — setSession() itself
+          // emits a transient null-session event before the new session is fully committed, and acting
+          // on it would kick off a redundant recovery loop.
+          const msSinceLastSuccess = Date.now() - lastSyncSuccessTimeRef.current
+          if (
+            !isLoggingOutRef.current &&
+            readyRef.current &&
+            authenticatedRef.current &&
+            msSinceLastSuccess > SYNC_COOLDOWN_MS
+          ) {
             console.log("Session lost/expired unexpectedly while Privy is authenticated. Triggering silent sync...")
             if (attemptSilentSyncRef.current) {
               setTimeout(() => {
                 attemptSilentSyncRef.current()
               }, 0)
             }
+          } else if (msSinceLastSuccess <= SYNC_COOLDOWN_MS) {
+            console.log("[Auth] Suppressing null-session event — within cooldown window after successful sync.")
           }
         } else {
           setUser(session.user)
@@ -398,6 +519,12 @@ export function AppProvider({ children }) {
     if (!storeId) return
     if (!silent) setFetchingOrders(true)
     try {
+      // Skip getSession() if a sync is already in progress to avoid triggering a
+      // parallel refresh attempt mid-recovery (called by the 10s polling interval).
+      if (isSyncingRef.current) {
+        if (!silent) setFetchingOrders(false)
+        return
+      }
       const { data: { session }, error } = await supabase.auth.getSession()
       if (error) {
         console.warn("fetchOrders session error:", error.message)

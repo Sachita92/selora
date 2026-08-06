@@ -16,6 +16,7 @@ Selora Native Stores support **Solana Pay checkout**, letting buyers pay in USDC
 - **Solana Pay Checkout (Native Stores)** — buyers pay in **USDC on Solana Devnet** via two paths: scan a standard Solana Pay QR code with **any Solana wallet app** (Phantom, Solflare, Backpack, Glow, etc.), or connect **Phantom directly in-browser** for a one-click desktop flow. Payment is verified on-chain before the order is confirmed.
 - **Wallet-Based Order Tracking** — buyers on a Native Store can look up their own past orders by reconnecting their **Phantom** wallet — no account, no password. Each order links to its transaction on Solana Explorer for independent verification.
 - **Seller Dashboard** — active products, stock levels, recent orders, and low-stock alerts, scoped per store. Merchant login/wallet connection uses **Privy**, supporting multiple Solana wallets and embedded/social login for store owners.
+- **x402 Autonomous Agent Payments** — HTTP 402 payment-gated AI agent endpoint (`/api/x402/chat`) enabling software agents to autonomously pay for API access using USDC on Solana Devnet, complete with a live step-by-step interactive demo (`/x402-demo`).
 
 ---
 
@@ -29,6 +30,7 @@ Selora Native Stores support **Solana Pay checkout**, letting buyers pay in USDC
 ### Backend
 - FastAPI (Python)
 - Supabase (PostgreSQL) for stores, products, categories, and orders
+- x402 Python SDK (`x402`) for HTTP-native payment-gated endpoints via the x402.org facilitator
 - Solana Devnet RPC for building, sending, and verifying on-chain USDC transfers
 - Deployed on Render
 
@@ -39,7 +41,7 @@ Selora Native Stores support **Solana Pay checkout**, letting buyers pay in USDC
 1. Buyer adds items to their bag (no wallet needed at this stage).
 2. At checkout, buyer chooses:
    - **Scan & Pay** — a standard Solana Pay QR code (`solana:<recipient>?amount=...`) is generated. Any Solana wallet app (Phantom, Solflare, Backpack, Glow, etc.) can scan and complete payment on mobile.
-    - **Pay with Connected Wallet** — a one-click flow using Phantom directly in-browser (`window.solana`) or their connected **Privy Wallet** (supporting embedded/social/email logins).
+   - **Pay with Connected Wallet** — a one-click flow using Phantom directly in-browser (`window.solana`) or their connected **Privy Wallet** (supporting embedded/social/email logins).
 3. For the direct-browser path, the frontend builds a versioned transaction: creates the buyer's Associated Token Account if needed, and a `transferChecked` instruction moving USDC to the store's payout wallet — resolved **server-side** from the store's saved settings, never from client input.
 4. Buyer approves the payment in their wallet (or via Privy's embedded signature overlay).
 5. Backend polls Solana Devnet for on-chain confirmation, comparing pre/post token balances at the merchant's wallet to confirm the transfer actually landed.
@@ -57,9 +59,26 @@ Direct Privy integration solves the mobile and browser-extension barrier: custom
 
 ### Testing it yourself
 - Get Devnet SOL (for fees): https://faucet.solana.com
-- Get Devnet USDC matching mint `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`: https://spl-token-faucet.com/?token-name=USDC-Dev
-  *(Note: Circle's own devnet faucet uses a different mint and will NOT work with this checkout.)*
+- Get Devnet USDC on Circle's official devnet mint (`4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`): https://faucet.circle.com/
 - Set Phantom to **Devnet** before testing.
+
+---
+
+## x402 Autonomous Agent Payments — How It Works
+
+The **x402 protocol** is an HTTP-native payment standard that enables AI agents to autonomously pay for API resources and services using stablecoins on Solana without human intervention or manual approval prompts.
+
+### What Selora Built
+- **Payment-Gated AI Endpoint (`POST /api/x402/chat`)**: A payment-gated agent endpoint requiring `$0.001 USDC` per call. Unpaid requests return a standard `402 Payment Required` header containing machine-readable payment parameters (price, token mint, network, settlement address).
+- **Autonomous Payment Loop**: An agent client decodes the 402 challenge, constructs and signs an SPL USDC transfer on Solana Devnet using its local keypair, and resends the request with a `PAYMENT-SIGNATURE` header. The server verifies and settles the payment on-chain via the `x402.org` facilitator and returns HTTP 200 with a `PAYMENT-RESPONSE` header.
+- **Live Interactive Showcase**: A visual, step-by-step progress UI at [https://selora.fashion/x402-demo](https://selora.fashion/x402-demo) (or `/x402-demo` locally) where users can trigger the full agent-to-agent payment cycle live and watch the 5-stage loop execute in real time.
+- **On-Chain Verification**: Verified on Solana Devnet with real USDC transactions.
+  - *Verified Devnet Transaction*: [`3wfYtiCD64KnBG1iCWWm1WcRYGxxD3q4ZRtLAGusdGvAD7PS6nXUgGXLg7aivT9vVorRp64hHrMzYjTT71cHT1Jx`](https://explorer.solana.com/tx/3wfYtiCD64KnBG1iCWWm1WcRYGxxD3q4ZRtLAGusdGvAD7PS6nXUgGXLg7aivT9vVorRp64hHrMzYjTT71cHT1Jx?cluster=devnet)
+
+### Technologies Involved
+- **x402 Python SDK** (`x402`) — server middleware & SVM payment scheme signing
+- **x402.org Facilitator** — on-chain verification & settlement service for SVM transactions
+- **Solana Devnet & Circle USDC Mint** (`4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`)
 
 ---
 
@@ -142,7 +161,6 @@ selora/
 - AI growth agent: automated repricing, listing copywriting, and restock alerts for connected stores
 - Broaden direct-browser checkout and order lookup beyond Phantom, via `@solana/wallet-adapter-react`
 - Solana Token Extensions loyalty tokens for Native Store buyers
-- Agent-initiated payments via pay.sh / x402, enabling the AI growth agent to autonomously handle tasks like restocking or paid promotions on a seller's behalf
 - Expanded platform connections beyond Shopify
 
 ---
