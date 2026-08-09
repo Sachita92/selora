@@ -1386,14 +1386,22 @@ DEVNET_RPC_URL   = "https://api.devnet.solana.com"
 
 
 def _get_payer_keypair():
-    """Load and return the test payer keypair from test_payer_wallet.json."""
+    """Load and return the test payer keypair from X402_TEST_PAYER_KEY env var or test_payer_wallet.json fallback."""
     import json
+    from solders.keypair import Keypair
+
+    env_key = os.getenv("X402_TEST_PAYER_KEY", "").strip()
+    if env_key:
+        secret_bytes = json.loads(env_key)
+        return Keypair.from_bytes(secret_bytes)
+
     wallet_path = os.path.join(os.path.dirname(__file__), "test_payer_wallet.json")
     if not os.path.exists(wallet_path):
-        raise FileNotFoundError(f"test_payer_wallet.json not found at {wallet_path}")
+        raise FileNotFoundError(
+            f"Test payer keypair not found. Set X402_TEST_PAYER_KEY environment variable or ensure {wallet_path} exists."
+        )
     with open(wallet_path, "r") as f:
         secret_bytes = json.load(f)
-    from solders.keypair import Keypair
     return Keypair.from_bytes(secret_bytes)
 
 

@@ -70,7 +70,7 @@ const S = {
   cardHeader: {
     background: 'var(--bg-2)',
     borderBottom: '1px solid var(--border)',
-    padding: '0.8rem 1.4rem',
+    padding: '0.9rem 1.6rem',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -82,24 +82,24 @@ const S = {
     gap: '0.45rem',
   },
   cardBody: {
-    padding: '1.8rem',
+    padding: '2.4rem 2.2rem',
   },
   balanceBar: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: '1rem',
-    padding: '0.75rem 1.1rem',
+    padding: '0.85rem 1.2rem',
     background: 'var(--bg-2)',
     border: '1px solid var(--border)',
     borderRadius: 10,
-    marginBottom: '1.5rem',
+    marginBottom: '1.6rem',
     flexWrap: 'wrap',
   },
   balanceLeft: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.6rem',
+    gap: '0.7rem',
   },
   balanceLabel: {
     fontSize: '0.75rem',
@@ -109,7 +109,7 @@ const S = {
     letterSpacing: '0.07em',
   },
   balanceValue: {
-    fontSize: '1rem',
+    fontSize: '1.05rem',
     fontWeight: 700,
     color: 'var(--g)',
     fontFamily: "'Fraunces', serif",
@@ -153,7 +153,7 @@ const S = {
     display: 'flex',
     alignItems: 'flex-start',
     gap: '0.9rem',
-    padding: '0.85rem 0',
+    padding: '0.95rem 0',
     borderBottom: '1px solid var(--border)',
     transition: 'all 0.3s',
   },
@@ -239,7 +239,7 @@ const S = {
     lineHeight: 1.5,
   },
   infoBar: {
-    marginTop: '1.5rem',
+    marginTop: '1.8rem',
     display: 'flex',
     gap: '1rem',
     flexWrap: 'wrap',
@@ -359,16 +359,29 @@ export default function X402Demo() {
   const cooldownRef = useRef(null)
 
   useEffect(() => {
-    fetch(`${API_URL}/api/x402/payer-balance`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) {
-          setBalance(d.balance_usdc)
-          setPayerPubkey(d.pubkey || '')
-        }
-        setBalanceLoading(false)
-      })
-      .catch(() => setBalanceLoading(false))
+    const fetchBalance = async () => {
+      const urlsToTry = [
+        `${API_URL}/api/x402/payer-balance`,
+        'http://localhost:8000/api/x402/payer-balance',
+        'http://127.0.0.1:8000/api/x402/payer-balance',
+      ]
+      for (const url of urlsToTry) {
+        try {
+          const res = await fetch(url)
+          if (res.ok) {
+            const d = await res.json()
+            if (d.success && d.balance_usdc !== null && d.balance_usdc !== undefined) {
+              setBalance(d.balance_usdc)
+              setPayerPubkey(d.pubkey || '')
+              setBalanceLoading(false)
+              return
+            }
+          }
+        } catch (_) {}
+      }
+      setBalanceLoading(false)
+    }
+    fetchBalance()
   }, [])
 
   function startCooldown() {
@@ -499,7 +512,7 @@ export default function X402Demo() {
         .x402-two-col {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 2rem;
+          gap: 2.2rem;
           align-items: start;
         }
 
@@ -527,7 +540,7 @@ export default function X402Demo() {
       </div>
 
       {/* ── Two-Column Main Content Container ── */}
-      <div style={{ maxWidth: 1280, margin: '0 auto 5rem', padding: '0 1.5rem' }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto 5rem', padding: '0 2rem' }}>
         <div className="x402-two-col">
 
           {/* Column 1: Interactive Demo Card + Info Pills */}
@@ -756,7 +769,7 @@ export default function X402Demo() {
               background: 'var(--bg-1)',
               border: '1px solid var(--border)',
               borderRadius: 20,
-              padding: '1.8rem',
+              padding: '2.4rem 2.2rem',
               boxShadow: '0 8px 48px rgba(0,0,0,0.12)',
             }}>
               <h2 style={{
@@ -764,7 +777,7 @@ export default function X402Demo() {
                 fontSize: '1.25rem',
                 fontWeight: 500,
                 color: 'var(--text-primary)',
-                marginBottom: '1.2rem',
+                marginBottom: '1.4rem',
               }}>
                 What's happening under the hood
               </h2>
@@ -782,21 +795,21 @@ export default function X402Demo() {
                 ].map(([n, desc]) => (
                   <div key={n} style={{
                     display: 'flex',
-                    gap: '0.9rem',
+                    gap: '1rem',
                     alignItems: 'flex-start',
-                    padding: '1rem',
+                    padding: '1.1rem 1.3rem',
                     background: 'var(--bg-2)',
-                    borderRadius: 10,
+                    borderRadius: 12,
                     border: '1px solid var(--border)',
                   }}>
                     <div style={{
-                      width: 24, height: 24, borderRadius: '50%',
+                      width: 26, height: 26, borderRadius: '50%',
                       background: 'var(--g-tint)', border: '1px solid var(--border-strong)',
-                      color: 'var(--g)', fontSize: '0.72rem', fontWeight: 700,
+                      color: 'var(--g)', fontSize: '0.75rem', fontWeight: 700,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0, marginTop: 2,
+                      flexShrink: 0, marginTop: 1,
                     }}>{n}</div>
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.65, margin: 0 }}>
+                    <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', lineHeight: 1.68, margin: 0 }}>
                       {desc}
                     </p>
                   </div>
@@ -804,8 +817,8 @@ export default function X402Demo() {
               </div>
 
               <div style={{
-                marginTop: '1.4rem',
-                padding: '0.85rem 1rem',
+                marginTop: '1.6rem',
+                padding: '1rem 1.2rem',
                 background: 'var(--bg-2)',
                 borderRadius: 10,
                 fontSize: '0.78rem',
