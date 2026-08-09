@@ -17,3 +17,6 @@ typing_extensions==4.15.0
 watchfiles==1.1.1
 stripe
 privy-client==0.6.0
+solders==0.21.0
+x402==2.17.0
+

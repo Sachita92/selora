@@ -537,6 +537,10 @@ export function AppProvider({ children }) {
           'Authorization': `Bearer ${token}`
         }
       })
+      if (!res.ok) {
+        setOrders([])
+        return
+      }
       const data = await res.json()
       setOrders(data.orders || [])
     } catch (e) {

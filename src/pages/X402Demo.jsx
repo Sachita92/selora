@@ -384,6 +384,12 @@ export default function X402Demo() {
     fetchBalance()
   }, [])
 
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current)
+    }
+  }, [])
+
   function startCooldown() {
     setCooldown(COOLDOWN_S)
     if (cooldownRef.current) clearInterval(cooldownRef.current)
@@ -421,6 +427,7 @@ export default function X402Demo() {
     // Mark all steps idle
     STEP_DEFS.forEach(s => setStep(s.n, s.label, null, 'idle'))
 
+    let reader = null
     try {
       const resp = await fetch(`${API_URL}/api/x402/demo-run`, { method: 'POST' })
 
@@ -437,7 +444,13 @@ export default function X402Demo() {
         return
       }
 
-      const reader = resp.body.getReader()
+      reader = resp.body?.getReader()
+      if (!reader) {
+        setGlobalError('Unable to initialize stream reader.')
+        setRunning(false)
+        return
+      }
+
       const decoder = new TextDecoder()
       let buf = ''
 
@@ -486,6 +499,9 @@ export default function X402Demo() {
     } catch (err) {
       setGlobalError(err.message || 'Network error')
     } finally {
+      if (reader) {
+        try { await reader.cancel() } catch (_) {}
+      }
       setRunning(false)
       startCooldown()
     }

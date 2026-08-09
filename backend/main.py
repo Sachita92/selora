@@ -17,24 +17,69 @@ load_dotenv(dotenv_path)
 
 from product_facts import PRODUCT_FACTS_CORE, PRODUCT_FACTS_CTA
 
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
+    "https://selora.fashion",
+    "https://www.selora.fashion",
+]
+
+_shopify_app_url = os.getenv("SHOPIFY_APP_URL", "").strip()
+if _shopify_app_url and _shopify_app_url not in ALLOWED_ORIGINS:
+    ALLOWED_ORIGINS.append(_shopify_app_url)
+
 app = FastAPI(title="Selora API", version="1.0.0")
 
-# Allow requests from your frontend
+# Allow requests from frontend allowlist
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:4173",
-        "http://127.0.0.1:4173",
-        "https://selora.fashion",
-        "https://www.selora.fashion",
-        os.getenv("SHOPIFY_APP_URL", ""),
-    ],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _get_cors_headers_for_request(request: Request) -> dict:
+    """Helper to return validated CORS headers for an incoming request against the allowlist."""
+    origin = request.headers.get("origin", "").strip()
+    if origin and origin in ALLOWED_ORIGINS:
+        return {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Methods": "*",
+        }
+    return {}
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Ensure HTTP exceptions return CORS headers ONLY for allowed origins."""
+    headers = _get_cors_headers_for_request(request)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=headers,
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Ensure unhandled 500 exceptions print full stack trace and return CORS headers ONLY for allowed origins."""
+    import traceback
+    print(f"\n❌ Unhandled 500 Exception on {request.method} {request.url.path}: {exc}")
+    traceback.print_exc()
+    headers = _get_cors_headers_for_request(request)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"},
+        headers=headers,
+    )
+
+
 
 
 # ─── x402 Payment Middleware (scoped to /api/x402/ prefix) ────────────────────
@@ -462,13 +507,15 @@ def get_store_products(store_id: str, force_refresh: bool = False):
 @app.get("/api/stores/{store_id}/orders")
 def get_store_orders(store_id: str, request: Request, limit: int = None):
     """Fetch all native orders for the active store (owner only)."""
+    import traceback
     from database import db as _db, get_store_by_id
     user_id, _ = _get_user_id_from_token(request)
     store = get_store_by_id(store_id)
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
-    if store["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Forbidden")
+    if store.get("user_id") != user_id:
+        # If user is not the owner of this store, return empty orders list cleanly instead of crashing
+        return {"orders": []}
 
     try:
         query = _db().table("selora_orders").select("*").eq("store_id", store_id).order("created_at", desc=True)
@@ -477,7 +524,10 @@ def get_store_orders(store_id: str, request: Request, limit: int = None):
         result = query.execute()
         return {"orders": result.data or []}
     except Exception as e:
+        print(f"❌ Exception fetching orders for store {store_id}: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to fetch orders: {e}")
+
 
 @app.get("/api/stores/{store_id}/orders/by-wallet/{wallet_address}")
 def get_store_orders_by_wallet(store_id: str, wallet_address: str):
