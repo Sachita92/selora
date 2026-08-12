@@ -42,10 +42,10 @@ const defaultTemplateData = {
     ctaSecondaryUrl: "#brand-story",
     image: "/hero-dress.png",
     trustBar: [
-      { icon: "leaf", label: "Sustainably Curated" },
-      { icon: "truck", label: "Free Shipping over $75" },
-      { icon: "arrow-path", label: "Easy 30-Day Returns" },
-      { icon: "shield", label: "Secure Checkout" }
+      { icon: "truck", label: "Free Shipping" },
+      { icon: "arrow-path", label: "Easy Returns" },
+      { icon: "shield", label: "Secure Checkout" },
+      { icon: "leaf", label: "Quality Guaranteed" }
     ]
   },
   categories: {
@@ -511,9 +511,17 @@ export default function StoreBuilder() {
     if (!store && currentLayout === 'stack' && !hasAllHeroImages) {
       return
     }
-    if ((form.categories || []).length < 4) {
-      setMsg({ type: 'error', text: 'You must configure at least 4 categories to save store settings.' })
-      return
+
+    let saveCategories = [...(form.categories || [])]
+    if (saveCategories.length === 0) {
+      saveCategories = [
+        { id: 'cat_all', name: 'All Products', image_url: '', link_target: '#all-products' }
+      ]
+    }
+
+    const payload = {
+      ...form,
+      categories: saveCategories
     }
     
     setSaving(true)
@@ -522,8 +530,9 @@ export default function StoreBuilder() {
     try {
       if (store) {
         // --- Store Update ---
-        const u = await api('PUT', `/selora-stores/${store.id}`, form)
+        const u = await api('PUT', `/selora-stores/${store.id}`, payload)
         setStore(u)
+        setForm(f => ({ ...f, categories: saveCategories }))
         
         let uploadErrorMsg = ''
         const rolesToUpload = ['main', 'left', 'right'].filter(r => heroSlots[r].croppedBlob)
@@ -561,7 +570,7 @@ export default function StoreBuilder() {
         
       } else {
         // --- Store Onboarding / Creation ---
-        const c = await api('POST', '/selora-stores', form)
+        const c = await api('POST', '/selora-stores', payload)
         
         const roles = ['main', 'left', 'right']
         let uploadFailedRole = null
@@ -721,6 +730,19 @@ export default function StoreBuilder() {
             {/* SETTINGS TAB */}
             {tab === 'settings' && (
               <form onSubmit={saveSettings}>
+                {/* GROUP 1: ESSENTIALS */}
+                <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <span style={{ fontSize: '0.72rem', background: 'var(--g)', color: '#ffffff', padding: '0.2rem 0.6rem', borderRadius: 20, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      ESSENTIALS
+                    </span>
+                    <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                      Store Essentials
+                    </h3>
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Core branding & hero setup</span>
+                </div>
+
                 <div style={S.card}>
                   <p style={S.cardTitle}>Store Identity</p>
                   <div style={S.field}>
@@ -920,6 +942,24 @@ export default function StoreBuilder() {
                   </div>
                 </div>
 
+                {/* GROUP 2: STORE DETAILS & CUSTOMIZATION (OPTIONAL) */}
+                <div style={{ marginTop: '3.5rem', marginBottom: '1.5rem', paddingTop: '2rem', borderTop: '2px dashed var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <span style={{ fontSize: '0.72rem', background: 'var(--bg-2)', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '0.2rem 0.6rem', borderRadius: 20, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                        OPTIONAL REFINEMENTS
+                      </span>
+                      <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>
+                        Store Details & Customization
+                      </h3>
+                    </div>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--g)', fontWeight: 500 }}>Uses Automatic Defaults</span>
+                  </div>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
+                    All sections below are optional and pre-configured with smart defaults. You can customize them now or refine them anytime later.
+                  </p>
+                </div>
+
                 {/* TRUST BAR SETTINGS CARD */}
                 <div style={S.card}>
                   <p style={S.cardTitle}>Trust Bar Settings</p>
@@ -1048,13 +1088,8 @@ export default function StoreBuilder() {
                     ))}
 
                     {(form.categories || []).length === 0 && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>No categories added yet.</p>
-                    )}
-
-                    {(form.categories || []).length < 4 && (
-                      <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#B45309', borderRadius: 8, padding: '0.75rem 1rem', fontSize: '0.85rem', fontWeight: 600, marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        Please configure at least 4 categories (currently: {(form.categories || []).length}).
+                      <div style={{ background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem 1rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                        No categories added. An <strong>"All Products"</strong> default category will be automatically created on your storefront.
                       </div>
                     )}
                   </div>

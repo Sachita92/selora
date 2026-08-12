@@ -36,7 +36,7 @@ const s = {
   mLbl:    { fontSize: '.68rem', color: c.muted, textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600 },
   empty:   { textAlign: 'center', padding: '3rem 1rem', color: c.muted, fontSize: '.88rem', fontWeight: 300, lineHeight: 1.7 },
   overlay:  { position: 'fixed', inset: 0, background: 'rgba(26,39,28,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
-  modal:    { background: '#fff', borderRadius: 16, width: '100%', maxWidth: 580, maxHeight: '90vh', overflowY: 'auto', padding: '2rem', border: '1px solid var(--border)' },
+  modal:    { background: 'var(--bg-1)', borderRadius: 16, width: '100%', maxWidth: 580, maxHeight: '90vh', overflowY: 'auto', padding: '2rem', border: '1px solid var(--border)', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.4)' },
   modalTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-primary)', marginTop: 0, marginBottom: '1.5rem' },
   spinner:  { display: 'inline-block', width: 20, height: 20, border: '2px solid var(--border)', borderTop: '2px solid var(--g)', borderRadius: '50%', animation: 'spin .7s linear infinite' },
 }

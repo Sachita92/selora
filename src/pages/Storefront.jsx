@@ -598,7 +598,7 @@ export default function Storefront({ previewData = null }) {
         import('@solana/web3.js'),
         import('@solana/spl-token'),
       ])
-      logPayment('[Payment] SDK loaded ✓')
+      logPayment('[Payment] SDK loaded OK')
 
       // ── 3. Set up connection and keys ────────────────────────────────────────
       // IMPORTANT: Use backend proxy for all RPC calls — api.devnet.solana.com
@@ -633,9 +633,49 @@ export default function Storefront({ previewData = null }) {
       logPayment('[Payment] Source ATA:', sourceAta.toString())
       logPayment('[Payment] Dest ATA:', destAta.toString())
 
+      // ── 3.5 Pre-flight Balance Checks (SOL & USDC) ─────────────────────────
+      logPayment('[Payment] Running pre-flight balance checks for SOL & USDC...')
+      const requiredUsdc = checkoutDetails.amount_usdc
+
+      const [solBalanceLamports, usdcBalanceRes] = await Promise.all([
+        conn.getBalance(buyerPubkey).catch(() => 0),
+        conn.getTokenAccountBalance(sourceAta).catch(() => null)
+      ])
+
+      const solBalance = solBalanceLamports / 1e9
+      logPayment('[Payment] SOL Balance:', solBalance, 'SOL')
+
+      const minSolRequired = 0.005
+      if (solBalance < minSolRequired) {
+        const msg = `Insufficient Devnet SOL for network fees. You have ${solBalance.toFixed(4)} SOL, but at least ${minSolRequired} SOL is required to process gas & account rent. Please airdrop Devnet SOL to your wallet.`
+        logPayment('[Payment] FAILED: Pre-flight SOL check', msg)
+        setPaymentError(msg)
+        setCheckoutLoading(false)
+        return
+      }
+
+      let usdcBalance = 0
+      if (usdcBalanceRes && usdcBalanceRes.value) {
+        usdcBalance = usdcBalanceRes.value.uiAmount ?? (Number(usdcBalanceRes.value.amount) / Math.pow(10, decimals))
+      }
+      logPayment('[Payment] USDC Balance:', usdcBalance, 'USDC (Required:', requiredUsdc, 'USDC)')
+
+      if (usdcBalance < requiredUsdc) {
+        const msg = `You don't have enough USDC to complete this purchase. You need ${requiredUsdc.toFixed(2)} USDC but your wallet has ${usdcBalance.toFixed(2)} USDC. Get Devnet USDC from faucet.circle.com.`
+        logPayment('[Payment] FAILED: Pre-flight USDC check', msg)
+        setPaymentError(msg)
+        setCheckoutLoading(false)
+        return
+      }
+
+      logPayment('[Payment] OK: Pre-flight balance checks passed')
+
       const amountRaw = BigInt(Math.round(checkoutDetails.amount_usdc * Math.pow(10, decimals)))
       logPayment('[Payment] Amount raw:', amountRaw.toString())
 
+      const createSourceAtaIx = createAssociatedTokenAccountIdempotentInstruction(
+        buyerPubkey, sourceAta, buyerPubkey, mintPk, TOKEN_PROGRAM_ID
+      )
       const createDestAtaIx = createAssociatedTokenAccountIdempotentInstruction(
         buyerPubkey, destAta, recipient, mintPk, TOKEN_PROGRAM_ID
       )
@@ -645,41 +685,56 @@ export default function Storefront({ previewData = null }) {
         amountRaw, decimals, [], TOKEN_PROGRAM_ID
       )
       transferIx.keys.push({ pubkey: reference, isSigner: false, isWritable: false })
-      logPayment('[Payment] Instructions built ✓')
+      logPayment('[Payment] Instructions built OK')
 
       const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('confirmed')
       logPayment('[Payment] Blockhash:', blockhash)
       const txMsg = new TransactionMessage({
         payerKey: buyerPubkey,
         recentBlockhash: blockhash,
-        instructions: [createDestAtaIx, transferIx],
+        instructions: [createSourceAtaIx, createDestAtaIx, transferIx],
       }).compileToV0Message()
       const versionedTx = new VersionedTransaction(txMsg)
-      logPayment('[Payment] VersionedTransaction built ✓')
+      logPayment('[Payment] VersionedTransaction built OK')
+
+      // ── 4. Pre-flight RPC simulation check ─────────────────────────────────
+      try {
+        logPayment('[Payment] Simulating transaction via RPC before wallet prompt...')
+        const simResult = await conn.simulateTransaction(versionedTx)
+        logPayment('[Payment] Simulation result:', simResult)
+        if (simResult.value.err) {
+          errorPayment('[Payment] FAILED: Transaction simulation error', simResult.value.err)
+          warnPayment('[Payment] Simulation logs:', simResult.value.logs)
+        }
+      } catch (simErr) {
+        warnPayment('[Payment] Pre-flight simulation check exception:', simErr)
+      }
 
       logPayment('[Payment] Calling phantom.signAndSendTransaction...')
       const { signature } = await phantom.signAndSendTransaction(versionedTx)
-      logPayment('[Payment] Transaction sent ✓ signature:', signature)
+      logPayment('[Payment] OK: Transaction sent, signature:', signature)
 
       logPayment('[Payment] Waiting for on-chain confirmation...')
       await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed')
-      logPayment('[Payment] Transaction confirmed ✓')
+      logPayment('[Payment] OK: Transaction confirmed')
 
       if (checkoutDetails?.reference) {
         startPolling(checkoutDetails.reference)
       }
 
     } catch (err) {
-      errorPayment('[Payment] FAILED at step above ↑', err)
-      let msg = err.message || "Failed to sign transaction"
+      errorPayment('[Payment] FAILED: Transaction step error', err)
+      let msg = err.message || "Transaction could not be completed."
       if (msg.includes("User rejected") || msg.includes("rejected") || msg.includes("cancelled")) {
         msg = "Transaction was cancelled in Phantom."
+      } else if (msg.includes("Simulation failed") || msg.includes("simulation")) {
+        msg = "Transaction simulation failed in Phantom. Please check that your wallet has Devnet SOL for fees and official Devnet USDC from faucet.circle.com."
       } else if (msg.includes("insufficient") || msg.includes("0x1") || msg.includes("balance") || msg.includes("0 lamports")) {
-        msg = "Insufficient USDC-Dev or SOL balance. Make sure Phantom has USDC-Dev from spl-token-faucet.com."
+        msg = "Insufficient USDC or SOL balance. Please get Devnet USDC from Circle's faucet (faucet.circle.com)."
       } else if (msg.includes("TokenAccountNotFound") || msg.includes("Account does not exist")) {
-        msg = "USDC-Dev token account not found. Make sure you received USDC-Dev from spl-token-faucet.com."
+        msg = "Devnet USDC token account not found. Please claim Devnet USDC from faucet.circle.com."
       }
-      setPaymentError(msg + (err.message && msg !== err.message ? ` — ${err.message}` : ''))
+      setPaymentError(msg)
     } finally {
       setCheckoutLoading(false)
     }

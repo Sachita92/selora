@@ -1432,7 +1432,28 @@ _demo_cooldown: dict = {}
 _DEMO_COOLDOWN_S = 15  # seconds between runs per IP
 
 USDC_MINT_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
-DEVNET_RPC_URL   = "https://api.devnet.solana.com"
+
+def _get_solana_rpc_url() -> str:
+    """Return configured SOLANA_RPC_URL or fail loudly with 500 error if unconfigured."""
+    url = os.getenv("SOLANA_RPC_URL")
+    if not url or not url.strip():
+        raise HTTPException(
+            status_code=500,
+            detail="SOLANA_RPC_URL environment variable is not configured on the backend server."
+        )
+    return url.strip()
+
+def _redact_rpc_url(url: str) -> str:
+    """Redact sensitive query parameters (e.g. api-key) from an RPC URL for safe logging."""
+    if not url:
+        return ""
+    if "api-key=" in url:
+        base, key_part = url.split("api-key=", 1)
+        key = key_part.split("&", 1)[0]
+        masked = f"{key[:4]}...[REDACTED]" if len(key) >= 4 else "[REDACTED]"
+        rest = key_part[len(key):]
+        return f"{base}api-key={masked}{rest}"
+    return url
 
 
 def _get_payer_keypair():
@@ -1467,7 +1488,8 @@ def _get_usdc_balance(pubkey_str: str) -> float:
             {"encoding": "jsonParsed"},
         ],
     }
-    resp = httpx.post(DEVNET_RPC_URL, json=rpc_payload, timeout=10.0)
+    rpc_url = _get_solana_rpc_url()
+    resp = httpx.post(rpc_url, json=rpc_payload, timeout=10.0)
     data = resp.json()
     accounts = data.get("result", {}).get("value", [])
     if not accounts:
@@ -1590,8 +1612,9 @@ async def x402_demo_run(request: Request):
 
             signer = KeypairSigner(kp)
             from solana.rpc.api import Client as SolanaClient
-            rpc = SolanaClient(DEVNET_RPC_URL)
-            scheme_client = ExactSvmScheme(signer, rpc_url=DEVNET_RPC_URL)
+            rpc_url = _get_solana_rpc_url()
+            rpc = SolanaClient(rpc_url)
+            scheme_client = ExactSvmScheme(signer, rpc_url=rpc_url)
 
             extra_dict = dict(opt.get("extra") or {})
             extra_dict.setdefault("feePayer", pubkey_str)
@@ -3457,8 +3480,13 @@ def create_solana_checkout(body: SolanaCheckoutRequest):
         print(f"Error inserting order record: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create pending order: {e}")
         
-    # Devnet USDC-Dev mint from spl-token-faucet.com — override via USDC_MINT env var if using a different mint
-    usdc_mint = os.getenv("USDC_MINT", "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr")
+    usdc_mint = os.getenv("USDC_MINT")
+    if not usdc_mint or not usdc_mint.strip():
+        raise HTTPException(
+            status_code=500,
+            detail="USDC_MINT environment variable is not configured on the backend server."
+        )
+    usdc_mint = usdc_mint.strip()
     
     return {
         "success": True,
@@ -3478,7 +3506,7 @@ def create_solana_checkout(body: SolanaCheckoutRequest):
 @app.post("/api/rpc/solana")
 async def solana_rpc_proxy(request: Request):
     import httpx
-    rpc_url = os.getenv("SOLANA_RPC_URL", "https://api.devnet.solana.com")
+    rpc_url = _get_solana_rpc_url()
     try:
         body = await request.json()
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -3494,7 +3522,8 @@ async def solana_rpc_proxy(request: Request):
             media_type="application/json"
         )
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Solana RPC proxy error: {e}")
+        safe_msg = _redact_rpc_url(str(e))
+        raise HTTPException(status_code=502, detail=f"Solana RPC proxy error: {safe_msg}")
 
 
 
@@ -3536,8 +3565,14 @@ def verify_solana_checkout(reference: str):
         raise HTTPException(status_code=400, detail="Merchant payout wallet is not configured")
         
     merchant_wallet = recipient.strip()
-    usdc_mint = os.getenv("USDC_MINT", "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr")
-    rpc_url = os.getenv("SOLANA_RPC_URL", "https://api.devnet.solana.com")
+    usdc_mint = os.getenv("USDC_MINT")
+    if not usdc_mint or not usdc_mint.strip():
+        raise HTTPException(
+            status_code=500,
+            detail="USDC_MINT environment variable is not configured on the backend server."
+        )
+    usdc_mint = usdc_mint.strip()
+    rpc_url = _get_solana_rpc_url()
     
     # 2. Query Solana Devnet RPC to verify transaction
     try:

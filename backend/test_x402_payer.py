@@ -35,7 +35,10 @@ from solana.rpc.api import Client
 payer_kp = Keypair.from_bytes(secret_bytes)
 payer_pubkey = str(payer_kp.pubkey())
 
-RPC_URL = "https://api.devnet.solana.com"
+RPC_URL = os.getenv("SOLANA_RPC_URL")
+if not RPC_URL or not RPC_URL.strip():
+    raise ValueError("SOLANA_RPC_URL environment variable is not configured.")
+RPC_URL = RPC_URL.strip()
 rpc_client = Client(RPC_URL)
 
 print("==================================================================")
