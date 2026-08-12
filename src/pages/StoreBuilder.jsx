@@ -14,6 +14,14 @@ const defaultCategories = [
 
 
 const defaultTemplateData = {
+  palette: {
+    background: "#F6F1E8",
+    surface: "#EFE6D6",
+    accent: "#B08968",
+    text: "#3D362B",
+    secondaryText: "#8A8072",
+    border: "#E4DCD0"
+  },
   header: {
     logoName: "Selora",
     navLinks: [
@@ -24,9 +32,10 @@ const defaultTemplateData = {
     ]
   },
   hero: {
+    layout: "single",
     eyebrow: "NEW SEASON ARRIVALS",
     title: "Dress Like the\nPerson You're\nBecoming",
-    subtitle: "Curated fashion, AI-optimized for you - discover pieces that sell themselves.",
+    subtitle: "Curated fashion, AI-optimized for you — discover pieces that sell themselves.",
     ctaPrimaryText: "Shop the Collection",
     ctaPrimaryUrl: "#new-arrivals",
     ctaSecondaryText: "Explore Lookbook",
@@ -43,10 +52,10 @@ const defaultTemplateData = {
     eyebrow: "EXPLORE",
     title: "Shop by Category",
     items: [
-      { name: "Tops & Blouses", color: "#1A271C", textColor: "#ffffff", image: null, url: "#" },
-      { name: "Dresses", color: "#E5D9C4", textColor: "#1A271C", image: null, url: "#" },
-      { name: "Outerwear", color: "#82A996", textColor: "#ffffff", image: null, url: "#" },
-      { name: "Accessories", color: "#3B5A44", textColor: "#ffffff", image: null, url: "#" }
+      { name: "Tops & Blouses", color: "#3D362B", textColor: "#ffffff", image: null, url: "#" },
+      { name: "Dresses", color: "#EFE6D6", textColor: "#3D362B", image: null, url: "#" },
+      { name: "Outerwear", color: "#B08968", textColor: "#ffffff", image: null, url: "#" },
+      { name: "Accessories", color: "#6A533E", textColor: "#ffffff", image: null, url: "#" }
     ]
   },
   newArrivals: {
@@ -498,7 +507,8 @@ export default function StoreBuilder() {
 
   async function saveSettings(e) {
     e.preventDefault()
-    if (!store && !hasAllHeroImages) {
+    const currentLayout = form.template_data?.hero?.layout || 'minimal'
+    if (!store && currentLayout === 'stack' && !hasAllHeroImages) {
       return
     }
     if ((form.categories || []).length < 4) {
@@ -761,18 +771,55 @@ export default function StoreBuilder() {
                     <p style={S.hint}>Paste any image URL to show in the Brand Story section.</p>
                   </div>
 
+                  <div style={S.field}>
+                    <label style={S.label}>Hero Layout Variant</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginTop: '0.5rem' }}>
+                      {[
+                        { id: 'single', label: 'Single Image (Default)', desc: 'Main headline beside a featured hero image.' },
+                        { id: 'minimal', label: 'Minimal', desc: 'Clean text & CTA, solid palette background. No images required.' },
+                        { id: 'stack', label: '3-Card Stack', desc: 'Dynamic animated 3-card image stack.' }
+                      ].map(item => {
+                        const currentLayout = form.template_data?.hero?.layout || 'single';
+                        const isSel = currentLayout === item.id;
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => updateForm(f => ({ ...f, template_data: deepMerge(f.template_data, { hero: { layout: item.id } }) }))}
+                            style={{
+                              padding: '0.85rem 1rem',
+                              borderRadius: 10,
+                              border: `2px solid ${isSel ? 'var(--g)' : 'var(--border)'}`,
+                              background: isSel ? 'var(--bg-2)' : 'var(--bg-0)',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: isSel ? 'var(--g)' : 'var(--text-primary)', marginBottom: '0.2rem' }}>
+                              {item.label}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
+                              {item.desc}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* Hero Stack Images Section */}
                   <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-                    <p style={{ ...S.cardTitle, marginBottom: '0.5rem' }}>Hero Stack Images *</p>
+                    <p style={{ ...S.cardTitle, marginBottom: '0.5rem' }}>Hero Images</p>
                     <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                      Selora's native storefront uses a premium 3-card stacked composition. Upload and crop exactly 3 images below.
+                      {(form.template_data?.hero?.layout || 'minimal') === 'minimal' && "Layout set to Minimal. Hero images are optional."}
+                      {(form.template_data?.hero?.layout || 'minimal') === 'single' && "Layout set to Single Image. Main center image will be featured in the hero section."}
+                      {(form.template_data?.hero?.layout || 'minimal') === 'stack' && "Layout set to 3-Card Stack. Upload and crop 3 images below for the animated card stack."}
                     </p>
 
                     {/* Inline Validation Warning for onboarding */}
-                    {!store && !hasAllHeroImages && (
+                    {!store && (form.template_data?.hero?.layout || 'minimal') === 'stack' && !hasAllHeroImages && (
                       <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#B45309', borderRadius: 8, padding: '0.75rem 1rem', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        Upload and crop all 3 hero images to launch your store.
+                        Upload and crop all 3 hero images to launch your store with 3-Card Stack layout.
                       </div>
                     )}
 
@@ -820,12 +867,8 @@ export default function StoreBuilder() {
                                 position: 'absolute',
                                 inset: 0,
                                 borderRadius: 10,
-                                overflow: 'hidden',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                transform: 'rotate(-8deg) translateX(-40px) scale(0.92)',
-                                transformOrigin: 'bottom center',
-                                zIndex: 1,
-                                background: '#1E3A2F'
+                                opacity: 0.95,
+                                background: form.template_data?.palette?.surface || '#EFE6D6'
                               }}>
                                 <img src={heroSlots.left.croppedUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               </div>
@@ -842,7 +885,8 @@ export default function StoreBuilder() {
                                 transform: 'rotate(8deg) translateX(40px) scale(0.92)',
                                 transformOrigin: 'bottom center',
                                 zIndex: 1,
-                                background: '#284E39'
+                                opacity: 0.95,
+                                background: form.template_data?.palette?.surface || '#EFE6D6'
                               }}>
                                 <img src={heroSlots.right.croppedUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               </div>

@@ -2886,7 +2886,19 @@ def create_selora_store(body: StoreCreateRequest, request: Request):
                 { "id": "cat_accessories", "name": "Accessories", "image_url": "", "link_target": "#category-accessories" },
                 { "id": "cat_shoes", "name": "Shoes", "image_url": "", "link_target": "#category-shoes" }
             ],
-            'template_data': body.template_data or {},
+            'template_data': body.template_data or {
+                "palette": {
+                    "background": "#F6F1E8",
+                    "surface": "#EFE6D6",
+                    "accent": "#B08968",
+                    "text": "#3D362B",
+                    "secondaryText": "#8A8072",
+                    "border": "#E4DCD0"
+                },
+                "hero": {
+                    "layout": "single"
+                }
+            },
         }).execute()
         return result.data[0]
     except Exception as e:

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { useAuth } from '../lib/useAuth'
@@ -42,58 +42,58 @@ function deepMerge(target, source) {
 }
 
 const S = {
-  page:      { minHeight: '100vh', background: '#F8FAF8', fontFamily: 'Inter, sans-serif', color: '#2E3D30' },
-  nav:       { position: 'sticky', top: 0, zIndex: 100, background: 'rgba(248,250,248,.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #E4EBE5', padding: '0 2rem' },
+  page:      { minHeight: '100vh', background: '#F6F1E8', fontFamily: 'Inter, sans-serif', color: '#3D362B' },
+  nav:       { position: 'sticky', top: 0, zIndex: 100, background: 'rgba(246,241,232,.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #E4DCD0', padding: '0 2rem' },
   navInner:  { maxWidth: 1200, margin: '0 auto', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  brand:     { fontFamily: 'Fraunces, serif', fontSize: '1.15rem', fontWeight: 600, color: '#1A271C', textDecoration: 'none', letterSpacing: '-0.02em' },
+  brand:     { fontFamily: 'Fraunces, serif', fontSize: '1.15rem', fontWeight: 600, color: '#3D362B', textDecoration: 'none', letterSpacing: '-0.02em' },
   navRight:  { display: 'flex', alignItems: 'center', gap: '1rem' },
-  badge:     { fontSize: '.72rem', fontWeight: 700, background: '#EDF3EE', color: '#5A8A67', padding: '.25rem .6rem', borderRadius: 20, letterSpacing: '.04em', textTransform: 'uppercase' },
+  badge:     { fontSize: '.72rem', fontWeight: 700, background: '#EFE6D6', color: '#B08968', padding: '.25rem .6rem', borderRadius: 20, letterSpacing: '.04em', textTransform: 'uppercase' },
 
   hero:      { position: 'relative', minHeight: 340, overflow: 'hidden', display: 'flex', alignItems: 'flex-end' },
   heroBg:    { position: 'absolute', inset: 0, objectFit: 'cover', width: '100%', height: '100%' },
-  heroOverlay:{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(26,39,28,.75) 30%, transparent)' },
+  heroOverlay:{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(61,54,43,.75) 30%, transparent)' },
   heroContent:{ position: 'relative', zIndex: 1, padding: '3rem 2rem', maxWidth: 1200, margin: '0 auto', width: '100%' },
-  heroTitle: { fontFamily: 'Fraunces, serif', fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 600, color: '#fff', margin: 0, letterSpacing: '-0.04em', lineHeight: 1.1 },
-  heroSub:   { fontSize: '1rem', color: 'rgba(255,255,255,.8)', marginTop: '.75rem', fontWeight: 300 },
-  heroPlaceholder:{ minHeight: 340, background: 'linear-gradient(135deg, #1A271C 0%, #5A8A67 100%)', display: 'flex', alignItems: 'flex-end', padding: '3rem 2rem' },
-  heroTitleDark:{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 600, color: '#fff', margin: 0, letterSpacing: '-0.04em' },
+  heroTitle: { fontFamily: 'Fraunces, serif', fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 600, color: '#3D362B', margin: 0, letterSpacing: '-0.04em', lineHeight: 1.1 },
+  heroSub:   { fontSize: '1rem', color: '#8A8072', marginTop: '.75rem', fontWeight: 300 },
+  heroPlaceholder:{ minHeight: 340, background: 'linear-gradient(135deg, #EFE6D6 0%, #B08968 100%)', display: 'flex', alignItems: 'flex-end', padding: '3rem 2rem' },
+  heroTitleDark:{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 600, color: '#3D362B', margin: 0, letterSpacing: '-0.04em' },
 
   main:      { maxWidth: 1200, margin: '0 auto', padding: '3rem 1.5rem' },
-  sectionTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.6rem', fontWeight: 500, color: '#1A271C', marginBottom: '1.75rem', letterSpacing: '-0.03em' },
+  sectionTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.6rem', fontWeight: 500, color: '#3D362B', marginBottom: '1.75rem', letterSpacing: '-0.03em' },
 
   grid:      { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.5rem' },
-  prodCard:  { background: '#fff', borderRadius: 16, overflow: 'hidden', border: '1px solid #E4EBE5', cursor: 'pointer', transition: 'all .25s' },
-  imgWrap:   { position: 'relative', aspectRatio: '3/4', overflow: 'hidden', background: '#EDF3EE' },
+  prodCard:  { background: '#fff', borderRadius: 16, overflow: 'hidden', border: '1px solid #E4DCD0', cursor: 'pointer', transition: 'all .25s' },
+  imgWrap:   { position: 'relative', aspectRatio: '3/4', overflow: 'hidden', background: '#EFE6D6' },
   prodImg:   { width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform .4s ease' },
-  imgPlaceholder:{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3.5rem', background: '#EDF3EE' },
+  imgPlaceholder:{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3.5rem', background: '#EFE6D6' },
   discBadge: { position: 'absolute', top: '.75rem', left: '.75rem', background: '#DC2626', color: '#fff', fontSize: '.7rem', fontWeight: 700, padding: '.2rem .55rem', borderRadius: 20 },
-  soldBadge: { position: 'absolute', top: '.75rem', right: '.75rem', background: 'rgba(26,39,28,.7)', color: '#fff', fontSize: '.7rem', fontWeight: 600, padding: '.2rem .55rem', borderRadius: 20 },
+  soldBadge: { position: 'absolute', top: '.75rem', right: '.75rem', background: 'rgba(61,54,43,.7)', color: '#fff', fontSize: '.7rem', fontWeight: 600, padding: '.2rem .55rem', borderRadius: 20 },
   prodBody:  { padding: '1.1rem 1.25rem 1.25rem' },
-  prodName:  { fontWeight: 600, fontSize: '.95rem', color: '#1A271C', marginBottom: '.35rem', lineHeight: 1.3 },
+  prodName:  { fontWeight: 600, fontSize: '.95rem', color: '#3D362B', marginBottom: '.35rem', lineHeight: 1.3 },
   priceRow:  { display: 'flex', alignItems: 'baseline', gap: '.5rem' },
-  price:     { fontSize: '1.05rem', fontWeight: 700, color: '#5A8A67' },
-  compareAt: { fontSize: '.85rem', color: '#7B907D', textDecoration: 'line-through' },
+  price:     { fontSize: '1.05rem', fontWeight: 700, color: '#B08968' },
+  compareAt: { fontSize: '.85rem', color: '#8A8072', textDecoration: 'line-through' },
   tags:      { display: 'flex', flexWrap: 'wrap', gap: '.35rem', marginTop: '.6rem' },
-  tag:       { fontSize: '.7rem', background: '#EDF3EE', color: '#5A8A67', padding: '.2rem .55rem', borderRadius: 20, fontWeight: 500 },
+  tag:       { fontSize: '.7rem', background: '#EFE6D6', color: '#B08968', padding: '.2rem .55rem', borderRadius: 20, fontWeight: 500 },
 
   // Product modal
-  overlay:   { position: 'fixed', inset: 0, background: 'rgba(26,39,28,.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
+  overlay:   { position: 'fixed', inset: 0, background: 'rgba(61,54,43,.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
   modal:     { background: '#fff', borderRadius: 20, width: '100%', maxWidth: 800, maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' },
   modalImg:  { width: '100%', maxHeight: '60vh', objectFit: 'contain', display: 'block' },
   modalBody: { padding: '2rem' },
-  modalTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.75rem', fontWeight: 500, color: '#1A271C', marginTop: 0, marginBottom: '.5rem', letterSpacing: '-0.03em' },
-  modalDesc: { fontSize: '.9rem', color: '#7B907D', lineHeight: 1.7, marginBottom: '1.25rem' },
-  modalPrice:{ fontSize: '1.4rem', fontWeight: 700, color: '#5A8A67', marginBottom: '1.25rem' },
-  cartBtn:   { width: '100%', padding: '1rem', background: '#5A8A67', color: '#fff', border: 'none', borderRadius: 10, fontSize: '1rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'background .2s', letterSpacing: '.01em' },
+  modalTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.75rem', fontWeight: 500, color: '#3D362B', marginTop: 0, marginBottom: '.5rem', letterSpacing: '-0.03em' },
+  modalDesc: { fontSize: '.9rem', color: '#8A8072', lineHeight: 1.7, marginBottom: '1.25rem' },
+  modalPrice:{ fontSize: '1.4rem', fontWeight: 700, color: '#B08968', marginBottom: '1.25rem' },
+  cartBtn:   { width: '100%', padding: '1rem', background: '#B08968', color: '#fff', border: 'none', borderRadius: 10, fontSize: '1rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'background .2s', letterSpacing: '.01em' },
   closeBtn:  { position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(255,255,255,.85)', border: 'none', borderRadius: '50%', width: 36, height: 36, fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', zIndex: 10 },
   closeWrapper:{ position: 'relative' },
 
-  footer:    { borderTop: '1px solid #E4EBE5', padding: '2rem 1.5rem', textAlign: 'center', marginTop: '4rem' },
-  footerText:{ fontSize: '.8rem', color: '#7B907D' },
+  footer:    { borderTop: '1px solid #E4DCD0', padding: '2rem 1.5rem', textAlign: 'center', marginTop: '4rem' },
+  footerText:{ fontSize: '.8rem', color: '#8A8072' },
 
-  spinner:   { display: 'inline-block', width: 28, height: 28, border: '2px solid #E4EBE5', borderTop: '2px solid #5A8A67', borderRadius: '50%', animation: 'spin .7s linear infinite' },
+  spinner:   { display: 'inline-block', width: 28, height: 28, border: '2px solid #E4DCD0', borderTop: '2px solid #B08968', borderRadius: '50%', animation: 'spin .7s linear infinite' },
   errPage:   { minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '2rem', textAlign: 'center' },
-  errTitle:  { fontFamily: 'Fraunces, serif', fontSize: '2rem', color: '#1A271C', margin: 0 },
+  errTitle:  { fontFamily: 'Fraunces, serif', fontSize: '2rem', color: '#3D362B', margin: 0 },
 }
 
 // --- SVG Icons for Template ---
@@ -146,6 +146,14 @@ function renderIcon(name, size = 20, color = "currentColor") {
 
 // --- Default Template Data (easily swappable/overridden by seller settings) ---
 const defaultTemplateData = {
+  palette: {
+    background: "#F6F1E8",
+    surface: "#EFE6D6",
+    accent: "#B08968",
+    text: "#3D362B",
+    secondaryText: "#8A8072",
+    border: "#E4DCD0"
+  },
   header: {
     logoName: "Selora",
     navLinks: [
@@ -156,6 +164,7 @@ const defaultTemplateData = {
     ]
   },
   hero: {
+    layout: "single",
     eyebrow: "NEW SEASON ARRIVALS",
     title: "Dress Like the\nPerson You're\nBecoming",
     subtitle: "Curated fashion, AI-optimized for you — discover pieces that sell themselves.",
@@ -175,10 +184,10 @@ const defaultTemplateData = {
     eyebrow: "EXPLORE",
     title: "Shop by Category",
     items: [
-      { name: "Tops & Blouses", color: "#1A271C", textColor: "#ffffff", image: null, url: "#" },
-      { name: "Dresses", color: "#E5D9C4", textColor: "#1A271C", image: null, url: "#" },
-      { name: "Outerwear", color: "#82A996", textColor: "#ffffff", image: null, url: "#" },
-      { name: "Accessories", color: "#3B5A44", textColor: "#ffffff", image: null, url: "#" }
+      { name: "Tops & Blouses", color: "#3D362B", textColor: "#ffffff", image: null, url: "#" },
+      { name: "Dresses", color: "#EFE6D6", textColor: "#3D362B", image: null, url: "#" },
+      { name: "Outerwear", color: "#B08968", textColor: "#ffffff", image: null, url: "#" },
+      { name: "Accessories", color: "#6A533E", textColor: "#ffffff", image: null, url: "#" }
     ]
   },
   newArrivals: {
@@ -212,8 +221,9 @@ const defaultTemplateData = {
 }
 
 // --- Reusable ProductCard Component ---
-function ProductCard({ product, isSample = false, isAdded = false, onProductClick, onAddToCart, resolvedCategoryName, currency = 'USD' }) {
+function ProductCard({ product, isSample = false, isAdded = false, onProductClick, onAddToCart, resolvedCategoryName, currency = 'USD', palette = defaultTemplateData.palette }) {
   const hasImage = product.images && product.images.length > 0;
+  const p = palette || defaultTemplateData.palette;
 
   return (
     <div
@@ -225,13 +235,13 @@ function ProductCard({ product, isSample = false, isAdded = false, onProductClic
         borderRadius: 16,
         overflow: 'hidden',
         background: '#ffffff',
-        border: '1px solid #E4EBE5',
+        border: `1px solid ${p.border}`,
         transition: 'all 0.3s ease',
       }}
       className="sf-prod-card"
     >
       {/* Image Wrapper */}
-      <div style={{ position: 'relative', aspectRatio: '3/4', background: '#F8FAF8', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'relative', aspectRatio: '3/4', background: p.surface, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {hasImage ? (
           <img
             src={product.images[0]}
@@ -240,14 +250,14 @@ function ProductCard({ product, isSample = false, isAdded = false, onProductClic
             className="sf-prod-img"
           />
         ) : (
-          <div style={{ color: '#5A8A67', opacity: 0.45 }}>
-            <LeafIcon size={48} color="#5A8A67" />
+          <div style={{ color: p.accent, opacity: 0.5 }}>
+            <LeafIcon size={48} color={p.accent} />
           </div>
         )}
 
         {/* Sample Badge */}
         {isSample && (
-          <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10 }}>
+          <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem', background: p.surface, border: `1px solid ${p.border}`, color: p.accent, fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10 }}>
             SAMPLE
           </div>
         )}
@@ -256,13 +266,13 @@ function ProductCard({ product, isSample = false, isAdded = false, onProductClic
       {/* Product Info */}
       <div style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: 0 }}>
-          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: p.accent, letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {resolvedCategoryName}
           </span>
-          <h4 style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.05rem', fontWeight: 500, color: '#1A271C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <h4 style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.05rem', fontWeight: 500, color: p.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {product.title}
           </h4>
-          <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1A271C' }}>
+          <span style={{ fontSize: '0.95rem', fontWeight: 700, color: p.text }}>
             {currency} {Number(product.price).toFixed(2)}
           </span>
         </div>
@@ -271,9 +281,9 @@ function ProductCard({ product, isSample = false, isAdded = false, onProductClic
         {isSample ? (
           <div
             style={{
-              background: '#EDF3EE',
-              color: '#5A8A67',
-              border: '1px solid #C7DACB',
+              background: p.surface,
+              color: p.accent,
+              border: `1px solid ${p.border}`,
               fontSize: '0.65rem',
               fontWeight: 700,
               padding: '0.2rem 0.5rem',
@@ -296,7 +306,7 @@ function ProductCard({ product, isSample = false, isAdded = false, onProductClic
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: isAdded ? '#1E3A2F' : '#5A8A67',
+              background: isAdded ? p.text : p.accent,
               color: '#ffffff',
               border: 'none',
               borderRadius: isAdded ? '8px' : '50%',
@@ -324,7 +334,7 @@ function ProductCard({ product, isSample = false, isAdded = false, onProductClic
 }
 
 // --- Reusable ProductGrid Component ---
-function ProductGrid({ products, isSample = false, onProductClick, onAddToCart, currency = 'USD', categories = [] }) {
+function ProductGrid({ products, isSample = false, onProductClick, onAddToCart, currency = 'USD', categories = [], palette }) {
   const [addedMap, setAddedMap] = useState({})
 
   const handleAddClick = (prod) => {
@@ -350,10 +360,11 @@ function ProductGrid({ products, isSample = false, onProductClick, onAddToCart, 
             product={p}
             isSample={isSample}
             isAdded={isAdded}
+            resolvedCategoryName={resolvedCategoryName}
             onProductClick={onProductClick}
             onAddToCart={handleAddClick}
-            resolvedCategoryName={resolvedCategoryName}
             currency={currency}
+            palette={palette}
           />
         );
       })}
@@ -799,33 +810,35 @@ export default function Storefront({ previewData = null }) {
   if (error) return (
     <div style={S.page}>
       <div style={S.errPage}>
-        <div style={{ color: '#5A8A67', marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ color: '#B08968', marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </div>
         <h1 style={S.errTitle}>Store not found</h1>
-        <p style={{ color:'#7B907D', fontSize:'.95rem' }}>{error}</p>
-        <Link to="/" style={{ color:'#5A8A67', fontWeight:600, textDecoration:'none', fontSize:'.9rem' }}>← Back to Selora</Link>
+        <p style={{ color:'#8A8072', fontSize:'.95rem' }}>{error}</p>
+        <Link to="/" style={{ color:'#B08968', fontWeight:600, textDecoration:'none', fontSize:'.9rem' }}>&larr; Back to Selora</Link>
       </div>
     </div>
   )
 
   const currency = store.currency || 'USD'
   const template = deepMerge(defaultTemplateData, store?.template_data)
+  const palette = template.palette || defaultTemplateData.palette
 
   const imgMain = store.hero_image_main
   const imgLeft = store.hero_image_left
   const imgRight = store.hero_image_right
   const hasAnyHero = !!(imgMain || imgLeft || imgRight)
+  const heroLayout = template.hero?.layout || 'minimal'
 
   return (
-    <div style={S.page}>
+    <div style={{ minHeight: '100vh', background: palette.background, fontFamily: 'Inter, sans-serif', color: palette.text }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
         .sf-prod-card {
           transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
         }
         .sf-prod-card:hover {
-          box-shadow: 0 12px 30px rgba(26,39,28,0.08) !important;
+          box-shadow: 0 12px 30px rgba(61,54,43,0.08) !important;
           transform: translateY(-4px);
         }
         .sf-prod-card:hover .sf-prod-img {
@@ -833,64 +846,85 @@ export default function Storefront({ previewData = null }) {
         }
         .sf-cat-card:hover {
           transform: translateY(-4px);
-          box-shadow: 0 12px 30px rgba(26,39,28,0.12);
+          box-shadow: 0 12px 30px rgba(61,54,43,0.12);
         }
         .sf-bag-btn:hover {
-          background-color: #EDF3EE !important;
+          background-color: ${palette.surface} !important;
         }
         .sf-hero-btn-primary:hover {
-          background-color: #719683 !important;
+          opacity: 0.9 !important;
           transform: translateY(-1px);
         }
         .sf-hero-btn-secondary:hover {
-          background-color: rgba(255, 255, 255, 0.08) !important;
-          border-color: rgba(255, 255, 255, 0.7) !important;
+          background-color: rgba(61, 54, 43, 0.05) !important;
+          border-color: ${palette.text} !important;
         }
         .sf-nav-link:hover {
-          color: #1A271C !important;
+          color: ${palette.accent} !important;
         }
         .sf-newsletter-btn:hover {
-          background-color: #9EC0AF !important;
+          opacity: 0.9 !important;
         }
         
         /* Grid definitions & Responsive breakpoints */
         .sf-trust-bar {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          background-color: #F8FAF8;
-          border-bottom: 1px solid #E4EBE5;
-          padding: 1.5rem 1rem;
+          background-color: ${palette.surface};
+          border-bottom: 1px solid ${palette.border};
+          padding: 1rem 0.5rem;
+          overflow: hidden;
         }
         .sf-trust-item {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 0.75rem;
-          padding: 0.5rem 1.5rem;
+          padding: 0.65rem 0.5rem;
+          overflow: hidden;
+          position: relative;
+          box-sizing: border-box;
+          white-space: nowrap;
           transition: background-color 0.2s ease;
         }
         .sf-trust-item:hover {
-          background-color: rgba(90, 138, 103, 0.05);
+          background-color: rgba(176, 137, 104, 0.08);
         }
         .sf-trust-item:not(:last-child) {
-          border-right: 1px solid #E4EBE5;
+          border-right: 1px solid ${palette.border};
         }
+        .sf-trust-item-marquee {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.85rem;
+          white-space: nowrap;
+          animation: sf-trust-single-sweep 9.5s linear infinite;
+          will-change: transform;
+        }
+        @keyframes sf-trust-single-sweep {
+          0% {
+            transform: translateX(140%);
+          }
+          100% {
+            transform: translateX(-140%);
+          }
+        }
+
         @media (max-width: 768px) {
           .sf-trust-bar {
             grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
+            gap: 0.5rem;
           }
           .sf-trust-item {
             border-right: none !important;
           }
           .sf-trust-item:nth-child(odd) {
-            border-right: 1px solid #E4EBE5 !important;
+            border-right: 1px solid ${palette.border} !important;
           }
         }
         @media (max-width: 480px) {
           .sf-trust-bar {
             grid-template-columns: 1fr;
-            gap: 0.5rem;
+            gap: 0.25rem;
           }
           .sf-trust-item {
             border-right: none !important;
@@ -898,21 +932,62 @@ export default function Storefront({ previewData = null }) {
         }
 
         .sf-hero-section {
+          background-color: ${palette.surface};
+          color: ${palette.text};
+          border-bottom: 1px solid ${palette.border};
+          min-height: calc(100vh - 120px);
+          max-height: 560px;
+          box-sizing: border-box;
+        }
+        .sf-hero-minimal, .sf-hero-single-fallback {
+          min-height: calc(100vh - 120px);
+          max-height: 560px;
+          padding: 3rem 2rem;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          box-sizing: border-box;
+        }
+        .sf-hero-stack-layout {
           display: grid;
           grid-template-columns: 1.1fr 0.9fr;
-          background-color: #1A271C;
-          color: #ffffff;
+          background-color: ${palette.surface};
+          color: ${palette.text};
+          height: calc(100vh - 120px);
+          min-height: 420px;
+          max-height: 560px;
+          overflow: hidden;
+          align-items: center;
+        }
+        .sf-hero-single-layout {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          background-color: ${palette.surface};
+          color: ${palette.text};
+          height: calc(100vh - 120px);
+          min-height: 420px;
+          max-height: 560px;
+          overflow: hidden;
+          align-items: center;
         }
         .sf-hero-left {
-          padding: 5rem 4rem;
+          padding: 3rem 3.5rem;
           display: flex;
           flex-direction: column;
           justify-content: center;
-          gap: 1.5rem;
+          gap: 1.1rem;
+          height: 100%;
+          box-sizing: border-box;
         }
         .sf-hero-right {
           position: relative;
-          min-height: 400px;
+          height: 100%;
+          max-height: 560px;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
         .sf-hero-image-container {
           width: 100%;
@@ -931,14 +1006,14 @@ export default function Storefront({ previewData = null }) {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #131d15;
+          background: ${palette.surface};
           overflow: hidden;
           padding: 2rem;
         }
         .sf-hero-stack {
           position: relative;
-          width: 250px;
-          height: 333px;
+          width: 270px;
+          height: 350px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -947,33 +1022,33 @@ export default function Storefront({ previewData = null }) {
           position: absolute;
           width: 100%;
           height: 100%;
-          border-radius: 12px;
+          border-radius: 14px;
           overflow: hidden;
-          background-color: #EAE5D9;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+          background-color: ${palette.background};
+          box-shadow: 0 14px 35px rgba(61,54,43,0.18);
           transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
           transform-origin: bottom center;
         }
         .sf-hero-card-left {
           --base-rot: -10deg;
-          --base-tx: -65px;
+          --base-tx: -70px;
           z-index: 1;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.25);
-          background-color: #1E3A2F;
+          box-shadow: 0 6px 20px rgba(61,54,43,0.14);
+          background-color: ${palette.background};
           animation: sway-left 6s ease-in-out infinite;
         }
         .sf-hero-card-right {
           --base-rot: 10deg;
-          --base-tx: 65px;
+          --base-tx: 70px;
           z-index: 1;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.25);
-          background-color: #284E39;
+          box-shadow: 0 6px 20px rgba(61,54,43,0.14);
+          background-color: ${palette.background};
           animation: sway-right 6.5s ease-in-out infinite;
         }
         .sf-hero-card-main {
           z-index: 2;
-          box-shadow: 0 12px 40px rgba(0,0,0,0.4);
-          background-color: #EAE5D9;
+          box-shadow: 0 16px 45px rgba(61,54,43,0.22);
+          background-color: ${palette.background};
           animation: float-main 5s ease-in-out infinite;
         }
         .sf-hero-card img {
@@ -990,17 +1065,17 @@ export default function Storefront({ previewData = null }) {
           align-items: center;
           justify-content: center;
           gap: 1rem;
-          background: rgba(255,255,255,0.02);
-          border: 2px dashed rgba(255,255,255,0.12);
+          background: rgba(176,137,104,0.06);
+          border: 2px dashed ${palette.border};
           margin: 2rem;
           border-radius: 16px;
-          color: rgba(255,255,255,0.4);
+          color: ${palette.secondaryText};
           text-align: center;
           padding: 1.5rem;
         }
         .sf-hero-placeholder-icon {
           font-size: 3rem;
-          color: rgba(255,255,255,0.2);
+          color: ${palette.accent};
         }
 
         @keyframes sway-left {
@@ -1016,29 +1091,105 @@ export default function Storefront({ previewData = null }) {
           50% { transform: rotate(1.5deg) translateY(-5px) scale(1.01); }
         }
 
+        /* Hero Staggered Entrance Animations */
+        @keyframes sf-hero-slide-up {
+          from {
+            opacity: 0;
+            transform: translateY(14px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .sf-anim-eyebrow {
+          animation: sf-hero-slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0ms forwards;
+          opacity: 0;
+        }
+        .sf-anim-title {
+          animation: sf-hero-slide-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) 120ms forwards;
+          opacity: 0;
+        }
+        .sf-anim-sub {
+          animation: sf-hero-slide-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) 240ms forwards;
+          opacity: 0;
+        }
+        .sf-anim-cta {
+          animation: sf-hero-slide-up 0.65s cubic-bezier(0.16, 1, 0.3, 1) 360ms forwards;
+          opacity: 0;
+        }
+
+        /* Ambient Image Zoom */
+        @keyframes sf-ambient-zoom {
+          0% { transform: scale(1); }
+          100% { transform: scale(1.08); }
+        }
+        .sf-hero-ambient-zoom {
+          animation: sf-ambient-zoom 10s ease-in-out infinite alternate;
+          will-change: transform;
+        }
+
+        /* Reduced Motion Override */
+        @media (prefers-reduced-motion: reduce) {
+          .sf-anim-eyebrow,
+          .sf-anim-title,
+          .sf-anim-sub,
+          .sf-anim-cta {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+          }
+          .sf-hero-ambient-zoom,
+          .sf-hero-card-left,
+          .sf-hero-card-right,
+          .sf-hero-card-main,
+          .sf-trust-item-marquee {
+            animation: none !important;
+            transform: none !important;
+          }
+        }
+
         @media (max-width: 768px) {
           .sf-hero-section {
-            grid-template-columns: 1fr;
+            min-height: auto !important;
+            max-height: none !important;
+          }
+          .sf-hero-stack-layout, .sf-hero-single-layout {
+            grid-template-columns: 1fr !important;
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+          }
+          .sf-hero-minimal, .sf-hero-single-fallback {
+            min-height: 380px !important;
+            max-height: none !important;
+            padding: 3.5rem 1.5rem !important;
           }
           .sf-hero-left {
-            padding: 4rem 1.5rem;
+            padding: 3rem 1.5rem;
             gap: 1.25rem;
           }
           .sf-hero-right {
             min-height: 350px;
             height: 350px;
+            max-height: 350px;
+          }
+          .sf-hero-stack-backdrop {
+            width: 290px;
+            height: 310px;
+            border-radius: 28px;
           }
           .sf-hero-stack {
-            width: 170px;
-            height: 227px;
+            width: 190px;
+            height: 253px;
           }
           .sf-hero-card-left {
             --base-rot: -8deg;
-            --base-tx: -45px;
+            --base-tx: -50px;
           }
           .sf-hero-card-right {
             --base-rot: 8deg;
-            --base-tx: 45px;
+            --base-tx: 50px;
           }
         }
 
@@ -1091,7 +1242,7 @@ export default function Storefront({ previewData = null }) {
         .sf-drawer-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(26, 39, 28, 0.25);
+          background: rgba(61, 54, 43, 0.35);
           z-index: 299;
         }
         .sf-drawer {
@@ -1100,9 +1251,9 @@ export default function Storefront({ previewData = null }) {
           top: 0;
           height: 100vh;
           width: 420px;
-          background: #ffffff;
-          color: #1A271C;
-          box-shadow: -10px 0 40px rgba(26,39,28,.15);
+          background: ${palette.background};
+          color: ${palette.text};
+          box-shadow: -10px 0 40px rgba(61,54,43,.15);
           z-index: 300;
           padding: 2rem 1.5rem;
           box-sizing: border-box;
@@ -1132,11 +1283,11 @@ export default function Storefront({ previewData = null }) {
       `}</style>
 
       {/* HEADER */}
-      <nav style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(248, 250, 248, 0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #E4EBE5', padding: '0 2rem' }}>
+      <nav style={{ position: 'sticky', top: 0, zIndex: 100, background: `${palette.background}F2`, backdropFilter: 'blur(12px)', borderBottom: `1px solid ${palette.border}`, padding: '0 2rem' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', height: 70, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Left: logo/name */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <Link to={`/store/${handle}`} style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(1.1rem, 3vw, 1.4rem)', fontWeight: 700, color: '#1A271C', textDecoration: 'none', letterSpacing: '-0.02em', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block' }} title={store.name || "Selora"}>
+            <Link to={`/store/${handle}`} style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(1.1rem, 3vw, 1.4rem)', fontWeight: 700, color: palette.text, textDecoration: 'none', letterSpacing: '-0.02em', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block' }} title={store.name || "Selora"}>
               {store.name || "Selora"}
             </Link>
           </div>
@@ -1153,7 +1304,7 @@ export default function Storefront({ previewData = null }) {
                     fontFamily: 'Inter, sans-serif',
                     fontSize: '0.9rem',
                     fontWeight: 500,
-                    color: '#3B5A44',
+                    color: palette.secondaryText,
                     textDecoration: 'none',
                     transition: 'color 0.2s',
                   }}
@@ -1169,7 +1320,7 @@ export default function Storefront({ previewData = null }) {
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '0.9rem',
                 fontWeight: 500,
-                color: '#3B5A44',
+                color: palette.secondaryText,
                 textDecoration: 'none',
                 transition: 'color 0.2s',
               }}
@@ -1187,7 +1338,7 @@ export default function Storefront({ previewData = null }) {
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                color: '#1A271C',
+                color: palette.text,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
@@ -1200,7 +1351,7 @@ export default function Storefront({ previewData = null }) {
               }}
               className="sf-bag-btn"
             >
-              <BagIcon size={18} color="#1A271C" />
+              <BagIcon size={18} color={palette.text} />
               <span>Bag ({cart.reduce((sum, item) => sum + item.quantity, 0)})</span>
             </button>
           </div>
@@ -1213,9 +1364,7 @@ export default function Storefront({ previewData = null }) {
           <div style={{ marginBottom: '2.5rem' }}>
             <Link
               to={`/store/${handle}`}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: '#5A8A67', fontWeight: 600, textDecoration: 'none', fontSize: '0.9rem', transition: 'color 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.color = '#1A271C'}
-              onMouseLeave={e => e.currentTarget.style.color = '#5A8A67'}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: palette.accent, fontWeight: 600, textDecoration: 'none', fontSize: '0.9rem', transition: 'color 0.2s' }}
             >
               &larr; Back to Home
             </Link>
@@ -1229,9 +1378,9 @@ export default function Storefront({ previewData = null }) {
             if (!product) {
               return (
                 <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-                  <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', color: '#1A271C', margin: '0 0 1rem' }}>Product Not Found</h2>
-                  <p style={{ color: '#7B907D', marginBottom: '2rem' }}>The product you are looking for does not exist or has been removed.</p>
-                  <Link to={`/store/${handle}`} style={{ display: 'inline-block', background: '#5A8A67', color: '#fff', padding: '0.85rem 2rem', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}>
+                  <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', color: palette.text, margin: '0 0 1rem' }}>Product Not Found</h2>
+                  <p style={{ color: palette.secondaryText, marginBottom: '2rem' }}>The product you are looking for does not exist or has been removed.</p>
+                  <Link to={`/store/${handle}`} style={{ display: 'inline-block', background: palette.accent, color: '#fff', padding: '0.85rem 2rem', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}>
                     Return to Store
                   </Link>
                 </div>
@@ -1256,8 +1405,8 @@ export default function Storefront({ previewData = null }) {
                     }
                   `}</style>
 
-                  {/* Left Column: Image (contain, uncropped) */}
-                  <div style={{ position: 'relative', width: '100%', aspectRatio: '3/4', background: '#F8FAF8', borderRadius: 16, border: '1px solid #E4EBE5', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {/* Left Column: Image */}
+                  <div style={{ position: 'relative', width: '100%', aspectRatio: '3/4', background: palette.surface, borderRadius: 16, border: `1px solid ${palette.border}`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {hasImage ? (
                       <img
                         src={product.images[0]}
@@ -1265,13 +1414,13 @@ export default function Storefront({ previewData = null }) {
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       />
                     ) : (
-                      <div style={{ color: '#5A8A67', opacity: 0.45 }}>
-                        <LeafIcon size={64} color="#5A8A67" />
+                      <div style={{ color: palette.accent, opacity: 0.5 }}>
+                        <LeafIcon size={64} color={palette.accent} />
                       </div>
                     )}
 
                     {isSample && (
-                      <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.75rem', fontWeight: 700, padding: '0.25rem 0.6rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10 }}>
+                      <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: palette.surface, border: `1px solid ${palette.border}`, color: palette.accent, fontSize: '0.75rem', fontWeight: 700, padding: '0.25rem 0.6rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10 }}>
                         SAMPLE
                       </div>
                     )}
@@ -1280,18 +1429,18 @@ export default function Storefront({ previewData = null }) {
                   {/* Right Column: Info */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <div>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
                         {resolvedCategoryName}
                       </span>
-                      <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: '#1A271C', margin: '0 0 0.75rem', lineHeight: 1.15 }}>
+                      <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: palette.text, margin: '0 0 0.75rem', lineHeight: 1.15 }}>
                         {product.title}
                       </h1>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.5rem' }}>
-                        <span style={{ fontSize: '1.75rem', fontWeight: 700, color: '#5A8A67' }}>
+                        <span style={{ fontSize: '1.75rem', fontWeight: 700, color: palette.accent }}>
                           {currency} {Number(product.price).toFixed(2)}
                         </span>
                         {product.compare_at_price && (
-                          <span style={{ fontSize: '1.2rem', color: '#7B907D', textDecoration: 'line-through' }}>
+                          <span style={{ fontSize: '1.2rem', color: palette.secondaryText, textDecoration: 'line-through' }}>
                             {currency} {Number(product.compare_at_price).toFixed(2)}
                           </span>
                         )}
@@ -1301,12 +1450,12 @@ export default function Storefront({ previewData = null }) {
                     {/* Stock pill */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       {isSample ? (
-                        <span style={{ fontSize: '0.85rem', color: '#7B907D', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <span style={{ fontSize: '0.85rem', color: palette.secondaryText, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
                           In stock (Sample demo)
                         </span>
                       ) : product.inventory > 0 ? (
-                        <span style={{ fontSize: '0.85rem', color: '#1A271C', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}>
+                        <span style={{ fontSize: '0.85rem', color: palette.text, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}>
                           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
                           {product.inventory} in stock
                         </span>
@@ -1320,9 +1469,9 @@ export default function Storefront({ previewData = null }) {
 
                     {/* Description */}
                     {product.description && (
-                      <div style={{ borderTop: '1px solid #E4EBE5', paddingTop: '1.5rem', borderBottom: '1px solid #E4EBE5', paddingBottom: '1.5rem', marginTop: '0.5rem' }}>
-                        <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 600, color: '#1A271C', margin: '0 0 0.5rem' }}>Description</h3>
-                        <p style={{ fontSize: '0.95rem', color: '#7B907D', lineHeight: 1.7, margin: 0 }}>
+                      <div style={{ borderTop: `1px solid ${palette.border}`, paddingTop: '1.5rem', borderBottom: `1px solid ${palette.border}`, paddingBottom: '1.5rem', marginTop: '0.5rem' }}>
+                        <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 600, color: palette.text, margin: '0 0 0.5rem' }}>Description</h3>
+                        <p style={{ fontSize: '0.95rem', color: palette.secondaryText, lineHeight: 1.7, margin: 0 }}>
                           {product.description}
                         </p>
                       </div>
@@ -1350,9 +1499,9 @@ export default function Storefront({ previewData = null }) {
                         style={{
                           width: '100%',
                           padding: '1.1rem',
-                          background: isSample ? '#EDF3EE' : product.inventory === 0 ? '#E4EBE5' : addedToCart ? '#1E3A2F' : '#5A8A67',
-                          color: isSample ? '#5A8A67' : product.inventory === 0 ? '#7B907D' : '#ffffff',
-                          border: isSample ? '1px solid #C7DACB' : 'none',
+                          background: isSample ? palette.surface : product.inventory === 0 ? palette.border : addedToCart ? palette.text : palette.accent,
+                          color: isSample ? palette.accent : product.inventory === 0 ? palette.secondaryText : '#ffffff',
+                          border: isSample ? `1px solid ${palette.border}` : 'none',
                           borderRadius: 10,
                           fontSize: '1rem',
                           fontWeight: 600,
@@ -1372,8 +1521,8 @@ export default function Storefront({ previewData = null }) {
                   const sameCatProducts = currentProducts.filter(p => p.id !== product.id && (isSample ? p.category === product.category : p.category_id === product.category_id)).slice(0, 4)
                   if (sameCatProducts.length === 0) return null
                   return (
-                    <div style={{ marginTop: '4rem', borderTop: '1px solid #E4EBE5', paddingTop: '3rem' }}>
-                      <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 500, color: '#1A271C', marginBottom: '2rem' }}>
+                    <div style={{ marginTop: '4rem', borderTop: `1px solid ${palette.border}`, paddingTop: '3rem' }}>
+                      <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 500, color: palette.text, marginBottom: '2rem' }}>
                         You might also like
                       </h3>
                       <ProductGrid
@@ -1402,109 +1551,310 @@ export default function Storefront({ previewData = null }) {
         </div>
       ) : (
         <>
-          {/* HERO SECTION */}
-          <div className="sf-hero-section">
-            {/* Left Half: Headline, Paragraph, CTAs */}
-            <div className="sf-hero-left">
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#82A996', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                {template.hero.eyebrow}
-              </span>
-              <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2rem, 4.5vw, 3.5rem)', fontWeight: 500, color: '#ffffff', margin: 0, lineHeight: 1.1, whiteSpace: 'pre-line' }}>
-                {template.hero.title}
-              </h1>
-              <p style={{ fontSize: '1rem', color: '#B8BCB8', lineHeight: 1.6, margin: '0.5rem 0 1rem' }}>
-                {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                <a
-                  href={template.hero.ctaPrimaryUrl}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.85rem 1.75rem',
-                    backgroundColor: '#82A996',
-                    color: '#1A271C',
-                    borderRadius: 30,
-                    textDecoration: 'none',
-                    fontWeight: 600,
-                    fontSize: '0.9rem',
-                    transition: 'all 0.2s ease',
-                  }}
-                  className="sf-hero-btn-primary"
-                >
-                  {template.hero.ctaPrimaryText} &rarr;
-                </a>
-                <a
-                  href={template.hero.ctaSecondaryUrl}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.85rem 1.75rem',
-                    backgroundColor: 'transparent',
-                    color: '#ffffff',
-                    borderRadius: 30,
-                    border: '1.5px solid rgba(255,255,255,0.4)',
-                    textDecoration: 'none',
-                    fontWeight: 600,
-                    fontSize: '0.9rem',
-                    transition: 'all 0.2s ease',
-                  }}
-                  className="sf-hero-btn-secondary"
-                >
-                  {template.hero.ctaSecondaryText}
-                </a>
-              </div>
-            </div>
+          {/* DYNAMIC HERO SECTION VARIANTS (minimal, single, stack) */}
+          {(() => {
+            const heroImg = imgMain || template.hero.image
 
-            {/* Right Half: Stacked Card Composition or Placeholder */}
-            <div className="sf-hero-right">
-              {hasAnyHero ? (
-                <div className="sf-hero-stack-container">
-                  <div className="sf-hero-stack">
-                    {/* Left Card */}
-                    {imgLeft && (
-                      <div className="sf-hero-card sf-hero-card-left">
-                        <img src={imgLeft} alt="" />
-                      </div>
-                    )}
-                    {/* Right Card */}
-                    {imgRight && (
-                      <div className="sf-hero-card sf-hero-card-right">
-                        <img src={imgRight} alt="" />
-                      </div>
-                    )}
-                    {/* Main Card */}
-                    {imgMain && (
-                      <div className="sf-hero-card sf-hero-card-main">
-                        <img src={imgMain} alt="" />
-                      </div>
-                    )}
+            if (heroLayout === 'minimal') {
+              return (
+                <div
+                  className="sf-hero-section sf-hero-minimal"
+                  style={{
+                    backgroundColor: palette.surface,
+                    color: palette.text,
+                    padding: '4rem 2rem',
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '1.5rem',
+                    borderBottom: `1px solid ${palette.border}`
+                  }}
+                >
+                  <span className="sf-anim-eyebrow" style={{ fontSize: '0.8rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                    {template.hero.eyebrow}
+                  </span>
+                  <h1 className="sf-anim-title" style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2.75rem, 5.5vw, 4rem)', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.1, maxWidth: 860, whiteSpace: 'pre-line' }}>
+                    {template.hero.title}
+                  </h1>
+                  <p className="sf-anim-sub" style={{ fontSize: '1.15rem', color: palette.secondaryText, lineHeight: 1.55, margin: 0, maxWidth: 640 }}>
+                    {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
+                  </p>
+                  <div className="sf-anim-cta" style={{ marginTop: '0.5rem' }}>
+                    <a
+                      href={template.hero.ctaPrimaryUrl}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.95rem 2.25rem',
+                        backgroundColor: palette.accent,
+                        color: '#ffffff',
+                        borderRadius: 30,
+                        textDecoration: 'none',
+                        fontWeight: 600,
+                        fontSize: '0.98rem',
+                        transition: 'all 0.2s ease',
+                        boxShadow: '0 4px 14px rgba(176,137,104,0.3)'
+                      }}
+                      className="sf-hero-btn-primary"
+                    >
+                      {template.hero.ctaPrimaryText} &rarr;
+                    </a>
                   </div>
                 </div>
-              ) : (
-                <div className="sf-hero-placeholder">
-                  <div className="sf-hero-placeholder-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}><LeafIcon size={48} color="rgba(255,255,255,0.2)" /></div>
-                  <p style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 500 }}>Add your hero images</p>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'Inter, sans-serif' }}>
-                    Go to the store builder settings tab to complete onboarding
-                  </p>
+              )
+            }
+
+            if (heroLayout === 'single') {
+              // Graceful fallback when 0 hero images are set
+              if (!heroImg) {
+                return (
+                  <div
+                    className="sf-hero-section sf-hero-single-fallback"
+                    style={{
+                      backgroundColor: palette.surface,
+                      color: palette.text,
+                      padding: '4rem 2rem',
+                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '1.5rem',
+                      borderBottom: `1px solid ${palette.border}`
+                    }}
+                  >
+                    <span className="sf-anim-eyebrow" style={{ fontSize: '0.8rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                      {template.hero.eyebrow}
+                    </span>
+                    <h1 className="sf-anim-title" style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2.75rem, 5.5vw, 4rem)', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.1, maxWidth: 860, whiteSpace: 'pre-line' }}>
+                      {template.hero.title}
+                    </h1>
+                    <p className="sf-anim-sub" style={{ fontSize: '1.15rem', color: palette.secondaryText, lineHeight: 1.55, margin: 0, maxWidth: 640 }}>
+                      {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
+                    </p>
+                    <div className="sf-anim-cta" style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center' }}>
+                      <a
+                        href={template.hero.ctaPrimaryUrl}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.95rem 2.25rem',
+                          backgroundColor: palette.accent,
+                          color: '#ffffff',
+                          borderRadius: 30,
+                          textDecoration: 'none',
+                          fontWeight: 600,
+                          fontSize: '0.98rem',
+                          transition: 'all 0.2s ease',
+                          boxShadow: '0 4px 14px rgba(176,137,104,0.3)'
+                        }}
+                        className="sf-hero-btn-primary"
+                      >
+                        {template.hero.ctaPrimaryText} &rarr;
+                      </a>
+                      {template.hero.ctaSecondaryText && (
+                        <a
+                          href={template.hero.ctaSecondaryUrl}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.95rem 2.25rem',
+                            backgroundColor: 'transparent',
+                            color: palette.text,
+                            borderRadius: 30,
+                            border: `1.5px solid ${palette.accent}`,
+                            textDecoration: 'none',
+                            fontWeight: 600,
+                            fontSize: '0.98rem',
+                            transition: 'all 0.2s ease'
+                          }}
+                          className="sf-hero-btn-secondary"
+                        >
+                          {template.hero.ctaSecondaryText}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              return (
+                <div className="sf-hero-section sf-hero-single-layout">
+                  <div className="sf-hero-left">
+                    <span className="sf-anim-eyebrow" style={{ fontSize: '0.8rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                      {template.hero.eyebrow}
+                    </span>
+                    <h1 className="sf-anim-title" style={{ fontFamily: 'Fraunces, serif', fontSize: '3.25rem', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.1, whiteSpace: 'pre-line' }}>
+                      {template.hero.title}
+                    </h1>
+                    <p className="sf-anim-sub" style={{ fontSize: '1.125rem', color: palette.secondaryText, lineHeight: 1.55, margin: '0.5rem 0 1.25rem' }}>
+                      {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
+                    </p>
+                    <div className="sf-anim-cta" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                      <a
+                        href={template.hero.ctaPrimaryUrl}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.95rem 2rem',
+                          backgroundColor: palette.accent,
+                          color: '#ffffff',
+                          borderRadius: 30,
+                          textDecoration: 'none',
+                          fontWeight: 600,
+                          fontSize: '0.98rem',
+                          transition: 'all 0.2s ease',
+                        }}
+                        className="sf-hero-btn-primary"
+                      >
+                        {template.hero.ctaPrimaryText} &rarr;
+                      </a>
+                      {template.hero.ctaSecondaryText && (
+                        <a
+                          href={template.hero.ctaSecondaryUrl}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.95rem 2rem',
+                            backgroundColor: 'transparent',
+                            color: palette.text,
+                            borderRadius: 30,
+                            border: `1.5px solid ${palette.accent}`,
+                            textDecoration: 'none',
+                            fontWeight: 600,
+                            fontSize: '0.98rem',
+                            transition: 'all 0.2s ease',
+                          }}
+                          className="sf-hero-btn-secondary"
+                        >
+                          {template.hero.ctaSecondaryText}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="sf-hero-right">
+                    <img
+                      src={heroImg}
+                      alt={template.hero.title}
+                      className="sf-hero-ambient-zoom"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
+              )
+            }
+
+            // Default 'stack' layout
+            return (
+              <div className="sf-hero-section sf-hero-stack-layout">
+                <div className="sf-hero-left">
+                  <span className="sf-anim-eyebrow" style={{ fontSize: '0.8rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                    {template.hero.eyebrow}
+                  </span>
+                  <h1 className="sf-anim-title" style={{ fontFamily: 'Fraunces, serif', fontSize: '3.25rem', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.1, whiteSpace: 'pre-line' }}>
+                    {template.hero.title}
+                  </h1>
+                  <p className="sf-anim-sub" style={{ fontSize: '1.125rem', color: palette.secondaryText, lineHeight: 1.55, margin: '0.5rem 0 1.25rem' }}>
+                    {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
+                  </p>
+                  <div className="sf-anim-cta" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                    <a
+                      href={template.hero.ctaPrimaryUrl}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.95rem 2rem',
+                        backgroundColor: palette.accent,
+                        color: '#ffffff',
+                        borderRadius: 30,
+                        textDecoration: 'none',
+                        fontWeight: 600,
+                        fontSize: '0.98rem',
+                        transition: 'all 0.2s ease',
+                      }}
+                      className="sf-hero-btn-primary"
+                    >
+                      {template.hero.ctaPrimaryText} &rarr;
+                    </a>
+                    <a
+                      href={template.hero.ctaSecondaryUrl}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.95rem 2rem',
+                        backgroundColor: 'transparent',
+                        color: palette.text,
+                        borderRadius: 30,
+                        border: `1.5px solid ${palette.accent}`,
+                        textDecoration: 'none',
+                        fontWeight: 600,
+                        fontSize: '0.98rem',
+                        transition: 'all 0.2s ease',
+                      }}
+                      className="sf-hero-btn-secondary"
+                    >
+                      {template.hero.ctaSecondaryText}
+                    </a>
+                  </div>
+                </div>
+
+                <div className="sf-hero-right">
+                  {hasAnyHero ? (
+                    <div className="sf-hero-stack-container" style={{ background: palette.surface }}>
+                      <div className="sf-hero-stack">
+                        {imgLeft && (
+                          <div className="sf-hero-card sf-hero-card-left" style={{ background: palette.background }}>
+                            <img src={imgLeft} alt="" className="sf-hero-ambient-zoom" />
+                          </div>
+                        )}
+                        {imgRight && (
+                          <div className="sf-hero-card sf-hero-card-right" style={{ background: palette.background }}>
+                            <img src={imgRight} alt="" className="sf-hero-ambient-zoom" />
+                          </div>
+                        )}
+                        {imgMain && (
+                          <div className="sf-hero-card sf-hero-card-main" style={{ background: palette.background }}>
+                            <img src={imgMain} alt="" className="sf-hero-ambient-zoom" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="sf-hero-placeholder">
+                      <div className="sf-hero-placeholder-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}><LeafIcon size={48} color={palette.accent} /></div>
+                      <p style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 500, color: palette.text }}>Add your hero images</p>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: palette.secondaryText, fontFamily: 'Inter, sans-serif' }}>
+                        Upload 3 images in Store Builder settings to complete the stack
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* TRUST BAR */}
           <div className="sf-trust-bar">
             {template.hero.trustBar.map((item, idx) => (
               <div key={idx} className="sf-trust-item">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1E3A2F' }}>
-                  {renderIcon(item.icon, 20, '#1E3A2F')}
+                <div className="sf-trust-item-marquee">
+                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: palette.accent }}>
+                    {renderIcon(item.icon, 20, palette.accent)}
+                  </div>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 600, color: palette.text, fontFamily: 'Inter, sans-serif' }}>
+                    {item.label}
+                  </span>
                 </div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1E3A2F', fontFamily: 'Inter, sans-serif' }}>
-                  {item.label}
-                </span>
               </div>
             ))}
           </div>
@@ -1514,10 +1864,10 @@ export default function Storefront({ previewData = null }) {
             
             {/* SHOP BY CATEGORY */}
             <section style={{ marginBottom: '6rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
                 {template.categories.eyebrow}
               </span>
-              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 500, color: '#1A271C', margin: '0 0 2rem' }}>
+              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 500, color: palette.text, margin: '0 0 2rem' }}>
                 {template.categories.title}
               </h2>
 
@@ -1526,16 +1876,16 @@ export default function Storefront({ previewData = null }) {
                   const isCustom = store && store.categories !== null && store.categories !== undefined;
                   const items = isCustom ? store.categories : template.categories.items;
                   const dynamicColors = [
-                    { bg: '#1A271C', text: '#EAE5D9' },
-                    { bg: '#EAE5D9', text: '#1A271C' },
-                    { bg: '#8D9B8E', text: '#1E3A2F' },
-                    { bg: '#3D4A3E', text: '#EAE5D9' }
+                    { bg: palette.text, text: palette.surface },
+                    { bg: palette.surface, text: palette.text },
+                    { bg: palette.accent, text: '#ffffff' },
+                    { bg: palette.border, text: palette.text }
                   ];
                   return items.map((item, idx) => {
                     const imageUrl = isCustom ? item.image_url : item.image;
                     const colorIndex = idx % dynamicColors.length;
-                    const fallbackBg = isCustom ? dynamicColors[colorIndex].bg : (item.color || '#EAE5D9');
-                    const catTextColor = imageUrl ? '#ffffff' : (isCustom ? dynamicColors[colorIndex].text : (item.textColor || '#ffffff'));
+                    const fallbackBg = isCustom ? dynamicColors[colorIndex].bg : (item.color || palette.surface);
+                    const catTextColor = imageUrl ? '#ffffff' : (isCustom ? dynamicColors[colorIndex].text : (item.textColor || palette.text));
                     const linkTarget = isCustom ? item.link_target : item.link;
 
                     return (
@@ -1582,14 +1932,14 @@ export default function Storefront({ previewData = null }) {
             <section id="new-arrivals" style={{ marginBottom: '6rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '2.5rem' }}>
                 <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
                     {template.newArrivals.eyebrow}
                   </span>
-                  <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 500, color: '#1A271C', margin: 0 }}>
+                  <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 500, color: palette.text, margin: 0 }}>
                     {template.newArrivals.title}
                   </h2>
                 </div>
-                <a href={template.newArrivals.viewAllUrl} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', fontWeight: 600, color: '#5A8A67', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <a href={template.newArrivals.viewAllUrl} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', fontWeight: 600, color: palette.accent, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                   {template.newArrivals.viewAllText} &rarr;
                 </a>
               </div>
@@ -1610,24 +1960,25 @@ export default function Storefront({ previewData = null }) {
                   });
                 }}
                 currency={currency}
+                palette={palette}
               />
             </section>
 
             {/* BRAND STORY */}
             <section id="brand-story" className="sf-brand-story" style={{ marginBottom: '2rem' }}>
               {/* Left half: Brand Photo */}
-              <div style={{ position: 'relative', width: '100%', aspectRatio: '1.1/1', background: '#F5F3E9', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+              <div style={{ position: 'relative', width: '100%', aspectRatio: '1.1/1', background: palette.surface, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                 {(store.cover_image || template.brandStory.image) ? (
                   <img src={store.cover_image || template.brandStory.image} alt="Brand Story" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <div style={{ textAlign: 'center', color: '#7B907D' }}>
-                    <LeafIcon size={40} color="#7B907D" />
+                  <div style={{ textAlign: 'center', color: palette.secondaryText }}>
+                    <LeafIcon size={40} color={palette.secondaryText} />
                     <p style={{ margin: '0.5rem 0 0', fontWeight: 500, fontSize: '0.9rem' }}>Brand Photo</p>
                   </div>
                 )}
                 {/* Small Optimized Badge */}
                 {template.brandStory.showAiBadge !== false && (
-                  <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: '#EDF3EE', border: '1px solid #C7DACB', color: '#5A8A67', fontSize: '0.65rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <div style={{ position: 'absolute', top: '1rem', left: '1rem', background: palette.surface, border: `1px solid ${palette.border}`, color: palette.accent, fontSize: '0.65rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: 4, letterSpacing: '0.04em', zIndex: 10, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block' }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                     {template.brandStory.aiBadgeText || "SELORA AI OPTIMIZED"}
                   </div>
@@ -1636,16 +1987,16 @@ export default function Storefront({ previewData = null }) {
 
               {/* Right half: Text */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', justifyContent: 'center' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5A8A67', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                   {template.brandStory.eyebrow}
                 </span>
-                <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: '#1A271C', margin: 0, lineHeight: 1.15 }}>
+                <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.15 }}>
                   {template.brandStory.title}
                 </h2>
-                <p style={{ fontSize: '0.95rem', color: '#7B907D', lineHeight: 1.7, margin: '0.5rem 0' }}>
+                <p style={{ fontSize: '0.95rem', color: palette.secondaryText, lineHeight: 1.7, margin: '0.5rem 0' }}>
                   {template.brandStory.subtitle}
                 </p>
-                <a href={template.brandStory.ctaUrl} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.9rem', fontWeight: 600, color: '#5A8A67', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <a href={template.brandStory.ctaUrl} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.9rem', fontWeight: 600, color: palette.accent, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                   {template.brandStory.ctaText} &rarr;
                 </a>
               </div>
@@ -1654,9 +2005,9 @@ export default function Storefront({ previewData = null }) {
           </main>
 
           {/* NEWSLETTER / FOOTER BAND */}
-          <section style={{ backgroundColor: '#1A271C', color: '#ffffff', padding: '5rem 2rem', textAlign: 'center', width: '100%', boxSizing: 'border-box' }} className="sf-newsletter-section">
+          <section style={{ backgroundColor: palette.text, color: '#ffffff', padding: '5rem 2rem', textAlign: 'center', width: '100%', boxSizing: 'border-box' }} className="sf-newsletter-section">
             <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#82A996', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 {template.newsletter.eyebrow}
               </span>
               <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.2rem', fontWeight: 500, color: '#ffffff', margin: 0 }}>
@@ -1688,8 +2039,8 @@ export default function Storefront({ previewData = null }) {
                   style={{
                     padding: '0.85rem 2rem',
                     borderRadius: 8,
-                    background: '#82A996',
-                    color: '#1A271C',
+                    background: palette.accent,
+                    color: '#ffffff',
                     border: 'none',
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -1708,15 +2059,15 @@ export default function Storefront({ previewData = null }) {
       )}
 
       {/* Platform Attribution Footer */}
-      <footer style={{ borderTop: '1px solid #E4EBE5', padding: '2.5rem 1.5rem', textAlign: 'center', backgroundColor: '#F8FAF8' }}>
-        <p style={{ fontSize: '0.8rem', color: '#7B907D', margin: '0 0 0.5rem' }}>
+      <footer style={{ borderTop: `1px solid ${palette.border}`, padding: '2.5rem 1.5rem', textAlign: 'center', backgroundColor: palette.background }}>
+        <p style={{ fontSize: '0.8rem', color: palette.secondaryText, margin: '0 0 0.5rem' }}>
           &copy; {new Date().getFullYear()} {store.name || "Selora Store"}. All rights reserved. &bull;{' '}
-          <Link to={`/store/${handle}/orders`} style={{ color: '#7B907D', textDecoration: 'none', fontWeight: 500 }}>
+          <Link to={`/store/${handle}/orders`} style={{ color: palette.secondaryText, textDecoration: 'none', fontWeight: 500 }}>
             My Orders
           </Link>
         </p>
-        <p style={{ fontSize: '0.72rem', color: '#9AB49D', margin: 0 }}>
-          Powered by <a href="/" style={{ color: '#7B907D', textDecoration: 'none', fontWeight: 600 }}>Selora AI</a>
+        <p style={{ fontSize: '0.72rem', color: palette.secondaryText, opacity: 0.8, margin: 0 }}>
+          Powered by <a href="/" style={{ color: palette.secondaryText, textDecoration: 'none', fontWeight: 600 }}>Selora AI</a>
         </p>
       </footer>
 
@@ -1732,9 +2083,9 @@ export default function Storefront({ previewData = null }) {
             setPaymentStatus(null);
           }} />
           <div className="sf-drawer">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #E4EBE5', paddingBottom: '1rem', flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: `1px solid ${palette.border}`, paddingBottom: '1rem', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '.65rem' }}>
-                <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', margin: 0, color: '#1A271C' }}>Your Bag</h2>
+                <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', margin: 0, color: palette.text }}>Your Bag</h2>
                 <span style={{
                   fontSize: '.65rem',
                   fontWeight: 700,
@@ -1742,9 +2093,9 @@ export default function Storefront({ previewData = null }) {
                   letterSpacing: '.06em',
                   padding: '.2rem .5rem',
                   borderRadius: 20,
-                  background: 'rgba(153,102,255,0.12)',
-                  color: '#9966FF',
-                  border: '1px solid rgba(153,102,255,0.3)',
+                  background: 'rgba(176,137,104,0.12)',
+                  color: palette.accent,
+                  border: `1px solid ${palette.border}`,
                   lineHeight: 1.4
                 }}>🛠 Devnet Demo</span>
               </div>
@@ -1755,7 +2106,7 @@ export default function Storefront({ previewData = null }) {
                   setCheckoutDetails(null);
                   setPaymentStatus(null);
                 }}
-                style={{ background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', color: '#6B7280' }}
+                style={{ background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', color: palette.secondaryText }}
               >
                 X
               </button>
@@ -1763,32 +2114,32 @@ export default function Storefront({ previewData = null }) {
 
             {paymentStatus === 'confirmed' ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', textAlign: 'center', flex: 1, overflowY: 'auto' }} className="no-scrollbar">
-                <div style={{ color: 'var(--g)', marginBottom: '1.25rem', display: 'flex', justifyContent: 'center' }}>
+                <div style={{ color: palette.accent, marginBottom: '1.25rem', display: 'flex', justifyContent: 'center' }}>
                   <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 </div>
-                <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.4rem', color: 'var(--text-primary)', margin: '0 0 .5rem' }}>Payment Successful!</h3>
-                <p style={{ fontSize: '.85rem', color: 'var(--text-muted)', margin: '0 0 1.5rem', lineHeight: 1.4 }}>
+                <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.4rem', color: palette.text, margin: '0 0 .5rem' }}>Payment Successful!</h3>
+                <p style={{ fontSize: '.85rem', color: palette.secondaryText, margin: '0 0 1.5rem', lineHeight: 1.4 }}>
                   Your order is being processed. You'll receive updates on your order status.
                 </p>
 
                 {/* Order Summary box */}
-                <div style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem', background: 'var(--bg-2)', marginBottom: '1.5rem', textAlign: 'left' }}>
-                  <p style={{ fontSize: '.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', margin: '0 0 .5rem' }}>Order Details</p>
-                  <p style={{ fontSize: '.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 .75rem' }}>
+                <div style={{ width: '100%', border: `1px solid ${palette.border}`, borderRadius: 12, padding: '1rem', background: palette.surface, marginBottom: '1.5rem', textAlign: 'left' }}>
+                  <p style={{ fontSize: '.75rem', color: palette.secondaryText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', margin: '0 0 .5rem' }}>Order Details</p>
+                  <p style={{ fontSize: '.85rem', fontWeight: 600, color: palette.text, margin: '0 0 .75rem' }}>
                     Order ID: <span style={{ fontFamily: 'monospace', fontWeight: 400 }}>#{checkoutDetails?.order_id?.slice(0, 8) || '...'}</span>
                   </p>
                   
                   {/* Items purchased list */}
-                  <div style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '.75rem 0', margin: '.75rem 0' }}>
+                  <div style={{ borderTop: `1px solid ${palette.border}`, borderBottom: `1px solid ${palette.border}`, padding: '.75rem 0', margin: '.75rem 0' }}>
                     {purchasedItems.map(item => (
-                      <div key={item.product.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', marginBottom: '.4rem', color: 'var(--text-primary)' }}>
-                        <span style={{ fontWeight: 500 }}>{item.product.title} <span style={{ color: 'var(--text-muted)' }}>x{item.quantity}</span></span>
+                      <div key={item.product.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', marginBottom: '.4rem', color: palette.text }}>
+                        <span style={{ fontWeight: 500 }}>{item.product.title} <span style={{ color: palette.secondaryText }}>x{item.quantity}</span></span>
                         <span style={{ fontWeight: 600 }}>{currency} {(item.product.price * item.quantity).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '.9rem', color: 'var(--text-primary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '.9rem', color: palette.text }}>
                     <span>Total Paid</span>
                     <span>{currency} {Number(checkoutDetails?.amount_usdc || 0).toFixed(2)} USDC</span>
                   </div>
@@ -1796,13 +2147,13 @@ export default function Storefront({ previewData = null }) {
 
                 {/* Trust signal / Explorer link */}
                 {txSignature && (
-                  <div style={{ marginBottom: '1.5rem', fontSize: '.8rem', color: 'var(--text-muted)' }}>
+                  <div style={{ marginBottom: '1.5rem', fontSize: '.8rem', color: palette.secondaryText }}>
                     <span>Transaction signature: </span>
                     <a 
                       href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      style={{ color: 'var(--g)', fontWeight: 600, textDecoration: 'none', wordBreak: 'break-all', display: 'block', marginTop: '.25rem' }}
+                      style={{ color: palette.accent, fontWeight: 600, textDecoration: 'none', wordBreak: 'break-all', display: 'block', marginTop: '.25rem' }}
                     >
                       {txSignature.slice(0, 8)}...{txSignature.slice(-8)} ↗
                     </a>
@@ -1817,17 +2168,17 @@ export default function Storefront({ previewData = null }) {
                     setPurchasedItems([]);
                     setTxSignature('');
                   }}
-                  style={{ width: '100%', padding: '.85rem', background: 'var(--g)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', transition: 'background .2s' }}
+                  style={{ width: '100%', padding: '.85rem', background: palette.accent, color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', transition: 'background .2s' }}
                 >
                   Continue Shopping
                 </button>
               </div>
             ) : cart.length === 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center', color: 'var(--text-muted)' }}>
-                <div style={{ color: '#5A8A67', marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center', color: palette.secondaryText }}>
+                <div style={{ color: palette.accent, marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
                 </div>
-                <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '.25rem' }}>Your bag is empty</p>
+                <p style={{ fontWeight: 600, color: palette.text, marginBottom: '.25rem' }}>Your bag is empty</p>
                 <p style={{ fontSize: '.85rem', margin: 0 }}>Browse the collection and add some items to get started.</p>
               </div>
             ) : (
@@ -1835,34 +2186,34 @@ export default function Storefront({ previewData = null }) {
                 {/* Cart Items List */}
                 <div style={{ flex: 1, overflowY: 'auto', paddingRight: '.25rem' }} className="no-scrollbar">
                   {cart.map(item => (
-                    <div key={item.product.id} style={{ display: 'flex', gap: '1rem', padding: '1rem 0', borderBottom: '1px solid #E4EBE5' }}>
+                    <div key={item.product.id} style={{ display: 'flex', gap: '1rem', padding: '1rem 0', borderBottom: `1px solid ${palette.border}` }}>
                       {item.product.images?.[0] ? (
                         <img src={item.product.images[0]} alt={item.product.title} style={{ width: 70, height: 85, objectFit: 'cover', borderRadius: 8 }} />
                       ) : (
-                        <div style={{ width: 70, height: 85, background: 'var(--bg-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, color: '#5A8A67' }}>
+                        <div style={{ width: 70, height: 85, background: palette.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, color: palette.accent }}>
                           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                         </div>
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 600, fontSize: '.9rem', margin: '0 0 .25rem', color: '#1A271C', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product.title}</p>
-                        <p style={{ fontSize: '.85rem', color: 'var(--g)', fontWeight: 700, margin: '0 0 .5rem' }}>{currency} {Number(item.product.price).toFixed(2)}</p>
+                        <p style={{ fontWeight: 600, fontSize: '.9rem', margin: '0 0 .25rem', color: palette.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.product.title}</p>
+                        <p style={{ fontSize: '.85rem', color: palette.accent, fontWeight: 700, margin: '0 0 .5rem' }}>{currency} {Number(item.product.price).toFixed(2)}</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem' }}>
                           <button 
                             onClick={() => {
                               setCart(prev => prev.map(x => x.product.id === item.product.id ? { ...x, quantity: Math.max(1, x.quantity - 1) } : x));
                             }}
                             disabled={paymentStatus === 'pending'}
-                            style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid #D1D5DB', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.9rem', color: '#1A271C' }}
+                            style={{ width: 24, height: 24, borderRadius: '50%', border: `1px solid ${palette.border}`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.9rem', color: palette.text }}
                           >
                             -
                           </button>
-                          <span style={{ fontSize: '.85rem', fontWeight: 600, color: '#1A271C' }}>{item.quantity}</span>
+                          <span style={{ fontSize: '.85rem', fontWeight: 600, color: palette.text }}>{item.quantity}</span>
                           <button 
                             onClick={() => {
                               setCart(prev => prev.map(x => x.product.id === item.product.id ? { ...x, quantity: x.quantity + 1 } : x));
                             }}
                             disabled={paymentStatus === 'pending'}
-                            style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid #D1D5DB', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.9rem', color: '#1A271C' }}
+                            style={{ width: 24, height: 24, borderRadius: '50%', border: `1px solid ${palette.border}`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.9rem', color: palette.text }}
                           >
                             +
                           </button>
@@ -1882,8 +2233,8 @@ export default function Storefront({ previewData = null }) {
                 </div>
 
                 {/* Checkout Summary & Action */}
-                <div style={{ borderTop: '1px solid #E4EBE5', paddingTop: '1.25rem', background: '#ffffff', marginTop: 'auto', flexShrink: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: '1.05rem', marginBottom: '1.25rem', color: '#1A271C' }}>
+                <div style={{ borderTop: `1px solid ${palette.border}`, paddingTop: '1.25rem', background: palette.background, marginTop: 'auto', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: '1.05rem', marginBottom: '1.25rem', color: palette.text }}>
                     <span>Total USD</span>
                     <span>{currency} {cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0).toFixed(2)}</span>
                   </div>
@@ -1901,7 +2252,7 @@ export default function Storefront({ previewData = null }) {
                       style={{
                         width: '100%',
                         padding: '1rem',
-                        background: 'var(--g)',
+                        background: palette.accent,
                         color: '#fff',
                         border: 'none',
                         borderRadius: 10,
@@ -1970,7 +2321,7 @@ export default function Storefront({ previewData = null }) {
                               style={{
                                 width: '100%',
                                 padding: '.75rem',
-                                background: '#1A271C',
+                                background: palette.accent,
                                 color: '#fff',
                                 border: 'none',
                                 borderRadius: 8,
@@ -2010,7 +2361,7 @@ export default function Storefront({ previewData = null }) {
                                 style={{
                                   width: '100%',
                                   padding: '.75rem',
-                                  background: '#1A271C',
+                                  background: palette.accent,
                                   color: '#fff',
                                   border: 'none',
                                   borderRadius: 8,

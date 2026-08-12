@@ -139,27 +139,27 @@ export default function StorefrontOrders() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--sf-bg)', fontFamily: 'Inter, sans-serif' }} className={theme === 'dark' ? 'dark' : ''} data-theme={theme}>
       <style>{`
         :root, [data-theme='light'] {
-          --sf-bg: #F8FAF8;
-          --sf-text: #2E3D30;
-          --sf-text-primary: #1A271C;
-          --sf-text-muted: #7B907D;
-          --sf-border: #E4EBE5;
-          --sf-surface: #ffffff;
-          --sf-primary: #5A8A67;
-          --sf-primary-hover: #6d9380;
-          --sf-secondary: #EDF3EE;
-          --sf-secondary-border: #C7DACB;
-          --sf-bg-dim: rgba(26, 39, 28, 0.25);
-          --sf-nav-bg: rgba(248, 250, 248, 0.95);
-          --sf-footer-bg: #F8FAF8;
-          --sf-card-shadow: 0 12px 24px rgba(26, 39, 28, 0.08);
+          --sf-bg: #F6F1E8;
+          --sf-text: #3D362B;
+          --sf-text-primary: #3D362B;
+          --sf-text-muted: #8A8072;
+          --sf-border: #E4DCD0;
+          --sf-surface: #EFE6D6;
+          --sf-primary: #B08968;
+          --sf-primary-hover: #9A7556;
+          --sf-secondary: #EFE6D6;
+          --sf-secondary-border: #E4DCD0;
+          --sf-bg-dim: rgba(61, 54, 43, 0.25);
+          --sf-nav-bg: rgba(246, 241, 232, 0.95);
+          --sf-footer-bg: #F6F1E8;
+          --sf-card-shadow: 0 12px 24px rgba(61, 54, 43, 0.08);
 
           /* Global index.css overrides inside light storefront */
-          --text-primary: #1A271C;
-          --text-muted: #7B907D;
-          --border: #E4EBE5;
-          --bg-2: #EEF4EF;
-          --g: #5A8A67;
+          --text-primary: #3D362B;
+          --text-muted: #8A8072;
+          --border: #E4DCD0;
+          --bg-2: #EFE6D6;
+          --g: #B08968;
         }
 
         [data-theme='dark'] {
