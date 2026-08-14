@@ -372,7 +372,7 @@ function ProductGrid({ products, isSample = false, onProductClick, onAddToCart, 
   );
 }
 
-export default function Storefront({ previewData = null }) {
+export default function Storefront({ previewData = null, editMode = false, selectedSection = null, onSectionClick = null }) {
   const { handle, productId } = useParams()
   const navigate = useNavigate()
   const { openAuthModal } = useAppContext()
@@ -875,7 +875,7 @@ export default function Storefront({ previewData = null }) {
     </div>
   )
 
-  const currency = store.currency || 'USD'
+  const currency = store?.currency || 'USD'
   const template = deepMerge(defaultTemplateData, store?.template_data)
   const palette = template.palette || defaultTemplateData.palette
 
@@ -884,6 +884,11 @@ export default function Storefront({ previewData = null }) {
   const imgRight = store.hero_image_right
   const hasAnyHero = !!(imgMain || imgLeft || imgRight)
   const heroLayout = template.hero?.layout || 'minimal'
+
+  // In edit mode the section wrappers own the click (they select a section for
+  // AI editing), so interactive children must not bubble up into them.
+  // undefined on the public storefront — no handler is attached at all.
+  const stopInEditMode = editMode ? (e) => e.stopPropagation() : undefined
 
   return (
     <div style={{ minHeight: '100vh', background: palette.background, fontFamily: 'Inter, sans-serif', color: palette.text }}>
@@ -919,6 +924,46 @@ export default function Storefront({ previewData = null }) {
         }
         .sf-newsletter-btn:hover {
           opacity: 0.9 !important;
+        }
+
+        /* Edit Mode Overlays */
+        .sf-editable-section {
+          position: relative !important;
+          cursor: pointer !important;
+          transition: outline 0.2s ease, box-shadow 0.2s ease !important;
+        }
+        .sf-editable-section:hover {
+          outline: 2px dashed ${palette.accent} !important;
+          outline-offset: -2px !important;
+        }
+        .sf-editable-section.selected {
+          outline: 2px solid ${palette.accent} !important;
+          outline-offset: -2px !important;
+          box-shadow: 0 0 0 4px ${palette.accent}25 !important;
+        }
+        .sf-edit-badge {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          background: ${palette.accent};
+          color: #ffffff;
+          font-size: 0.72rem;
+          font-weight: 700;
+          padding: 0.35rem 0.75rem;
+          border-radius: 20px;
+          letter-spacing: 0.03em;
+          z-index: 50;
+          box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.2s ease;
+        }
+        .sf-editable-section:hover .sf-edit-badge,
+        .sf-editable-section.selected .sf-edit-badge {
+          opacity: 1 !important;
         }
         
         /* Grid definitions & Responsive breakpoints */
@@ -1588,10 +1633,6 @@ export default function Storefront({ previewData = null }) {
                         onAddToCart={(p) => {
                           triggerEvent(p.id, 'add_to_cart')
                           setCart(prev => {
-                            const existing = prev.find(item => item.product.id === p.id)
-                            if (existing) {
-                              return prev.map(item => item.product.id === p.id ? { ...item, quantity: item.quantity + 1 } : item)
-                            }
                             return [...prev, { product: p, quantity: 1 }]
                           })
                         }}
@@ -1607,7 +1648,13 @@ export default function Storefront({ previewData = null }) {
       ) : (
         <>
           {/* DYNAMIC HERO SECTION VARIANTS (minimal, single, stack) */}
-          {(() => {
+          <div
+            className={editMode ? `sf-editable-section ${selectedSection === 'hero' ? 'selected' : ''}` : ''}
+            onClick={() => editMode && onSectionClick && onSectionClick('hero')}
+            style={{ position: 'relative' }}
+          >
+            {editMode && <div className="sf-edit-badge">Edit Hero Section</div>}
+            {(() => {
             const heroImg = imgMain || template.hero.image
 
             if (heroLayout === 'minimal') {
@@ -1653,6 +1700,7 @@ export default function Storefront({ previewData = null }) {
                         transition: 'all 0.2s ease',
                         boxShadow: '0 4px 14px rgba(176,137,104,0.3)'
                       }}
+                      onClick={stopInEditMode}
                       className="sf-hero-btn-primary"
                     >
                       {template.hero.ctaPrimaryText} &rarr;
@@ -1663,230 +1711,116 @@ export default function Storefront({ previewData = null }) {
             }
 
             if (heroLayout === 'single') {
-              // Graceful fallback when 0 hero images are set
-              if (!heroImg) {
-                return (
-                  <div
-                    className="sf-hero-section sf-hero-single-fallback"
-                    style={{
-                      backgroundColor: palette.surface,
-                      color: palette.text,
-                      padding: '4rem 2rem',
-                      textAlign: 'center',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '1.5rem',
-                      borderBottom: `1px solid ${palette.border}`
-                    }}
-                  >
-                    <span className="sf-anim-eyebrow" style={{ fontSize: '0.8rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                      {template.hero.eyebrow}
-                    </span>
-                    <h1 className="sf-anim-title" style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2.75rem, 5.5vw, 4rem)', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.1, maxWidth: 860, whiteSpace: 'pre-line' }}>
-                      {template.hero.title}
-                    </h1>
-                    <p className="sf-anim-sub" style={{ fontSize: '1.15rem', color: palette.secondaryText, lineHeight: 1.55, margin: 0, maxWidth: 640 }}>
-                      {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
-                    </p>
-                    <div className="sf-anim-cta" style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center' }}>
-                      <a
-                        href={template.hero.ctaPrimaryUrl}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          padding: '0.95rem 2.25rem',
-                          backgroundColor: palette.accent,
-                          color: '#ffffff',
-                          borderRadius: 30,
-                          textDecoration: 'none',
-                          fontWeight: 600,
-                          fontSize: '0.98rem',
-                          transition: 'all 0.2s ease',
-                          boxShadow: '0 4px 14px rgba(176,137,104,0.3)'
-                        }}
-                        className="sf-hero-btn-primary"
-                      >
-                        {template.hero.ctaPrimaryText} &rarr;
-                      </a>
-                      {template.hero.ctaSecondaryText && (
-                        <a
-                          href={template.hero.ctaSecondaryUrl}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.95rem 2.25rem',
-                            backgroundColor: 'transparent',
-                            color: palette.text,
-                            borderRadius: 30,
-                            border: `1.5px solid ${palette.accent}`,
-                            textDecoration: 'none',
-                            fontWeight: 600,
-                            fontSize: '0.98rem',
-                            transition: 'all 0.2s ease'
-                          }}
-                          className="sf-hero-btn-secondary"
-                        >
-                          {template.hero.ctaSecondaryText}
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                )
-              }
-
               return (
                 <div className="sf-hero-section sf-hero-single-layout">
                   <div className="sf-hero-left">
-                    <span className="sf-anim-eyebrow" style={{ fontSize: '0.8rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                    <span className="sf-anim-eyebrow" style={{ fontSize: '0.78rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                       {template.hero.eyebrow}
                     </span>
-                    <h1 className="sf-anim-title" style={{ fontFamily: 'Fraunces, serif', fontSize: '3.25rem', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.1, whiteSpace: 'pre-line' }}>
+                    <h1 className="sf-anim-title" style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2.2rem, 4vw, 3.25rem)', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.15, whiteSpace: 'pre-line' }}>
                       {template.hero.title}
                     </h1>
-                    <p className="sf-anim-sub" style={{ fontSize: '1.125rem', color: palette.secondaryText, lineHeight: 1.55, margin: '0.5rem 0 1.25rem' }}>
+                    <p className="sf-anim-sub" style={{ fontSize: '1.05rem', color: palette.secondaryText, lineHeight: 1.6, margin: 0, maxWidth: 520 }}>
                       {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
                     </p>
-                    <div className="sf-anim-cta" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div className="sf-anim-cta" style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
                       <a
                         href={template.hero.ctaPrimaryUrl}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '0.5rem',
-                          padding: '0.95rem 2rem',
+                          padding: '0.9rem 2rem',
                           backgroundColor: palette.accent,
                           color: '#ffffff',
                           borderRadius: 30,
                           textDecoration: 'none',
                           fontWeight: 600,
-                          fontSize: '0.98rem',
+                          fontSize: '0.95rem',
                           transition: 'all 0.2s ease',
+                          boxShadow: '0 4px 14px rgba(176,137,104,0.3)'
                         }}
+                        onClick={stopInEditMode}
                         className="sf-hero-btn-primary"
                       >
                         {template.hero.ctaPrimaryText} &rarr;
                       </a>
-                      {template.hero.ctaSecondaryText && (
-                        <a
-                          href={template.hero.ctaSecondaryUrl}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            padding: '0.95rem 2rem',
-                            backgroundColor: 'transparent',
-                            color: palette.text,
-                            borderRadius: 30,
-                            border: `1.5px solid ${palette.accent}`,
-                            textDecoration: 'none',
-                            fontWeight: 600,
-                            fontSize: '0.98rem',
-                            transition: 'all 0.2s ease',
-                          }}
-                          className="sf-hero-btn-secondary"
-                        >
-                          {template.hero.ctaSecondaryText}
-                        </a>
-                      )}
                     </div>
                   </div>
-
                   <div className="sf-hero-right">
-                    <img
-                      src={heroImg}
-                      alt={template.hero.title}
-                      className="sf-hero-ambient-zoom"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                    />
+                    <div className="sf-hero-image-container">
+                      <img
+                        src={heroImg}
+                        alt="Hero"
+                        className="sf-hero-image sf-hero-ambient-zoom"
+                      />
+                    </div>
                   </div>
                 </div>
               )
             }
 
-            // Default 'stack' layout
+            // Fallback: stack layout
             return (
               <div className="sf-hero-section sf-hero-stack-layout">
                 <div className="sf-hero-left">
-                  <span className="sf-anim-eyebrow" style={{ fontSize: '0.8rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  <span className="sf-anim-eyebrow" style={{ fontSize: '0.78rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                     {template.hero.eyebrow}
                   </span>
-                  <h1 className="sf-anim-title" style={{ fontFamily: 'Fraunces, serif', fontSize: '3.25rem', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.1, whiteSpace: 'pre-line' }}>
+                  <h1 className="sf-anim-title" style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2.2rem, 4vw, 3.25rem)', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.15, whiteSpace: 'pre-line' }}>
                     {template.hero.title}
                   </h1>
-                  <p className="sf-anim-sub" style={{ fontSize: '1.125rem', color: palette.secondaryText, lineHeight: 1.55, margin: '0.5rem 0 1.25rem' }}>
+                  <p className="sf-anim-sub" style={{ fontSize: '1.05rem', color: palette.secondaryText, lineHeight: 1.6, margin: 0, maxWidth: 520 }}>
                     {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
                   </p>
-                  <div className="sf-anim-cta" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div className="sf-anim-cta" style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
                     <a
                       href={template.hero.ctaPrimaryUrl}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '0.5rem',
-                        padding: '0.95rem 2rem',
+                        padding: '0.9rem 2rem',
                         backgroundColor: palette.accent,
                         color: '#ffffff',
                         borderRadius: 30,
                         textDecoration: 'none',
                         fontWeight: 600,
-                        fontSize: '0.98rem',
+                        fontSize: '0.95rem',
                         transition: 'all 0.2s ease',
+                        boxShadow: '0 4px 14px rgba(176,137,104,0.3)'
                       }}
+                      onClick={stopInEditMode}
                       className="sf-hero-btn-primary"
                     >
                       {template.hero.ctaPrimaryText} &rarr;
                     </a>
-                    <a
-                      href={template.hero.ctaSecondaryUrl}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.95rem 2rem',
-                        backgroundColor: 'transparent',
-                        color: palette.text,
-                        borderRadius: 30,
-                        border: `1.5px solid ${palette.accent}`,
-                        textDecoration: 'none',
-                        fontWeight: 600,
-                        fontSize: '0.98rem',
-                        transition: 'all 0.2s ease',
-                      }}
-                      className="sf-hero-btn-secondary"
-                    >
-                      {template.hero.ctaSecondaryText}
-                    </a>
                   </div>
                 </div>
-
                 <div className="sf-hero-right">
                   {hasAnyHero ? (
-                    <div className="sf-hero-stack-container" style={{ background: palette.surface }}>
+                    <div className="sf-hero-stack-container">
                       <div className="sf-hero-stack">
                         {imgLeft && (
-                          <div className="sf-hero-card sf-hero-card-left" style={{ background: palette.background }}>
-                            <img src={imgLeft} alt="" className="sf-hero-ambient-zoom" />
+                          <div className="sf-hero-card sf-hero-card-left">
+                            <img src={imgLeft} alt="Hero Left" />
                           </div>
                         )}
                         {imgRight && (
-                          <div className="sf-hero-card sf-hero-card-right" style={{ background: palette.background }}>
-                            <img src={imgRight} alt="" className="sf-hero-ambient-zoom" />
+                          <div className="sf-hero-card sf-hero-card-right">
+                            <img src={imgRight} alt="Hero Right" />
                           </div>
                         )}
                         {imgMain && (
-                          <div className="sf-hero-card sf-hero-card-main" style={{ background: palette.background }}>
-                            <img src={imgMain} alt="" className="sf-hero-ambient-zoom" />
+                          <div className="sf-hero-card sf-hero-card-main">
+                            <img src={imgMain} alt="Hero Main" />
                           </div>
                         )}
                       </div>
                     </div>
                   ) : (
                     <div className="sf-hero-placeholder">
-                      <div className="sf-hero-placeholder-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}><LeafIcon size={48} color={palette.accent} /></div>
+                      <div className="sf-hero-placeholder-icon">✦</div>
                       <p style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 500, color: palette.text }}>Add your hero images</p>
                       <p style={{ margin: 0, fontSize: '0.8rem', color: palette.secondaryText, fontFamily: 'Inter, sans-serif' }}>
                         Upload 3 images in Store Builder settings to complete the stack
@@ -1897,9 +1831,15 @@ export default function Storefront({ previewData = null }) {
               </div>
             )
           })()}
+          </div>
 
           {/* TRUST BAR */}
-          <div className="sf-trust-bar">
+          <div
+            className={`sf-trust-bar ${editMode ? 'sf-editable-section' : ''} ${selectedSection === 'trustBar' ? 'selected' : ''}`}
+            onClick={() => editMode && onSectionClick && onSectionClick('trustBar')}
+            style={{ position: 'relative' }}
+          >
+            {editMode && <div className="sf-edit-badge">Edit Trust Bar</div>}
             {template.hero.trustBar.map((item, idx) => (
               <div key={idx} className="sf-trust-item">
                 <div className="sf-trust-item-marquee">
@@ -1918,7 +1858,12 @@ export default function Storefront({ previewData = null }) {
           <main style={{ maxWidth: 1200, margin: '0 auto', padding: '5rem 1.5rem' }}>
             
             {/* SHOP BY CATEGORY */}
-            <section style={{ marginBottom: '6rem' }}>
+            <section
+              className={editMode ? `sf-editable-section ${selectedSection === 'categories' ? 'selected' : ''}` : ''}
+              onClick={() => editMode && onSectionClick && onSectionClick('categories')}
+              style={{ marginBottom: '6rem', position: 'relative' }}
+            >
+              {editMode && <div className="sf-edit-badge">Edit Categories</div>}
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
                 {template.categories.eyebrow}
               </span>
@@ -1946,6 +1891,7 @@ export default function Storefront({ previewData = null }) {
                     return (
                       <a
                         key={item.id || idx}
+                        onClick={stopInEditMode}
                         href={linkTarget || '#'}
                         style={{
                           backgroundColor: fallbackBg,
@@ -2020,7 +1966,13 @@ export default function Storefront({ previewData = null }) {
             </section>
 
             {/* BRAND STORY */}
-            <section id="brand-story" className="sf-brand-story" style={{ marginBottom: '2rem' }}>
+            <section
+              id="brand-story"
+              className={`sf-brand-story ${editMode ? 'sf-editable-section' : ''} ${selectedSection === 'brandStory' ? 'selected' : ''}`}
+              onClick={() => editMode && onSectionClick && onSectionClick('brandStory')}
+              style={{ marginBottom: '2rem', position: 'relative' }}
+            >
+              {editMode && <div className="sf-edit-badge">Edit Brand Story</div>}
               {/* Left half: Brand Photo */}
               <div style={{ position: 'relative', width: '100%', aspectRatio: '1.1/1', background: palette.surface, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                 {(store.cover_image || template.brandStory.image) ? (
@@ -2051,7 +2003,7 @@ export default function Storefront({ previewData = null }) {
                 <p style={{ fontSize: '0.95rem', color: palette.secondaryText, lineHeight: 1.7, margin: '0.5rem 0' }}>
                   {template.brandStory.subtitle}
                 </p>
-                <a href={template.brandStory.ctaUrl} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.9rem', fontWeight: 600, color: palette.accent, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <a href={template.brandStory.ctaUrl} onClick={stopInEditMode} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.9rem', fontWeight: 600, color: palette.accent, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                   {template.brandStory.ctaText} &rarr;
                 </a>
               </div>
@@ -2060,7 +2012,12 @@ export default function Storefront({ previewData = null }) {
           </main>
 
           {/* NEWSLETTER / FOOTER BAND */}
-          <section style={{ backgroundColor: palette.text, color: '#ffffff', padding: '5rem 2rem', textAlign: 'center', width: '100%', boxSizing: 'border-box' }} className="sf-newsletter-section">
+          <section
+            style={{ backgroundColor: palette.text, color: '#ffffff', padding: '5rem 2rem', textAlign: 'center', width: '100%', boxSizing: 'border-box', position: 'relative' }}
+            className={`sf-newsletter-section ${editMode ? 'sf-editable-section' : ''} ${selectedSection === 'newsletter' ? 'selected' : ''}`}
+            onClick={() => editMode && onSectionClick && onSectionClick('newsletter')}
+          >
+            {editMode && <div className="sf-edit-badge">Edit Newsletter</div>}
             <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 {template.newsletter.eyebrow}
@@ -2087,6 +2044,7 @@ export default function Storefront({ previewData = null }) {
                     fontSize: '0.9rem',
                     outline: 'none',
                   }}
+                  onClick={stopInEditMode}
                   className="sf-newsletter-input"
                 />
                 <button
@@ -2103,6 +2061,7 @@ export default function Storefront({ previewData = null }) {
                     fontSize: '0.9rem',
                     transition: 'background-color 0.2s',
                   }}
+                  onClick={stopInEditMode}
                   className="sf-newsletter-btn"
                 >
                   {template.newsletter.buttonText}

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { ChatProvider } from './lib/ChatContext'
+import { StoreEditorProvider } from './lib/StoreEditorContext'
 import { AppProvider, useAppContext } from './lib/AppContext'
 import { usePrivy } from '@privy-io/react-auth'
 import ChatWidget from './components/ChatWidget'
@@ -139,6 +140,7 @@ export default function App() {
     <PrivyProviderWrapper>
       <AppProvider>
         <ChatProvider>
+          <StoreEditorProvider>
           <BrowserRouter>
             <Routes>
               {/* Public */}
@@ -181,6 +183,7 @@ export default function App() {
             <GlobalConnectStoreModal />
             <GlobalChatWidget />
           </BrowserRouter>
+          </StoreEditorProvider>
         </ChatProvider>
       </AppProvider>
     </PrivyProviderWrapper>

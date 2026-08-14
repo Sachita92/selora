@@ -643,12 +643,411 @@ class ChatMessage(BaseModel):
     role: str       # "user" or "assistant"
     content: str
 
+
+class EditingContext(BaseModel):
+    """Present only when the seller is editing a specific storefront section via the agent panel."""
+    section: str  # 'hero' | 'trustBar' | 'categories' | 'brandStory' | 'newsletter'
+    current_template_data: dict = {}
+    # Seller-managed categories live in the top-level selora_stores.categories
+    # column, NOT in template_data — the storefront renders that column whenever
+    # it is set. The categories section edits this instead.
+    current_categories: Optional[List] = None
+
+
 class ChatRequest(BaseModel):
     message: str
     session_id: str
     history: List[ChatMessage] = []
     is_guest: Optional[bool] = False
     confirm_delete: Optional[bool] = False  # True when user explicitly confirms a pending delete
+    editing_context: Optional[EditingContext] = None  # Present only for section-edit flows
+
+
+# ── Section Editor: allowed fields per section ────────────────────────────────
+# These are the ONLY top-level keys (relative to template_data.{section}) that
+# the AI is permitted to propose changes to.  Anything outside this set is
+# stripped by validate_section_patch() before the response is returned.
+SECTION_SCHEMAS: dict[str, list[str]] = {
+    "hero": [
+        "layout", "eyebrow", "title", "subtitle",
+        "ctaPrimaryText", "ctaPrimaryUrl",
+        "ctaSecondaryText", "ctaSecondaryUrl",
+        "image",
+        # NOTE: trustBar is exposed as its own selectable UI section, so it
+        # is NOT listed here — it gets its own entry below.
+    ],
+    "trustBar": [
+        # Scoped to hero.trustBar[] — the array of trust-bar items only.
+        # The patch must be { "hero": { "trustBar": [...] } }
+        "trustBar",
+    ],
+    # Scoped to the top-level selora_stores.categories column (see SECTION_TARGETS).
+    # The patch must be { "categories": [ ...full updated array... ] }
+    "categories": ["categories"],
+    "brandStory": [
+        "eyebrow", "title", "subtitle",
+        "ctaText", "ctaUrl",
+        "aiBadgeText", "showAiBadge",
+    ],
+    "newsletter": [
+        "eyebrow", "title", "subtitle",
+        "buttonText", "inputPlaceholder",
+    ],
+}
+
+# Which store record a section's patch is applied to.
+#   "template_data" -> deep-merged into selora_stores.template_data (the default)
+#   "store"         -> written to a top-level selora_stores column
+# Only the columns named in SECTION_SCHEMAS for a "store"-target section may be
+# touched; everything else on the store record stays out of reach.
+SECTION_TARGETS: dict[str, str] = {
+    "hero": "template_data",
+    "trustBar": "template_data",
+    "categories": "store",
+    "brandStory": "template_data",
+    "newsletter": "template_data",
+}
+
+# Per-item field allowlist for sections whose patch is an array of objects.
+# Any other key on an item is stripped before the proposal is returned.
+SECTION_ITEM_SCHEMAS: dict[str, list[str]] = {
+    "categories": ["id", "name", "image_url", "link_target"],
+}
+
+# Fields that are ABSOLUTELY FORBIDDEN in any patch, regardless of section.
+# If the model tries to include any of these, it gets stripped + a warning is logged.
+_FORBIDDEN_PATCH_FIELDS = {
+    "payout_wallet_address", "checkout", "payment", "handle",
+    "user_id", "is_public", "access_token", "webhook_secret",
+    "stripe_account_id", "subscription_plan", "subscription_status",
+}
+
+
+def validate_section_patch(section: str, patch: dict) -> dict:
+    """
+    Strip any keys from `patch` that are not allowed for the given section.
+
+    `patch` should be shaped as { section_key: { field: value, ... } } where
+    section_key is one of the top-level keys in template_data (e.g. 'hero',
+    'categories').  For the 'trustBar' pseudo-section the expected shape is
+    { 'hero': { 'trustBar': [...] } }.
+
+    Rules applied in order:
+    1. Absolutely-forbidden fields are stripped from the entire patch tree
+       (checked recursively one level deep).
+    2. For the target section key, only the allowed fields listed in
+       SECTION_SCHEMAS[section] are kept.
+    3. Any extra top-level keys in the patch (i.e. sections other than the
+       one being edited) are stripped entirely — the model may not touch
+       sibling sections.
+
+    Returns the cleaned patch.  Logs a server-side warning whenever anything
+    is stripped so operators can detect prompt-injection attempts.
+    """
+    import copy
+    allowed_fields = SECTION_SCHEMAS.get(section, [])
+    cleaned = copy.deepcopy(patch)
+    warned = False
+
+    # ── 1. Absolute-forbidden field scan (top-level and one level deep) ───────
+    for top_key in list(cleaned.keys()):
+        if top_key in _FORBIDDEN_PATCH_FIELDS:
+            print(f"[validate_section_patch] SECURITY WARNING: model returned forbidden "
+                  f"field '{top_key}' in section='{section}' patch — STRIPPED.")
+            del cleaned[top_key]
+            warned = True
+            continue
+        if isinstance(cleaned.get(top_key), dict):
+            for sub_key in list(cleaned[top_key].keys()):
+                if sub_key in _FORBIDDEN_PATCH_FIELDS:
+                    print(f"[validate_section_patch] SECURITY WARNING: model returned "
+                          f"forbidden sub-field '{top_key}.{sub_key}' in section='{section}' patch — STRIPPED.")
+                    del cleaned[top_key][sub_key]
+                    warned = True
+
+    # ── 2 & 3. Determine the top-level patch key for this section ─────────────
+    # trustBar lives under 'hero' in template_data, so the expected patch key
+    # is 'hero' even though the UI section key is 'trustBar'.
+    target_td_key = "hero" if section == "trustBar" else section
+
+    # Strip any patch keys that are not the target section (cross-section bleed)
+    for top_key in list(cleaned.keys()):
+        if top_key != target_td_key:
+            print(f"[validate_section_patch] SECURITY WARNING: model returned "
+                  f"out-of-scope top-level key '{top_key}' while editing section='{section}' — STRIPPED.")
+            del cleaned[top_key]
+            warned = True
+
+    # Scope the fields inside the target section key
+    if target_td_key in cleaned and isinstance(cleaned[target_td_key], dict):
+        section_data = cleaned[target_td_key]
+        stripped_fields = [k for k in section_data if k not in allowed_fields]
+        for field in stripped_fields:
+            print(f"[validate_section_patch] SECURITY WARNING: model returned "
+                  f"disallowed field '{target_td_key}.{field}' for section='{section}' "
+                  f"(allowed: {allowed_fields}) — STRIPPED.")
+            del section_data[field]
+            warned = True
+        cleaned[target_td_key] = section_data
+
+    # ── 4. Array-of-objects sections (e.g. categories) ────────────────────────
+    # The value must be a list of dicts; scope each item to its allowed fields
+    # and drop anything that is not a dict at all.
+    item_fields = SECTION_ITEM_SCHEMAS.get(section)
+    if item_fields and target_td_key in cleaned:
+        raw_items = cleaned[target_td_key]
+        if not isinstance(raw_items, list):
+            print(f"[validate_section_patch] SECURITY WARNING: section='{section}' expects a "
+                  f"list for '{target_td_key}', got {type(raw_items).__name__} — PATCH DROPPED.")
+            del cleaned[target_td_key]
+            warned = True
+        else:
+            scoped_items = []
+            for item in raw_items:
+                if not isinstance(item, dict):
+                    print(f"[validate_section_patch] SECURITY WARNING: non-object item in "
+                          f"'{target_td_key}' for section='{section}' — STRIPPED.")
+                    warned = True
+                    continue
+                dropped = [k for k in item if k not in item_fields]
+                for k in dropped:
+                    print(f"[validate_section_patch] SECURITY WARNING: disallowed item field "
+                          f"'{k}' in '{target_td_key}' for section='{section}' "
+                          f"(allowed: {item_fields}) — STRIPPED.")
+                    warned = True
+                scoped_items.append({k: v for k, v in item.items() if k in item_fields})
+            cleaned[target_td_key] = scoped_items
+
+    if warned:
+        print(f"[validate_section_patch] Patch after stripping: {cleaned}")
+
+    return cleaned
+
+
+def handle_section_edit(store_id: str, store: dict, body: "ChatRequest") -> dict:
+    """
+    Handle a section-scoped storefront edit request.
+
+    Uses a constrained system prompt that restricts the LLM to only propose
+    changes within the selected section's allowed fields.  Returns:
+        { response: str, proposal: { section, patch } | None, actions: [] }
+
+    NEVER auto-executes any store mutations.
+    """
+    import json, os
+    from groq import Groq
+
+    ctx = body.editing_context
+    section = ctx.section
+    current_td = ctx.current_template_data
+
+    allowed_fields = SECTION_SCHEMAS.get(section, [])
+    if not allowed_fields:
+        return {
+            "response": f"Section '{section}' is not recognised as an editable section.",
+            "proposal": None,
+            "actions": [],
+        }
+
+    target = SECTION_TARGETS.get(section, "template_data")
+
+    # Extract the current state of just the section being edited.
+    if section == "trustBar":
+        # trustBar is nested under hero in template_data
+        section_current = {"hero": {"trustBar": (current_td.get("hero") or {}).get("trustBar", [])}}
+    elif section == "categories":
+        # Seller categories live on the store record, not in template_data.
+        # Prefer what the client sent (it reflects unsaved builder edits) and
+        # fall back to the persisted column.
+        cats = ctx.current_categories
+        if cats is None:
+            cats = store.get("categories") or []
+        section_current = {"categories": cats}
+    else:
+        section_current = {section: current_td.get(section, {})}
+
+    # Extra shape rules for sections that are an array of objects.
+    item_fields = SECTION_ITEM_SCHEMAS.get(section)
+    shape_rules = ""
+    if section == "categories":
+        shape_rules = f"""
+
+CATEGORIES SHAPE — READ CAREFULLY:
+- "categories" is a LIST of objects. Each object may contain ONLY these keys:
+  {item_fields}
+    * "id"          - stable identifier. NEVER change or invent one for an
+                      existing category; copy it through exactly as given.
+                      For a NEW category, use "id": "" and the server will not
+                      reject it (the client assigns a real id on save).
+    * "name"        - the visible category label (this is what the seller sees).
+    * "image_url"   - existing image URL. NEVER invent, guess, or blank this on
+                      an existing category; copy it through exactly.
+    * "link_target" - existing link. Copy through for existing categories; for a
+                      new one use "#category-<name in lowercase with dashes>".
+- You MUST return the COMPLETE updated list, including every category the seller
+  already has, in order, unchanged except for what they asked you to change.
+  Returning only the new or changed item will DELETE all the others.
+- To ADD a category, return all existing items exactly as given, plus the new one
+  appended at the end."""
+
+    if not shape_rules and section == "trustBar":
+        shape_rules = """
+
+TRUST BAR SHAPE:
+- You MUST return the COMPLETE updated trustBar array, not just changed items.
+  Returning a partial array will DELETE the seller's other trust-bar items."""
+
+    system_prompt = f"""You are a storefront design assistant helping a seller improve their online store.
+
+The seller has selected the **{section}** section of their storefront to edit.
+
+Current state of the {section} section:
+{json.dumps(section_current, indent=2)}
+
+YOUR TASK:
+- Understand what the seller wants to change about the {section} section.
+- Propose a specific, concrete change.
+- Only modify fields listed in the ALLOWED FIELDS below.
+- Do NOT touch any other section, product data, pricing, or checkout fields.
+- Return your answer as valid JSON with EXACTLY these two keys:
+  "response": A short PROPOSAL that STATES THE LITERAL NEW VALUE(S) you are
+      suggesting. The seller must be able to read this and know exactly what the
+      new text will say WITHOUT looking at the preview.
+        * Quote every new value exactly as it will appear, in double quotes.
+        * If the patch changes more than one field, state each changed field and
+          its new value on its own line.
+        * For list fields (trustBar items, category items), state each item's new
+          label or name.
+        * Every value you quote here MUST match the corresponding value in "patch"
+          character for character. Never quote a value you did not put in the patch.
+        * Describing the INTENT of the change instead of the value is not
+          acceptable. Write the value itself.
+        * TENSE — NOTHING IS SAVED YET. The seller must click "Apply & Save"
+          before anything takes effect, and may discard your proposal instead.
+          Write every response as a SUGGESTION, never as a completed action.
+          NEVER write "I've updated", "I've changed", "I've set", "I've made",
+          "Updated", "Changed", or any other phrasing implying the change has
+          already happened.
+
+      GOOD: I'm proposing to change the CTA button to: "Explore Now"
+      GOOD: Suggested subtitle: "Curated fashion, thoughtfully sourced."
+      GOOD: Two suggested changes -
+            Title: "Timeless pieces, made to last"
+            CTA button: "Shop the Collection"
+      BAD:  I've updated the subtitle to: "Curated fashion, thoughtfully sourced."
+            (past tense - nothing has been saved)
+      BAD:  I'm updating the hero section's subtitle to provide more context.
+            (no literal value)
+      BAD:  I've made the headline bolder and more engaging.
+            (past tense AND no literal value)
+
+  "proposal": An object with:
+    - "section": "{section}"
+    - "patch": An object containing ONLY the changed data, structured exactly as
+      shown for THIS section so the frontend can apply it:
+        * section "hero"       -> {{ "hero": {{ "title": "New Title" }} }}
+        * section "trustBar"   -> {{ "hero": {{ "trustBar": [...full updated array...] }} }}
+        * section "categories" -> {{ "categories": [...full updated list...] }}
+        * section "brandStory" -> {{ "brandStory": {{ "title": "..." }} }}
+        * section "newsletter" -> {{ "newsletter": {{ "title": "..." }} }}
+
+THE PATCH IS REQUIRED. If the seller asked for a change you can make, you MUST
+return a non-empty "patch". A "response" describing a change WITHOUT a matching
+"patch" is a failure — the seller will see your text but nothing will happen.
+Never describe a change you did not put in the patch.
+
+If you genuinely cannot make a meaningful, in-scope edit (e.g. the request is
+off-topic, about weather, pricing, products, or anything not related to the
+{section} section visual content), set "proposal" to null AND make your "response"
+say plainly that you cannot make that change — do not describe an edit you are
+not proposing.
+
+ALLOWED FIELDS for the {section} section: {allowed_fields}{shape_rules}
+
+SECURITY RULES — ABSOLUTE:
+- Your patch MUST NOT contain payout_wallet_address, checkout, payment, handle,
+  user_id, is_public, or any field not listed in ALLOWED FIELDS.
+- Your patch MUST NOT modify sections other than "{section}".
+- Return ONLY a valid JSON object — no markdown, no extra text, no code fences."""
+
+    groq_key = os.getenv("GROQ_API_KEY")
+    if not groq_key:
+        return {
+            "response": "AI service is not configured.",
+            "proposal": None,
+            "actions": [],
+        }
+
+    client = Groq(api_key=groq_key)
+
+    messages = [{"role": "system", "content": system_prompt}]
+    for msg in body.history[-10:]:
+        messages.append({"role": msg.role, "content": msg.content})
+    messages.append({"role": "user", "content": body.message})
+
+    try:
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            max_tokens=1024,
+            temperature=0.3,
+            response_format={"type": "json_object"},
+        )
+        raw = resp.choices[0].message.content or "{}"
+        print(f"\n[handle_section_edit] Raw LLM output for section='{section}': {raw[:500]}")
+
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            print(f"\u26a0\ufe0f  [handle_section_edit] LLM returned non-JSON: {raw[:200]}")
+            return {
+                "response": "I had trouble generating a structured proposal. Please try rephrasing.",
+                "proposal": None,
+                "actions": [],
+            }
+
+        response_text = parsed.get("response", "")
+        proposal_raw = parsed.get("proposal", None)
+
+        # ── Validate and sanitise the patch before returning ──────────────────
+        if proposal_raw and isinstance(proposal_raw, dict):
+            patch_raw = proposal_raw.get("patch", {})
+            if patch_raw and isinstance(patch_raw, dict):
+                patch_clean = validate_section_patch(section, patch_raw)
+                # Everything may have been stripped — an empty patch is no proposal.
+                if patch_clean:
+                    proposal = {
+                        "section": section,
+                        # Tells the client where to apply this: deep-merged into
+                        # template_data, or written to a top-level store column.
+                        "target": target,
+                        "patch": patch_clean,
+                    }
+                else:
+                    print(f"[handle_section_edit] Patch was empty after validation "
+                          f"for section='{section}' — returning no proposal.")
+                    proposal = None
+            else:
+                proposal = None
+        else:
+            proposal = None
+
+        print(f"[handle_section_edit] Returning proposal={proposal is not None} for section='{section}'")
+        return {
+            "response": response_text,
+            "proposal": proposal,
+            "actions": [],  # NEVER auto-executes
+        }
+
+    except Exception as e:
+        import traceback
+        print(f"\u26a0\ufe0f  [handle_section_edit] Error: {e}")
+        print(traceback.format_exc())
+        return {
+            "response": "Something went wrong generating the proposal. Please try again.",
+            "proposal": None,
+            "actions": [],
+        }
 
 
 @app.get("/api/chat/{store_id}/history")
@@ -723,6 +1122,10 @@ def chat_with_agent(store_id: str, body: ChatRequest, request: Request):
     """
     Chat with the Selora AI agent about a specific store.
     The agent has access to the store's live data and can take actions.
+
+    When body.editing_context is present, the request is routed through
+    handle_section_edit() which uses a constrained section-scoped prompt and
+    returns { response, proposal, actions:[] } — NEVER auto-executing.
     """
     import json
     import time
@@ -759,6 +1162,17 @@ def chat_with_agent(store_id: str, body: ChatRequest, request: Request):
         }
     elif not store:
         raise HTTPException(status_code=404, detail="Store not found")
+
+    # ── Section-edit fast-path ────────────────────────────────────────────────
+    # When editing_context is present, skip all general chat logic (tool loop,
+    # action execution, cross-store guard, etc.) and route directly to the
+    # constrained section editor. Guest mode cannot use section editing.
+    if body.editing_context and not body.is_guest:
+        user_id_check, _ = _get_user_id_from_token(request)
+        if store.get("user_id") != user_id_check:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return handle_section_edit(store_id=store_id, store=store, body=body)
+    # ─────────────────────────────────────────────────────────────────────────
 
     # Guest mode limits (per-session message cap & IP rate limiting)
     if body.is_guest:

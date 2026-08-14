@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import Cropper from 'react-easy-crop'
 import { supabase } from '../lib/supabase'
 import Storefront from './Storefront'
+import { useStoreEditor } from '../lib/StoreEditorContext'
+import SectionEditPanel from '../components/SectionEditPanel'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -218,6 +220,8 @@ const S = {
 }
 
 export default function StoreBuilder() {
+  const { selectedSection, setSelectedSection, clearSelectedSection, syncTemplateData, syncCategories, proposalPreviewData, proposalPreviewStore } = useStoreEditor()
+  const [editPanelCollapsed, setEditPanelCollapsed] = useState(false)
   const [tab, setTab]         = useState('settings')
   const [store, setStore]     = useState(null)
   const [products, setProducts] = useState([])
@@ -245,15 +249,23 @@ export default function StoreBuilder() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Closing the preview also drops any section selection, so reopening starts clean
+  // and no unconfirmed proposal survives out of view.
+  const closePreview = () => {
+    setShowPreviewOverlay(false)
+    clearSelectedSection()
+  }
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setShowPreviewOverlay(false)
+        clearSelectedSection()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [clearSelectedSection])
 
   useEffect(() => {
     if (!form || !form.name) return
@@ -264,6 +276,18 @@ export default function StoreBuilder() {
     }, 600)
     return () => clearTimeout(handler)
   }, [form])
+
+  useEffect(() => {
+    if (form?.template_data) {
+      syncTemplateData(form.template_data)
+    }
+  }, [form?.template_data, syncTemplateData])
+
+  useEffect(() => {
+    if (form?.categories) {
+      syncCategories(form.categories)
+    }
+  }, [form?.categories, syncCategories])
 
   const updateForm = (updater) => {
     setForm(updater)
@@ -1337,7 +1361,7 @@ export default function StoreBuilder() {
               justifyContent: 'center',
               padding: '2rem'
             }}
-            onClick={() => setShowPreviewOverlay(false)}
+            onClick={closePreview}
           >
             <div
               style={{
@@ -1379,7 +1403,7 @@ export default function StoreBuilder() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowPreviewOverlay(false)}
+                  onClick={closePreview}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -1397,32 +1421,49 @@ export default function StoreBuilder() {
                 </button>
               </div>
 
-              {/* Body */}
-              <div
-                style={{
-                  flex: 1,
-                  overflowY: 'auto',
-                  opacity: isUpdatingPreview ? 0.7 : 1,
-                  transition: 'opacity 0.3s ease'
-                }}
-                className="no-scrollbar"
-              >
-                <Storefront
-                  previewData={{
-                    store: {
-                      ...store,
-                      name: (previewStore || form).name,
-                      description: (previewStore || form).description,
-                      cover_image: (previewStore || form).cover_image,
-                      currency: (previewStore || form).currency,
-                      categories: (previewStore || form).categories,
-                      hero_image_main: heroSlots.main.croppedUrl || heroSlots.main.savedUrl,
-                      hero_image_left: heroSlots.left.croppedUrl || heroSlots.left.savedUrl,
-                      hero_image_right: heroSlots.right.croppedUrl || heroSlots.right.savedUrl,
-                      template_data: (previewStore || form).template_data
-                    },
-                    products
+              {/* Body — preview canvas (left) + section-edit panel (right) */}
+              <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+                <div
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    overflowY: 'auto',
+                    opacity: isUpdatingPreview ? 0.7 : 1,
+                    transition: 'opacity 0.3s ease'
                   }}
+                  className="no-scrollbar"
+                >
+                  <Storefront
+                    previewData={{
+                      store: {
+                        ...store,
+                        name: (previewStore || form).name,
+                        description: (previewStore || form).description,
+                        cover_image: (previewStore || form).cover_image,
+                        currency: (previewStore || form).currency,
+                        categories: proposalPreviewStore?.categories || (previewStore || form).categories,
+                        hero_image_main: heroSlots.main.croppedUrl || heroSlots.main.savedUrl,
+                        hero_image_left: heroSlots.left.croppedUrl || heroSlots.left.savedUrl,
+                        hero_image_right: heroSlots.right.croppedUrl || heroSlots.right.savedUrl,
+                        template_data: proposalPreviewData || (previewStore || form).template_data
+                      },
+                      products
+                    }}
+                    editMode={true}
+                    selectedSection={selectedSection}
+                    onSectionClick={setSelectedSection}
+                  />
+                </div>
+
+                {/* Section-edit panel — renders null unless a section is selected */}
+                <SectionEditPanel
+                  key={selectedSection}
+                  storeId={store?.id}
+                  form={form}
+                  setForm={setForm}
+                  api={api}
+                  collapsed={editPanelCollapsed}
+                  onToggleCollapse={() => setEditPanelCollapsed(c => !c)}
                 />
               </div>
             </div>
