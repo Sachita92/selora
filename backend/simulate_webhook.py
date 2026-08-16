@@ -18,7 +18,7 @@ stripe.api_key = stripe_key
 
 # Set up database access to select a test user
 sys.path.append(os.path.dirname(__file__))
-from database import db
+from database import supabase_admin as db
 
 def main():
     parser = argparse.ArgumentParser(description="Simulate a Stripe checkout webhook locally.")

@@ -372,7 +372,7 @@ def get_stores(request: Request):
     } for s in stores if s.get("platform") != "selora"]
 
     # Fetch and merge native Selora stores
-    from database import db as _db
+    from database import supabase_admin as _db
     try:
         selora_stores_res = _db().table("selora_stores").select("*").eq("user_id", user["id"]).execute()
         if selora_stores_res.data:
@@ -441,7 +441,7 @@ def get_store_products(store_id: str, force_refresh: bool = False):
         raise HTTPException(status_code=404, detail="Store not found")
 
     if store.get("platform") == "selora":
-        from database import db as _db
+        from database import supabase_admin as _db
         try:
             prod_res = _db().table("selora_products").select("*").eq("store_id", store_id).execute()
             
@@ -508,7 +508,7 @@ def get_store_products(store_id: str, force_refresh: bool = False):
 def get_store_orders(store_id: str, request: Request, limit: int = None):
     """Fetch all native orders for the active store (owner only)."""
     import traceback
-    from database import db as _db, get_store_by_id
+    from database import supabase_admin as _db, get_store_by_id
     user_id, _ = _get_user_id_from_token(request)
     store = get_store_by_id(store_id)
     if not store:
@@ -532,7 +532,7 @@ def get_store_orders(store_id: str, request: Request, limit: int = None):
 @app.get("/api/stores/{store_id}/orders/by-wallet/{wallet_address}")
 def get_store_orders_by_wallet(store_id: str, wallet_address: str):
     """Fetch orders for a specific buyer wallet on a store (public buyer endpoint)."""
-    from database import db as _db
+    from database import supabase_admin as _db
     try:
         result = _db().table("selora_orders") \
             .select("*") \
@@ -1320,7 +1320,7 @@ def chat_with_agent(store_id: str, body: ChatRequest, request: Request):
     if body.is_guest:
         # Validate that the store_id matches the pinned demo store ID
         try:
-            from database import db as _db
+            from database import supabase_admin as _db
             demo_domain = os.getenv("DEMO_STORE_SHOPIFY_DOMAIN", "selora-test.myshopify.com")
             demo_res = _db().table("stores").select("id").eq("shop_url", demo_domain).eq("is_active", True).execute()
             if demo_res.data and store_id not in [d["id"] for d in demo_res.data]:
@@ -1333,7 +1333,7 @@ def chat_with_agent(store_id: str, body: ChatRequest, request: Request):
         session_key = body.session_id
         current_session_count = _guest_session_counts.get(session_key, 0)
         try:
-            from database import db as _db
+            from database import supabase_admin as _db
             msg_res = _db().table("chat_messages").select("id", count="exact").eq("store_id", store_id).eq("session_id", session_key).eq("role", "user").execute()
             if msg_res.count is not None:
                 current_session_count = max(msg_res.count, current_session_count)
@@ -1389,7 +1389,7 @@ def chat_with_agent(store_id: str, body: ChatRequest, request: Request):
     try:
         if store.get("platform") == "selora":
             # Native storefront: load directly from database
-            from database import db as _db
+            from database import supabase_admin as _db
             prod_res = _db().table("selora_products").select("*").eq("store_id", store_id).execute()
             products_list = prod_res.data or []
             
@@ -1545,7 +1545,7 @@ PRIVACY GUARD — ABSOLUTE RULE:
     # This is a hard guard — the LLM is never even called in this case.
     if not body.is_guest:
         try:
-            from database import db as _db_guard
+            from database import supabase_admin as _db_guard
             # Fetch all stores belonging to this user
             user_stores_res = (
                 _db_guard()
@@ -1709,7 +1709,7 @@ PRIVACY GUARD — ABSOLUTE RULE:
                         )
                 elif store.get("platform") == "selora":
                     # Native Selora store: execute tools directly against the database
-                    from database import db as _dbt
+                    from database import supabase_admin as _dbt
                     import uuid as _uuid
                     try:
                         if tool_name == "add_product":
@@ -2361,7 +2361,7 @@ def get_store_health(store_id: str, request: Request):
     try:
         if store.get("platform") == "selora":
             # Native store: build a snapshot from the database
-            from database import db as _db
+            from database import supabase_admin as _db
             prod_res = _db().table("selora_products").select("*").eq("store_id", store_id).execute()
             products_list = prod_res.data or []
 
@@ -2762,7 +2762,7 @@ def cancel_subscription(body: CancelSubscriptionRequest):
 @app.get("/api/billing/history")
 def get_billing_history(email: str = Query(..., description="User email")):
     """Get billing history (events) for a user."""
-    from database import get_or_create_user, db
+    from database import get_or_create_user, supabase_admin as db
     try:
         user = get_or_create_user(email)
         client = db()
@@ -2992,7 +2992,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
     elif event_type == "customer.subscription.trial_will_end":
         customer_id = event_data.get("customer")
         
-        from database import db
+        from database import supabase_admin as db
         res = db().table("users").select("*").eq("stripe_customer_id", customer_id).execute()
         if res.data:
             user = res.data[0]
@@ -3173,7 +3173,7 @@ def privy_sync(body: PrivySyncRequest, request: Request):
     - Synchronizes the Privy email and Solana wallet address with the database user record.
     - Returns a Supabase action link so the frontend can automatically log in to Supabase.
     """
-    from database import db as _db, get_anon_client
+    from database import supabase_admin as _db, get_anon_client
     from privy import PrivyAPI
 
     privy_token = body.privy_token
@@ -3413,7 +3413,7 @@ def update_profile(body: ProfileUpdateRequest, request: Request):
         raise HTTPException(status_code=400, detail="Display name must be between 2 and 50 characters")
         
     try:
-        from database import db as _db
+        from database import supabase_admin as _db
         
         # 1. Update the users table
         db_res = _db().table("users").update({"display_name": display_name}).eq("id", user_id).execute()
@@ -3444,7 +3444,7 @@ def update_profile(body: ProfileUpdateRequest, request: Request):
 @app.post('/selora-stores')
 def create_selora_store(body: StoreCreateRequest, request: Request):
     """Create a new Selora native store for the authenticated user."""
-    from database import db as _db
+    from database import supabase_admin as _db
     import re
     user_id, _ = _get_user_id_from_token(request)
     handle = re.sub(r'[^a-z0-9-]', '', body.handle.lower().replace(' ', '-'))
@@ -3495,7 +3495,7 @@ def create_selora_store(body: StoreCreateRequest, request: Request):
 @app.get('/selora-stores/me')
 def get_my_selora_store(request: Request):
     """Get the current user's Selora store."""
-    from database import db as _db
+    from database import supabase_admin as _db
     user_id, _ = _get_user_id_from_token(request)
     result = _db().table('selora_stores').select('*').eq('user_id', user_id).execute()
     if not result.data:
@@ -3506,7 +3506,7 @@ def get_my_selora_store(request: Request):
 @app.get('/selora-stores/featured')
 def get_featured_stores():
     """Public: get featured stores."""
-    from database import db as _db
+    from database import supabase_admin as _db
     result = _db().table('selora_stores').select('*').eq('is_featured', True).eq('is_public', True).execute()
     stores = result.data or []
     enriched = []
@@ -3520,7 +3520,7 @@ def get_featured_stores():
 @app.get('/selora-stores/public/{handle}')
 def get_public_store(handle: str):
     """Public: get store + products by handle."""
-    from database import db as _db
+    from database import supabase_admin as _db
     store_result = _db().table('selora_stores').select('*').eq('handle', handle).eq('is_public', True).execute()
     if not store_result.data:
         raise HTTPException(status_code=404, detail='Store not found')
@@ -3533,7 +3533,7 @@ def get_public_store(handle: str):
 @app.put('/selora-stores/{store_id}')
 def update_selora_store(store_id: str, body: StoreUpdateRequest, request: Request):
     """Update store details (owner only)."""
-    from database import db as _db
+    from database import supabase_admin as _db
     import re
     user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
@@ -3562,7 +3562,7 @@ def update_selora_store(store_id: str, body: StoreUpdateRequest, request: Reques
 @app.post('/selora-stores/{store_id}/products')
 async def add_product_to_store(store_id: str, request: Request):
     """Add a product to a store."""
-    from database import db as _db
+    from database import supabase_admin as _db
     user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
@@ -3599,7 +3599,7 @@ async def add_product_to_store(store_id: str, request: Request):
 @app.get('/selora-stores/{store_id}/products')
 def list_store_products(store_id: str, request: Request):
     """List all products in a store."""
-    from database import db as _db
+    from database import supabase_admin as _db
     user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
@@ -3614,7 +3614,7 @@ def list_store_products(store_id: str, request: Request):
 @app.put('/selora-stores/{store_id}/products/{product_id}')
 async def update_product(store_id: str, product_id: str, request: Request):
     """Edit a product."""
-    from database import db as _db
+    from database import supabase_admin as _db
     user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
@@ -3637,7 +3637,7 @@ async def update_product(store_id: str, product_id: str, request: Request):
 @app.delete('/selora-stores/{store_id}/products/{product_id}')
 def delete_product(store_id: str, product_id: str, request: Request):
     """Delete a product."""
-    from database import db as _db
+    from database import supabase_admin as _db
     user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
@@ -3651,7 +3651,7 @@ def delete_product(store_id: str, product_id: str, request: Request):
 @app.post('/selora-stores/events')
 async def track_event(request: Request):
     """Track a storefront event (view, add_to_cart, purchase). No auth required."""
-    from database import db as _db
+    from database import supabase_admin as _db
     body_json = await request.json()
     event_type = body_json.get('event_type', '')
     if event_type not in ('view', 'add_to_cart', 'purchase'):
@@ -3669,7 +3669,7 @@ async def track_event(request: Request):
 async def upload_product_image(store_id: str, request: Request):
     """Upload a product image to Supabase Storage and return the public URL."""
     import uuid, base64
-    from database import db as _db
+    from database import supabase_admin as _db
     user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
@@ -3696,7 +3696,7 @@ async def upload_hero_image(store_id: str, role: str, request: Request):
     if role not in ('main', 'left', 'right'):
         raise HTTPException(status_code=400, detail='Invalid role. Must be main, left, or right.')
     import base64
-    from database import db as _db
+    from database import supabase_admin as _db
     user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
@@ -3749,7 +3749,7 @@ async def classify_image(store_id: str, request: Request):
 async def upload_product_image_by_id(store_id: str, product_id: str, request: Request):
     """Upload a product image named product_id.jpg to product-images/{store_id} path."""
     import base64
-    from database import db as _db
+    from database import supabase_admin as _db
     user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
@@ -3784,7 +3784,7 @@ async def upload_product_image_by_id(store_id: str, product_id: str, request: Re
 async def upload_category_image(store_id: str, category_id: str, request: Request):
     """Upload a category image to Supabase Storage and return the URL."""
     import base64
-    from database import db as _db
+    from database import supabase_admin as _db
     user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
     if not existing.data:
@@ -3869,7 +3869,7 @@ def get_demo_dashboard():
     # 2. Activity log logic (pulling products from pinned store)
     product_titles = []
     try:
-        from database import db as _db
+        from database import supabase_admin as _db
         import os
         demo_domain = os.getenv("DEMO_STORE_SHOPIFY_DOMAIN", "selora-test.myshopify.com")
         demo_res = _db().table("stores").select("*").eq("shop_url", demo_domain).eq("is_active", True).execute()
@@ -3954,7 +3954,7 @@ class SolanaCheckoutRequest(BaseModel):
 
 @app.post("/api/checkout/solana/create")
 def create_solana_checkout(body: SolanaCheckoutRequest):
-    from database import db as _db
+    from database import supabase_admin as _db
     
     store_id = body.store_id
     buyer_wallet = body.buyer_wallet
@@ -4088,7 +4088,7 @@ async def solana_rpc_proxy(request: Request):
 
 def verify_solana_checkout(reference: str):
     import httpx
-    from database import db as _db
+    from database import supabase_admin as _db
     
     # 1. Fetch order details from DB
     order_res = _db().table("selora_orders").select("*").eq("reference", reference).execute()
@@ -4281,6 +4281,6 @@ if __name__ == "__main__":
 
     elif args.mode == "test":
         # Quick test to verify database connection
-        from database import db
+        from database import supabase_admin as db
         result = db().table("stores").select("count").execute()
         print(f"✅ Database connected! Stores in DB: {result.data}")

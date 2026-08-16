@@ -1,3 +1,12 @@
+"""Supabase client accessors.
+
+`supabase_admin()` (formerly `db`) returns the shared SERVICE-ROLE client. It
+BYPASSES Row Level Security, so it must never be used to serve a user-scoped
+read or write without an explicit ownership check in the handler (see
+backend/authz.py). For anything that should be constrained by RLS, use
+`get_anon_client()` with the caller's JWT instead.
+"""
+
 import os
 import threading
 import httpx
@@ -40,7 +49,7 @@ def get_client() -> Client:
     return _service_client
 
 
-def db() -> Client:
+def supabase_admin() -> Client:
     return get_client()
 
 
@@ -65,7 +74,7 @@ def get_anon_client() -> Client:
 
 def get_or_create_user(email: str) -> dict:
     """Get a user by email, or create them if they don't exist."""
-    client = db()
+    client = supabase_admin()
 
     # Try to find existing user
     result = client.table("users").select("*").eq("email", email).execute()
@@ -94,7 +103,7 @@ def get_or_create_user(email: str) -> dict:
 
 def get_or_create_user_by_auth(user_id: str, email: str) -> dict:
     """Get a user by their Supabase UUID (id), or create them idempotently if they don't exist."""
-    client = db()
+    client = supabase_admin()
 
     # Try to find user by their Auth UUID (id)
     result = client.table("users").select("*").eq("id", user_id).execute()
@@ -115,13 +124,13 @@ def get_or_create_user_by_auth(user_id: str, email: str) -> dict:
 
 def get_user_by_id(user_id: str) -> dict:
     """Get a user by their UUID."""
-    result = db().table("users").select("*").eq("id", user_id).execute()
+    result = supabase_admin().table("users").select("*").eq("id", user_id).execute()
     return result.data[0] if result.data else None
 
 
 def update_user_subscription(user_id: str, plan: str, status: str, customer_id: str = None, subscription_id: str = None, period_end: str = None) -> dict:
     """Update user's Stripe subscription information in the DB."""
-    client = db()
+    client = supabase_admin()
     update_data = {
         "subscription_plan": plan,
         "subscription_status": status
@@ -139,7 +148,7 @@ def update_user_subscription(user_id: str, plan: str, status: str, customer_id: 
 
 def update_user_subscription_by_stripe_id(stripe_sub_id: str, plan: str, status: str, period_end: str = None) -> dict:
     """Update user's subscription in DB using the stripe subscription ID."""
-    client = db()
+    client = supabase_admin()
     update_data = {
         "subscription_plan": plan,
         "subscription_status": status
@@ -153,7 +162,7 @@ def update_user_subscription_by_stripe_id(stripe_sub_id: str, plan: str, status:
 
 def increment_store_run_count(store_id: str) -> int:
     """Increment the run count of a store this month."""
-    client = db()
+    client = supabase_admin()
     store = client.table("stores").select("run_count_this_month").eq("id", store_id).execute()
     if store.data:
         current_count = store.data[0].get("run_count_this_month", 0) if store.data else 0
@@ -170,7 +179,7 @@ def check_store_run_limit(store_id: str) -> bool:
     Growth Plan: Limit of 30 optimizations/month.
     Scale Plan: Unlimited (represented as 99999).
     """
-    client = db()
+    client = supabase_admin()
     # Join store and user to find the subscription_plan
     store_res = client.table("stores").select("user_id, run_count_this_month").eq("id", store_id).execute()
     
@@ -219,7 +228,7 @@ def check_store_run_limit(store_id: str) -> bool:
 
 def save_billing_event(user_id: str, event_type: str, stripe_event_id: str = None, details: dict = None):
     """Log billing lifecycle changes to the database."""
-    db().table("billing_events").insert({
+    supabase_admin().table("billing_events").insert({
         "user_id": user_id,
         "event_type": event_type,
         "stripe_event_id": stripe_event_id,
@@ -235,7 +244,7 @@ def save_store(user_id: str, platform: str, shop_url: str, access_token: str, sh
     Save a connected store to the database.
     If the store already exists for this user, update the access token.
     """
-    client = db()
+    client = supabase_admin()
 
     # Check if store already connected
     existing = client.table("stores").select("*").eq("user_id", user_id).eq("shop_url", shop_url).execute()
@@ -265,7 +274,7 @@ def save_store(user_id: str, platform: str, shop_url: str, access_token: str, sh
 
 def get_stores_for_user(user_id: str) -> list:
     """Get all active stores for a user."""
-    result = db().table("stores").select("*").eq("user_id", user_id).eq("is_active", True).execute()
+    result = supabase_admin().table("stores").select("*").eq("user_id", user_id).eq("is_active", True).execute()
     return result.data or []
 
 
@@ -277,11 +286,11 @@ def get_all_active_stores() -> list:
     avoid double-running native stores.
     """
     # Shopify/connected stores (exclude selora skeleton rows)
-    result = db().table("stores").select("*").eq("is_active", True).execute()
+    result = supabase_admin().table("stores").select("*").eq("is_active", True).execute()
     shopify_stores = [s for s in (result.data or []) if s.get("platform") != "selora"]
 
     # Native Selora stores
-    native_result = db().table("selora_stores").select("*").eq("is_public", True).execute()
+    native_result = supabase_admin().table("selora_stores").select("*").eq("is_public", True).execute()
     native_stores = []
     for s in (native_result.data or []):
         native_stores.append({
@@ -300,11 +309,11 @@ def get_all_active_stores() -> list:
 
 def get_store_by_id(store_id: str) -> dict:
     """Get a single store by ID (checking both connected and native stores)."""
-    result = db().table("stores").select("*").eq("id", store_id).execute()
+    result = supabase_admin().table("stores").select("*").eq("id", store_id).execute()
     if result.data:
         return result.data[0]
     # Fallback to selora_stores
-    native_res = db().table("selora_stores").select("*").eq("id", store_id).execute()
+    native_res = supabase_admin().table("selora_stores").select("*").eq("id", store_id).execute()
     if native_res.data:
         s = native_res.data[0]
         return {
@@ -330,14 +339,14 @@ def get_store_by_url(shop_url: str) -> dict:
     # Strip trailing slashes
     shop_url = shop_url.rstrip("/")
 
-    result = db().table("stores").select("*").eq("shop_url", shop_url).execute()
+    result = supabase_admin().table("stores").select("*").eq("shop_url", shop_url).execute()
     return result.data[0] if result.data else None
 
 
 def update_store_last_synced(store_id: str):
     """Update the last_synced_at timestamp for a store."""
     from datetime import datetime, timezone
-    db().table("stores").update({
+    supabase_admin().table("stores").update({
         "last_synced_at": datetime.now(timezone.utc).isoformat()
     }).eq("id", store_id).execute()
 
@@ -357,7 +366,7 @@ DEFAULT_SETTINGS = {
 
 def get_store_settings(store_id: str) -> dict:
     """Get agent configuration settings for a store, falling back to defaults."""
-    result = db().table("stores").select("settings").eq("id", store_id).execute()
+    result = supabase_admin().table("stores").select("settings").eq("id", store_id).execute()
     if result.data and result.data[0].get("settings"):
         return {**DEFAULT_SETTINGS, **result.data[0]["settings"]}
     return DEFAULT_SETTINGS
@@ -365,7 +374,7 @@ def get_store_settings(store_id: str) -> dict:
 
 def save_store_settings(store_id: str, settings: dict) -> dict:
     """Persist agent configuration settings for a store."""
-    db().table("stores").update({"settings": settings}).eq("id", store_id).execute()
+    supabase_admin().table("stores").update({"settings": settings}).eq("id", store_id).execute()
     return {**DEFAULT_SETTINGS, **settings}
 
 
@@ -377,7 +386,7 @@ def _is_selora_native_store(store_id: str) -> bool:
     """Return True if store_id belongs to selora_stores (not the Shopify stores table)."""
     if store_id in _selora_store_id_cache:
         return True
-    res = db().table("selora_stores").select("id").eq("id", store_id).execute()
+    res = supabase_admin().table("selora_stores").select("id").eq("id", store_id).execute()
     if res.data:
         _selora_store_id_cache.add(store_id)
         return True
@@ -390,7 +399,7 @@ def _logs_table(store_id: str) -> str:
 def save_agent_log(store_id: str, action_type: str, product_id: str = None, reason: str = None, data: dict = None, success: bool = True):
     """Save a single agent action to the logs table."""
     table = _logs_table(store_id)
-    db().table(table).insert({
+    supabase_admin().table(table).insert({
         "store_id": store_id,
         "action_type": action_type,
         "product_id": product_id,
@@ -421,7 +430,7 @@ def save_agent_actions(store_id: str, actions: list):
 def get_recent_logs(store_id: str, limit: int = 20) -> list:
     """Get the most recent agent logs for a store."""
     table = _logs_table(store_id)
-    result = db().table(table).select("*").eq("store_id", store_id).order("created_at", desc=True).limit(limit).execute()
+    result = supabase_admin().table(table).select("*").eq("store_id", store_id).order("created_at", desc=True).limit(limit).execute()
     return result.data or []
 
 
@@ -429,7 +438,7 @@ def get_recent_logs(store_id: str, limit: int = 20) -> list:
 
 def save_report(store_id: str, summary: str, wins: list, concerns: list, actions_taken: list):
     """Save a daily growth report."""
-    db().table("reports").insert({
+    supabase_admin().table("reports").insert({
         "store_id": store_id,
         "summary": summary,
         "wins": wins,
@@ -441,7 +450,7 @@ def save_report(store_id: str, summary: str, wins: list, concerns: list, actions
 
 def get_recent_reports(store_id: str, limit: int = 7) -> list:
     """Get the most recent reports for a store (last 7 days)."""
-    result = db().table("reports").select("*").eq("store_id", store_id).order("created_at", desc=True).limit(limit).execute()
+    result = supabase_admin().table("reports").select("*").eq("store_id", store_id).order("created_at", desc=True).limit(limit).execute()
     return result.data or []
 
 
@@ -455,7 +464,7 @@ def _chat_table(store_id: str) -> str:
 
 def save_chat_message(store_id: str, session_id: str, role: str, content: str, actions: list = None) -> dict:
     """Save a chat message to the database (routes to the correct table for native Selora stores)."""
-    client = db()
+    client = supabase_admin()
     table = _chat_table(store_id)
     result = client.table(table).insert({
         "store_id": store_id,
@@ -469,7 +478,7 @@ def save_chat_message(store_id: str, session_id: str, role: str, content: str, a
 
 def get_chat_history(store_id: str, session_id: str, limit: int = 50) -> list:
     """Get chat history for a specific store and session."""
-    client = db()
+    client = supabase_admin()
     table = _chat_table(store_id)
     result = client.table(table)\
         .select("*")\
@@ -484,7 +493,7 @@ def get_chat_history(store_id: str, session_id: str, limit: int = 50) -> list:
 
 def get_chat_sessions(store_id: str, limit: int = 20) -> list:
     """Get unique chat sessions (grouped, latest message timestamp) for a store."""
-    client = db()
+    client = supabase_admin()
     table = _chat_table(store_id)
     result = client.table(table)\
         .select("session_id,role,content,created_at")\
@@ -538,7 +547,7 @@ def get_chat_sessions(store_id: str, limit: int = 20) -> list:
 
 def save_support_ticket(ticket_data: dict) -> dict:
     """Save a support ticket submission."""
-    result = db().table("support_tickets").insert({
+    result = supabase_admin().table("support_tickets").insert({
         "name": ticket_data["name"],
         "email": ticket_data["email"],
         "store_url": ticket_data.get("storeUrl") or ticket_data.get("store_url"),
@@ -550,7 +559,7 @@ def save_support_ticket(ticket_data: dict) -> dict:
 
 def save_demo_booking(booking_data: dict) -> dict:
     """Save a demo booking schedule."""
-    result = db().table("demo_bookings").insert({
+    result = supabase_admin().table("demo_bookings").insert({
         "first_name": booking_data["first_name"],
         "last_name": booking_data["last_name"],
         "email": booking_data["email"],
@@ -580,7 +589,7 @@ def save_newsletter_subscriber(email: str) -> dict:
     Returns the row on success. If the email already exists, returns the
     existing row gracefully rather than raising.
     """
-    client = db()
+    client = supabase_admin()
     try:
         # upsert so duplicate emails don't raise — just silently succeed
         result = client.table("newsletter_subscribers").upsert(
@@ -597,7 +606,7 @@ def save_newsletter_subscriber(email: str) -> dict:
 
 def get_public_stats() -> dict:
     """Get aggregated statistics for the public landing page."""
-    client = db()
+    client = supabase_admin()
     try:
         # Get total stores
         stores_res = client.table("stores").select("id", count="exact").execute()
@@ -634,7 +643,7 @@ def get_public_stats() -> dict:
 
 def delete_chat_session(store_id: str, session_id: str):
     """Delete all messages associated with a chat session from database."""
-    client = db()
+    client = supabase_admin()
     table = _chat_table(store_id)
     result = client.table(table)\
         .delete()\
@@ -646,7 +655,7 @@ def delete_chat_session(store_id: str, session_id: str):
 
 def update_chat_session_metadata(store_id: str, session_id: str, title: str = None, pinned: bool = None):
     """Create or update session metadata (custom title or pinned status) in the correct chat_messages table."""
-    client = db()
+    client = supabase_admin()
     table = _chat_table(store_id)
     # Find all messages for session
     res = client.table(table)\
@@ -698,7 +707,7 @@ def update_chat_session_metadata(store_id: str, session_id: str, title: str = No
 def save_selora_agent_log(store_id: str, action_type: str, product_id: str = None, reason: str = None, data: dict = None, success: bool = True):
     """Save a single agent action to the selora_agent_logs table (for native Selora stores)."""
     try:
-        db().table("selora_agent_logs").insert({
+        supabase_admin().table("selora_agent_logs").insert({
             "store_id": store_id,
             "action_type": action_type,
             "product_id": product_id,

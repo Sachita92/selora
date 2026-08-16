@@ -5,7 +5,7 @@ from adapters.base import (
     UniversalOrder,
     StoreSnapshot,
 )
-from database import db
+from database import supabase_admin as db
 
 class SeloraNativeAdapter(BaseAdapter):
     """
