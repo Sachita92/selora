@@ -2,6 +2,11 @@ import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { useAuth } from '../lib/useAuth'
+import { HERO_LAYOUTS, TRUST_BAR_ICONS, resolveHeroLayout, isKnownTrustBarIcon } from '../lib/storefrontEnums'
+
+// Rendered into the edit-mode warning so the seller is told what IS valid, not
+// just that what they have is not.
+const HERO_LAYOUT_LIST = HERO_LAYOUTS.join(', ')
 import { useSignAndSendTransaction, useWallets } from '@privy-io/react-auth/solana'
 
 
@@ -133,15 +138,53 @@ const BagIcon = ({ size = 20, color = "currentColor" }) => (
   </svg>
 )
 
-function renderIcon(name, size = 20, color = "currentColor") {
-  switch (name) {
-    case 'leaf': return <LeafIcon size={size} color={color} />;
-    case 'truck': return <TruckIcon size={size} color={color} />;
-    case 'arrow-path': return <ArrowPathIcon size={size} color={color} />;
-    case 'shield': return <ShieldIcon size={size} color={color} />;
-    case 'bag': return <BagIcon size={size} color={color} />;
-    default: return <LeafIcon size={size} color={color} />;
+const UnknownIcon = ({ size = 20, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+)
+
+// Keyed by the icon names in shared/storefront-enums.json. The lookup is a map
+// rather than a switch so the set of drawable icons is a value this module can
+// check against the shared list, instead of a set of case labels nothing can see.
+const TRUST_ICON_COMPONENTS = {
+  'leaf': LeafIcon,
+  'truck': TruckIcon,
+  'arrow-path': ArrowPathIcon,
+  'shield': ShieldIcon,
+  'bag': BagIcon,
+}
+
+// Drift guard: the shared enum promises the backend that every name in
+// TRUST_BAR_ICONS is renderable. If someone adds a name there without adding the
+// component here, the backend would start persisting an icon that falls back to a
+// leaf — the exact silent-mismatch class this refactor removes. Dev-only; a
+// mismatch is a coding error, not a runtime condition to handle.
+if (import.meta.env.DEV) {
+  const missing = TRUST_BAR_ICONS.filter(n => !TRUST_ICON_COMPONENTS[n])
+  const extra = Object.keys(TRUST_ICON_COMPONENTS).filter(n => !TRUST_BAR_ICONS.includes(n))
+  if (missing.length || extra.length) {
+    console.error(
+      '[Storefront] trust bar icon drift vs shared/storefront-enums.json —',
+      missing.length ? `no component for: ${missing.join(', ')}.` : '',
+      extra.length ? `component not in the shared enum: ${extra.join(', ')}.` : ''
+    )
   }
+}
+
+/**
+ * @param {string} name       icon name from template_data.hero.trustBar[].icon
+ * @param {boolean} flagUnknown  when true (edit mode only), an unrecognised name
+ *   renders a warning triangle instead of silently becoming a leaf. The public
+ *   storefront passes false and keeps the graceful default.
+ */
+function renderIcon(name, size = 20, color = "currentColor", flagUnknown = false) {
+  const Icon = TRUST_ICON_COMPONENTS[name]
+  if (Icon) return <Icon size={size} color={color} />
+  if (flagUnknown) return <UnknownIcon size={size} color="#B45309" />
+  return <LeafIcon size={size} color={color} />
 }
 
 // --- Default Template Data (easily swappable/overridden by seller settings) ---
@@ -883,11 +926,17 @@ export default function Storefront({ previewData = null, editMode = false, selec
   const imgLeft = store.hero_image_left
   const imgRight = store.hero_image_right
   const hasAnyHero = !!(imgMain || imgLeft || imgRight)
-  const heroLayout = template.hero?.layout || 'minimal'
+  // `heroLayout` is guaranteed to be a layout this file can draw; `heroLayoutUnknown`
+  // is true when the stored value was not one of them and we substituted the default.
+  // Surfacing that in edit mode is the point — the old silent fallback is what let
+  // an invented value ("one image left") look like a save that did nothing.
+  const { layout: heroLayout, isUnknown: heroLayoutUnknown, raw: heroLayoutRaw } =
+    resolveHeroLayout(template.hero?.layout)
 
-  // In edit mode the section wrappers own the click (they select a section for
-  // AI editing), so interactive children must not bubble up into them.
-  // undefined on the public storefront — no handler is attached at all.
+   const heroSubtitle =
+    store?.template_data?.hero?.subtitle ??
+    (store.description || template.hero.subtitle)
+
   const stopInEditMode = editMode ? (e) => e.stopPropagation() : undefined
 
   return (
@@ -969,7 +1018,12 @@ export default function Storefront({ previewData = null, editMode = false, selec
         /* Grid definitions & Responsive breakpoints */
         .sf-trust-bar {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          /* auto-fit rather than repeat(4, 1fr): the bar has to be right at
+             whatever number of items the seller actually has. The fixed 4-track
+             grid left a dead column at 3 items and hard-wrapped at 5. auto-fit
+             collapses unused tracks, so N items make N equal columns until they
+             no longer fit, then wrap evenly. */
+          grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
           background-color: ${palette.surface};
           border-bottom: 1px solid ${palette.border};
           padding: 1rem 0.5rem;
@@ -980,10 +1034,12 @@ export default function Storefront({ previewData = null, editMode = false, selec
           align-items: center;
           justify-content: center;
           padding: 0.65rem 0.5rem;
+          /* min-width:0 lets the label ellipsis inside its track instead of
+             forcing the track wider than its share. */
+          min-width: 0;
           overflow: hidden;
           position: relative;
           box-sizing: border-box;
-          white-space: nowrap;
           transition: background-color 0.2s ease;
         }
         .sf-trust-item:hover {
@@ -992,43 +1048,89 @@ export default function Storefront({ previewData = null, editMode = false, selec
         .sf-trust-item:not(:last-child) {
           border-right: 1px solid ${palette.border};
         }
-        .sf-trust-item-marquee {
+
+        /* This was .sf-trust-item-marquee: an INFINITE translateX(140% -> -140%)
+           sweep inside an overflow:hidden cell. Because every item shared one
+           keyframe and started together, the entire bar sat off-screen for
+           ~20-35% of every 9.5s cycle — which read as "the trust bar renders
+           empty", and made item count look like the trigger when it was timing.
+
+           The replacement is a ONE-SHOT entrance that ends at the visible state
+           and stays there, so no item is ever hidden after it has played.
+           Crucially, the resting state below is the VISIBLE one and the
+           animation is opt-in via prefers-reduced-motion: no-preference — if the
+           animation never runs, for any reason, the bar is still readable. */
+        .sf-trust-item-content {
           display: inline-flex;
           align-items: center;
           gap: 0.85rem;
-          white-space: nowrap;
-          animation: sf-trust-single-sweep 9.5s linear infinite;
-          will-change: transform;
+          min-width: 0;
+          opacity: 1;
         }
-        @keyframes sf-trust-single-sweep {
-          0% {
-            transform: translateX(140%);
+        .sf-trust-item-label {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+          .sf-trust-item-content {
+            opacity: 0;
+            animation: sf-trust-fade-in 0.45s ease-out forwards;
           }
-          100% {
-            transform: translateX(-140%);
+          /* Staggered so the row assembles left-to-right instead of popping as a
+             block. Bounded at 8: past that everything shares the last delay. A
+             missing stagger is cosmetic; a missing end state would be another
+             invisible bar, and 'forwards' guarantees the end state regardless. */
+          .sf-trust-item:nth-child(1) .sf-trust-item-content { animation-delay: 0s; }
+          .sf-trust-item:nth-child(2) .sf-trust-item-content { animation-delay: 0.07s; }
+          .sf-trust-item:nth-child(3) .sf-trust-item-content { animation-delay: 0.14s; }
+          .sf-trust-item:nth-child(4) .sf-trust-item-content { animation-delay: 0.21s; }
+          .sf-trust-item:nth-child(5) .sf-trust-item-content { animation-delay: 0.28s; }
+          .sf-trust-item:nth-child(6) .sf-trust-item-content { animation-delay: 0.35s; }
+          .sf-trust-item:nth-child(7) .sf-trust-item-content { animation-delay: 0.42s; }
+          .sf-trust-item:nth-child(n+8) .sf-trust-item-content { animation-delay: 0.49s; }
+        }
+        @keyframes sf-trust-fade-in {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: none; }
+        }
+
+        /* No grid-template-columns override here any more — auto-fit already
+           picks the right column count for the width AND the item count, and a
+           hardcoded 2 would reintroduce the same class of assumption. Below 768px
+           the vertical rules are dropped: with wrapped rows a :not(:last-child)
+           border lands mid-row, so spacing carries the separation instead. */
+        @media (max-width: 768px) {
+          .sf-trust-bar {
+            gap: 0.25rem 0.5rem;
+          }
+          .sf-trust-item {
+            border-right: none !important;
           }
         }
 
-        @media (max-width: 768px) {
-          .sf-trust-bar {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
-          }
-          .sf-trust-item {
-            border-right: none !important;
-          }
-          .sf-trust-item:nth-child(odd) {
-            border-right: 1px solid ${palette.border} !important;
-          }
+        /* Edit-mode-only: a stored value nothing can render. Deliberately loud —
+           it sits above the section it describes and is never emitted on the
+           public storefront (the editMode guard is in the JSX, not here). */
+        .sf-unknown-value-banner {
+          position: relative;
+          z-index: 5;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: #FFFBEB;
+          border: 1px solid #FDE68A;
+          border-left: 4px solid #F59E0B;
+          color: #B45309;
+          padding: 0.7rem 1rem;
+          font-size: 0.82rem;
+          font-weight: 600;
+          font-family: Inter, sans-serif;
+          line-height: 1.4;
         }
-        @media (max-width: 480px) {
-          .sf-trust-bar {
-            grid-template-columns: 1fr;
-            gap: 0.25rem;
-          }
-          .sf-trust-item {
-            border-right: none !important;
-          }
+        .sf-unknown-value-banner strong {
+          font-weight: 700;
         }
 
         .sf-hero-section {
@@ -1242,8 +1344,16 @@ export default function Storefront({ previewData = null, editMode = false, selec
           .sf-hero-ambient-zoom,
           .sf-hero-card-left,
           .sf-hero-card-right,
-          .sf-hero-card-main,
-          .sf-trust-item-marquee {
+          .sf-hero-card-main {
+            animation: none !important;
+            transform: none !important;
+          }
+          /* .sf-trust-item-content needs no rule here: its animation is declared
+             only inside 'prefers-reduced-motion: no-preference', so under 'reduce'
+             it never runs and the element keeps its visible resting state. Belt
+             and braces, because an invisible trust bar is the bug we just fixed: */
+          .sf-trust-item-content {
+            opacity: 1 !important;
             animation: none !important;
             transform: none !important;
           }
@@ -1654,6 +1764,20 @@ export default function Storefront({ previewData = null, editMode = false, selec
             style={{ position: 'relative' }}
           >
             {editMode && <div className="sf-edit-badge">Edit Hero Section</div>}
+            {editMode && heroLayoutUnknown && (
+              <div className="sf-unknown-value-banner" role="status">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                <span>
+                  Unknown hero layout {JSON.stringify(heroLayoutRaw)} — nothing can render it,
+                  so this is showing <strong>{heroLayout}</strong> instead.
+                  Pick a layout in Store Builder: {HERO_LAYOUT_LIST}.
+                </span>
+              </div>
+            )}
             {(() => {
             const heroImg = imgMain || template.hero.image
 
@@ -1681,7 +1805,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                     {template.hero.title}
                   </h1>
                   <p className="sf-anim-sub" style={{ fontSize: '1.15rem', color: palette.secondaryText, lineHeight: 1.55, margin: 0, maxWidth: 640 }}>
-                    {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
+                    {heroSubtitle}
                   </p>
                   <div className="sf-anim-cta" style={{ marginTop: '0.5rem' }}>
                     <a
@@ -1721,7 +1845,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                       {template.hero.title}
                     </h1>
                     <p className="sf-anim-sub" style={{ fontSize: '1.05rem', color: palette.secondaryText, lineHeight: 1.6, margin: 0, maxWidth: 520 }}>
-                      {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
+                      {heroSubtitle}
                     </p>
                     <div className="sf-anim-cta" style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
                       <a
@@ -1771,7 +1895,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                     {template.hero.title}
                   </h1>
                   <p className="sf-anim-sub" style={{ fontSize: '1.05rem', color: palette.secondaryText, lineHeight: 1.6, margin: 0, maxWidth: 520 }}>
-                    {store.description !== null && store.description !== undefined ? store.description : template.hero.subtitle}
+                    {heroSubtitle}
                   </p>
                   <div className="sf-anim-cta" style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
                     <a
@@ -1840,18 +1964,35 @@ export default function Storefront({ previewData = null, editMode = false, selec
             style={{ position: 'relative' }}
           >
             {editMode && <div className="sf-edit-badge">Edit Trust Bar</div>}
-            {template.hero.trustBar.map((item, idx) => (
-              <div key={idx} className="sf-trust-item">
-                <div className="sf-trust-item-marquee">
-                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: palette.accent }}>
-                    {renderIcon(item.icon, 20, palette.accent)}
+            {template.hero.trustBar.map((item, idx) => {
+              // `label` is the field the trust bar is built on, but stores edited
+              // before the server enforced that shape can hold the text under
+              // another key — those items would otherwise render as a lone icon
+              // with no words. Read the alternatives rather than lose the copy.
+              const trustLabel = item.label || item.text || item.title || item.name
+              // Nothing readable at all: skip it. A bare sweeping icon reads as a
+              // rendering glitch, which is worse than one fewer trust item.
+              if (!trustLabel) return null
+              // An icon name outside the shared enum draws a leaf on the public
+              // storefront (graceful) but a warning triangle in edit mode, so the
+              // seller can see the AI picked a name nothing maps to.
+              const iconUnknown = !isKnownTrustBarIcon(item.icon)
+              return (
+                <div key={idx} className="sf-trust-item">
+                  <div className="sf-trust-item-content">
+                    <div
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: palette.accent }}
+                      title={editMode && iconUnknown ? `Unknown icon ${JSON.stringify(item.icon)} — valid icons: ${TRUST_BAR_ICONS.join(', ')}` : undefined}
+                    >
+                      {renderIcon(item.icon, 20, palette.accent, editMode)}
+                    </div>
+                    <span className="sf-trust-item-label" style={{ fontSize: '0.95rem', fontWeight: 600, color: palette.text, fontFamily: 'Inter, sans-serif' }}>
+                      {trustLabel}
+                    </span>
                   </div>
-                  <span style={{ fontSize: '0.95rem', fontWeight: 600, color: palette.text, fontFamily: 'Inter, sans-serif' }}>
-                    {item.label}
-                  </span>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* MAIN CONTAINER */}

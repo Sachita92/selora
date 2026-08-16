@@ -4,8 +4,30 @@ import { supabase } from '../lib/supabase'
 import Storefront from './Storefront'
 import { useStoreEditor } from '../lib/StoreEditorContext'
 import SectionEditPanel from '../components/SectionEditPanel'
+import { HERO_LAYOUTS, resolveHeroLayout } from '../lib/storefrontEnums'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+// Seller-facing copy for each layout. Keyed by the ids in
+// shared/storefront-enums.json — the picker iterates HERO_LAYOUTS, so this map
+// supplies presentation only and can never introduce a layout id of its own.
+const HERO_LAYOUT_META = {
+  minimal: {
+    label: 'Minimal',
+    desc: 'Clean text & CTA, solid palette background. No images required.',
+    hint: 'Layout set to Minimal. Hero images are optional.',
+  },
+  single: {
+    label: 'Single Image (Default)',
+    desc: 'Main headline beside a featured hero image.',
+    hint: 'Layout set to Single Image. Main center image will be featured in the hero section.',
+  },
+  stack: {
+    label: '3-Card Stack',
+    desc: 'Dynamic animated 3-card image stack.',
+    hint: 'Layout set to 3-Card Stack. Upload and crop 3 images below for the animated card stack.',
+  },
+}
 
 const defaultCategories = [
   { id: 'cat_tops', name: 'Tops', image_url: '', link_target: '#category-tops' },
@@ -531,7 +553,7 @@ export default function StoreBuilder() {
 
   async function saveSettings(e) {
     e.preventDefault()
-    const currentLayout = form.template_data?.hero?.layout || 'minimal'
+    const currentLayout = resolveHeroLayout(form.template_data?.hero?.layout).layout
     if (!store && currentLayout === 'stack' && !hasAllHeroImages) {
       return
     }
@@ -820,12 +842,11 @@ export default function StoreBuilder() {
                   <div style={S.field}>
                     <label style={S.label}>Hero Layout Variant</label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginTop: '0.5rem' }}>
-                      {[
-                        { id: 'single', label: 'Single Image (Default)', desc: 'Main headline beside a featured hero image.' },
-                        { id: 'minimal', label: 'Minimal', desc: 'Clean text & CTA, solid palette background. No images required.' },
-                        { id: 'stack', label: '3-Card Stack', desc: 'Dynamic animated 3-card image stack.' }
-                      ].map(item => {
-                        const currentLayout = form.template_data?.hero?.layout || 'single';
+                      {HERO_LAYOUTS.map(id => {
+                        const item = { id, ...HERO_LAYOUT_META[id] };
+                        // resolveHeroLayout, not `|| 'single'` — an invalid stored
+                        // value must not light up a card as if it were selected.
+                        const currentLayout = resolveHeroLayout(form.template_data?.hero?.layout).layout;
                         const isSel = currentLayout === item.id;
                         return (
                           <div
@@ -856,13 +877,11 @@ export default function StoreBuilder() {
                   <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
                     <p style={{ ...S.cardTitle, marginBottom: '0.5rem' }}>Hero Images</p>
                     <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                      {(form.template_data?.hero?.layout || 'minimal') === 'minimal' && "Layout set to Minimal. Hero images are optional."}
-                      {(form.template_data?.hero?.layout || 'minimal') === 'single' && "Layout set to Single Image. Main center image will be featured in the hero section."}
-                      {(form.template_data?.hero?.layout || 'minimal') === 'stack' && "Layout set to 3-Card Stack. Upload and crop 3 images below for the animated card stack."}
+                      {HERO_LAYOUT_META[resolveHeroLayout(form.template_data?.hero?.layout).layout]?.hint}
                     </p>
 
                     {/* Inline Validation Warning for onboarding */}
-                    {!store && (form.template_data?.hero?.layout || 'minimal') === 'stack' && !hasAllHeroImages && (
+                    {!store && resolveHeroLayout(form.template_data?.hero?.layout).layout === 'stack' && !hasAllHeroImages && (
                       <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#B45309', borderRadius: 8, padding: '0.75rem 1rem', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         Upload and crop all 3 hero images to launch your store with 3-Card Stack layout.
