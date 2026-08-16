@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { useChat } from '../lib/ChatContext'
+import { supabase } from '../lib/supabase'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -396,7 +397,12 @@ export default function Dashboard() {
     if (!activeStore) return
     setRunning(true)
     try {
-      await fetch(`${API_URL}/api/agent/run/${activeStore.id}?dry_run=false`, { method: 'POST' })
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
+      await fetch(`${API_URL}/api/agent/run/${activeStore.id}?dry_run=false`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
       setTimeout(() => {
         fetchLogs(activeStore.id)
         fetchReports(activeStore.id)

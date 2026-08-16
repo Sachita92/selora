@@ -322,7 +322,12 @@ export default function SidebarLayout() {
     if (!activeStore || panelRunning) return
     setPanelRunning(true)
     try {
-      await fetch(`${API_URL}/api/agent/run/${activeStore.id}?dry_run=false`, { method: 'POST' })
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
+      await fetch(`${API_URL}/api/agent/run/${activeStore.id}?dry_run=false`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
       setTimeout(() => {
         fetch(`${API_URL}/api/stores/${activeStore.id}/reports`)
           .then(r => r.json())

@@ -213,8 +213,11 @@ export function ChatProvider({ children }) {
   const deleteSession = async (sid, storeId) => {
     if (!sid || !storeId) return
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
       const res = await fetch(`${API_URL}/api/chat/${storeId}/sessions/${sid}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
       })
       if (res.ok) {
         // If the deleted session was the currently active one, start a new session or clear active messages
@@ -238,9 +241,14 @@ export function ChatProvider({ children }) {
   const renameSession = async (sid, storeId, newTitle) => {
     if (!sid || !storeId || !newTitle.trim()) return
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
       const res = await fetch(`${API_URL}/api/chat/${storeId}/sessions/${sid}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ title: newTitle.trim() })
       })
       if (res.ok) {
@@ -254,9 +262,14 @@ export function ChatProvider({ children }) {
   const pinSession = async (sid, storeId, isPinned) => {
     if (!sid || !storeId) return
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
       const res = await fetch(`${API_URL}/api/chat/${storeId}/sessions/${sid}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ pinned: isPinned })
       })
       if (res.ok) {

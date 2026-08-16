@@ -178,9 +178,14 @@ export default function Settings() {
     setSaving(true)
     setError('')
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
       const res = await fetch(`${API_URL}/api/stores/${activeStore.id}/settings`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify(settings),
       })
       if (!res.ok) throw new Error('Failed to save')

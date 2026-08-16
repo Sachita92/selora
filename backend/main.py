@@ -1,7 +1,7 @@
 import os
 import sys
 import argparse
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -16,6 +16,8 @@ dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path)
 
 from product_facts import PRODUCT_FACTS_CORE, PRODUCT_FACTS_CTA
+
+from authz import require_store_owner
 
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
@@ -593,27 +595,21 @@ def get_store_settings(store_id: str):
 
 
 @app.put("/api/stores/{store_id}/settings")
-def update_store_settings(store_id: str, body: dict):
+def update_store_settings(store_id: str, body: dict, store: dict = Depends(require_store_owner)):
     """Save agent configuration settings for a store."""
-    from database import get_store_by_id, save_store_settings
-    store = get_store_by_id(store_id)
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
+    from database import save_store_settings
     settings = save_store_settings(store_id, body)
     return {"settings": settings}
 
 
 @app.post("/api/agent/run/{store_id}")
-def run_agent_on_store(store_id: str, dry_run: bool = True, background_tasks: BackgroundTasks = None):
+def run_agent_on_store(store_id: str, dry_run: bool = True, background_tasks: BackgroundTasks = None, store: dict = Depends(require_store_owner)):
     """
     Manually trigger the Selora agent on a specific store.
     dry_run=True means agent analyzes but makes no real changes.
     Enforces subscription limits check for non-dry runs.
     """
-    from database import get_store_by_id, check_store_run_limit, increment_store_run_count
-    store = get_store_by_id(store_id)
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
+    from database import check_store_run_limit, increment_store_run_count
 
     # Enforce billing limit check on real optimization runs
     if not dry_run:
@@ -1220,13 +1216,10 @@ class SessionMetadataRequest(BaseModel):
 
 
 @app.put("/api/chat/{store_id}/sessions/{session_id}")
-def update_chat_session_endpoint(store_id: str, session_id: str, body: SessionMetadataRequest):
+def update_chat_session_endpoint(store_id: str, session_id: str, body: SessionMetadataRequest, store: dict = Depends(require_store_owner)):
     """Update metadata (title or pinned status) of a chat session."""
-    from database import get_store_by_id, update_chat_session_metadata
-    store = get_store_by_id(store_id)
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
-    
+    from database import update_chat_session_metadata
+
     try:
         updated = update_chat_session_metadata(
             store_id=store_id,
@@ -1240,13 +1233,10 @@ def update_chat_session_endpoint(store_id: str, session_id: str, body: SessionMe
 
 
 @app.delete("/api/chat/{store_id}/sessions/{session_id}")
-def delete_chat_session_endpoint(store_id: str, session_id: str):
+def delete_chat_session_endpoint(store_id: str, session_id: str, store: dict = Depends(require_store_owner)):
     """Delete all messages associated with a chat session."""
-    from database import get_store_by_id, delete_chat_session
-    store = get_store_by_id(store_id)
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
-        
+    from database import delete_chat_session
+
     try:
         delete_chat_session(store_id, session_id)
         return {"success": True, "message": "Session deleted successfully"}
