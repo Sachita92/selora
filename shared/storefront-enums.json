@@ -1,0 +1,16 @@
+{
+  "$comment": [
+    "SINGLE SOURCE OF TRUTH for storefront values that are a closed set.",
+    "Consumed by src/lib/storefrontEnums.js (Vite JSON import) and by",
+    "backend/main.py (json.load at import time). Do NOT hand-copy these lists",
+    "into a component, a validator, or a prompt — read them from here.",
+    "A value that is not in one of these lists cannot be rendered by",
+    "Storefront.jsx, so the backend must refuse to persist it."
+  ],
+
+  "heroLayouts": ["minimal", "single", "stack"],
+  "defaultHeroLayout": "single",
+
+  "trustBarIcons": ["leaf", "truck", "arrow-path", "shield", "bag"],
+  "defaultTrustBarIcon": "leaf"
+}

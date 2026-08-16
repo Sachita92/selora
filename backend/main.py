@@ -712,7 +712,48 @@ SECTION_TARGETS: dict[str, str] = {
 # Any other key on an item is stripped before the proposal is returned.
 SECTION_ITEM_SCHEMAS: dict[str, list[str]] = {
     "categories": ["id", "name", "image_url", "link_target"],
+    "trustBar": ["icon", "label"],
 }
+
+# Where the array lives inside the patch, for array-of-objects sections whose
+# list is NOT at the top level. trustBar is nested under hero, so the patch is
+# { "hero": { "trustBar": [...] } } and the list must be reached through "hero".
+SECTION_ITEM_LIST_KEY: dict[str, str] = {
+    "trustBar": "trustBar",
+}
+
+# ── Shared storefront enums ───────────────────────────────────────────────────
+# Loaded from shared/storefront-enums.json, the SAME file src/lib/storefrontEnums.js
+# imports. These lists are the set of values Storefront.jsx can actually render, so
+# anything outside them must never be persisted — a stored value nothing can draw
+# is what makes a save report success while the preview does not change.
+#
+# Deliberately fails at import rather than falling back to a hardcoded copy: a
+# silent fallback list is exactly the drift this file is here to prevent, and a
+# broken path should be loud at boot, not at the first seller edit.
+_SHARED_ENUMS_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "shared", "storefront-enums.json"
+)
+try:
+    with open(_SHARED_ENUMS_PATH, "r", encoding="utf-8") as _f:
+        import json as _json_enums
+        _SHARED_ENUMS = _json_enums.load(_f)
+except (OSError, ValueError) as _e:
+    raise RuntimeError(
+        f"Could not load shared storefront enums from {_SHARED_ENUMS_PATH}: {_e}. "
+        f"The section editor cannot validate hero layouts or trust-bar icons "
+        f"without it."
+    ) from _e
+
+# The only icon names Storefront.jsx's renderIcon() maps to a component. Anything
+# else falls through to its default (a leaf) on the public storefront, so an
+# invented name silently renders the wrong icon — validate it here.
+_TRUSTBAR_ICONS = list(_SHARED_ENUMS["trustBarIcons"])
+
+# The only hero layouts Storefront.jsx has a rendering branch for. Any other value
+# lands in the default and looks like the save did nothing.
+_HERO_LAYOUTS = list(_SHARED_ENUMS["heroLayouts"])
+_DEFAULT_HERO_LAYOUT = _SHARED_ENUMS["defaultHeroLayout"]
 
 # Fields that are ABSOLUTELY FORBIDDEN in any patch, regardless of section.
 # If the model tries to include any of these, it gets stripped + a warning is logged.
@@ -788,35 +829,101 @@ def validate_section_patch(section: str, patch: dict) -> dict:
                   f"(allowed: {allowed_fields}) — STRIPPED.")
             del section_data[field]
             warned = True
+
+        # Enum-valued fields: the key is allowed but the VALUE has to be one the
+        # storefront can render. Stripping (rather than coercing) is deliberate —
+        # the seller asked for a specific look, and silently substituting a
+        # different layout would be another success message that does not match
+        # the preview. With the key gone the patch collapses to {} below and the
+        # caller reports that nothing applicable came back.
+        if "layout" in section_data and section_data["layout"] not in _HERO_LAYOUTS:
+            print(f"[validate_section_patch] WARNING: hero.layout "
+                  f"{section_data['layout']!r} is not a renderable layout "
+                  f"(allowed: {_HERO_LAYOUTS}) — STRIPPED.")
+            del section_data["layout"]
+            warned = True
+
         cleaned[target_td_key] = section_data
 
     # ── 4. Array-of-objects sections (e.g. categories) ────────────────────────
     # The value must be a list of dicts; scope each item to its allowed fields
     # and drop anything that is not a dict at all.
     item_fields = SECTION_ITEM_SCHEMAS.get(section)
-    if item_fields and target_td_key in cleaned:
-        raw_items = cleaned[target_td_key]
+
+    # Most array sections hold their list directly at the section key
+    # (cleaned["categories"]). trustBar's lives one level down, under hero
+    # (cleaned["hero"]["trustBar"]), so resolve the owning dict and key first —
+    # treating the hero dict as the list would drop the whole patch.
+    nested_key = SECTION_ITEM_LIST_KEY.get(section)
+    if nested_key:
+        container = cleaned.get(target_td_key)
+        container = container if isinstance(container, dict) else None
+        list_key = nested_key
+    else:
+        container = cleaned
+        list_key = target_td_key
+
+    if item_fields and container is not None and list_key in container:
+        raw_items = container[list_key]
         if not isinstance(raw_items, list):
             print(f"[validate_section_patch] SECURITY WARNING: section='{section}' expects a "
-                  f"list for '{target_td_key}', got {type(raw_items).__name__} — PATCH DROPPED.")
-            del cleaned[target_td_key]
+                  f"list for '{list_key}', got {type(raw_items).__name__} — PATCH DROPPED.")
+            del container[list_key]
             warned = True
         else:
             scoped_items = []
             for item in raw_items:
                 if not isinstance(item, dict):
                     print(f"[validate_section_patch] SECURITY WARNING: non-object item in "
-                          f"'{target_td_key}' for section='{section}' — STRIPPED.")
+                          f"'{list_key}' for section='{section}' — STRIPPED.")
                     warned = True
                     continue
                 dropped = [k for k in item if k not in item_fields]
                 for k in dropped:
                     print(f"[validate_section_patch] SECURITY WARNING: disallowed item field "
-                          f"'{k}' in '{target_td_key}' for section='{section}' "
+                          f"'{k}' in '{list_key}' for section='{section}' "
                           f"(allowed: {item_fields}) — STRIPPED.")
                     warned = True
-                scoped_items.append({k: v for k, v in item.items() if k in item_fields})
-            cleaned[target_td_key] = scoped_items
+                scoped = {k: v for k, v in item.items() if k in item_fields}
+
+                if section == "trustBar":
+                    # A trust item with no label renders as a bare icon with no
+                    # text — exactly the failure this validation exists to stop.
+                    # Drop it rather than persist an invisible item.
+                    if not str(scoped.get("label") or "").strip():
+                        print(f"[validate_section_patch] WARNING: trustBar item with no "
+                              f"'label' (keys: {list(item.keys())}) — ITEM DROPPED.")
+                        warned = True
+                        continue
+                    # An unknown icon name silently renders as a leaf, so pin it
+                    # to a name the storefront actually draws.
+                    if scoped.get("icon") not in _TRUSTBAR_ICONS:
+                        print(f"[validate_section_patch] WARNING: unknown trustBar icon "
+                              f"{scoped.get('icon')!r} — COERCED to 'leaf' "
+                              f"(allowed: {_TRUSTBAR_ICONS}).")
+                        scoped["icon"] = "leaf"
+                        warned = True
+
+                scoped_items.append(scoped)
+
+            if section == "trustBar" and raw_items and not scoped_items:
+                # Every item failed validation. Saving [] here would silently
+                # ERASE the seller's trust bar and still report success, so
+                # refuse the patch outright and let the caller say nothing
+                # applicable came back.
+                print(f"[validate_section_patch] WARNING: all {len(raw_items)} trustBar "
+                      f"item(s) were invalid — PATCH DROPPED rather than wiping the bar.")
+                del container[list_key]
+                warned = True
+            else:
+                container[list_key] = scoped_items
+
+    # Drop section keys left empty by stripping. Without this, a fully-stripped
+    # patch is still a truthy dict ({"hero": {}}), so the caller would treat it
+    # as a real proposal and confirm a change that writes nothing.
+    for top_key in list(cleaned.keys()):
+        if isinstance(cleaned[top_key], dict) and not cleaned[top_key]:
+            del cleaned[top_key]
 
     if warned:
         print(f"[validate_section_patch] Patch after stripping: {cleaned}")
@@ -890,12 +997,47 @@ CATEGORIES SHAPE — READ CAREFULLY:
 - To ADD a category, return all existing items exactly as given, plus the new one
   appended at the end."""
 
-    if not shape_rules and section == "trustBar":
-        shape_rules = """
+    if not shape_rules and section == "hero":
+        _layout_list = ", ".join(f'"{v}"' for v in _HERO_LAYOUTS)
+        shape_rules = f"""
 
-TRUST BAR SHAPE:
+HERO LAYOUT — READ CAREFULLY:
+- "layout" is a CLOSED SET. The ONLY accepted values are exactly: {_layout_list}.
+    * "minimal" - centred text and CTA on a solid background, no image.
+    * "single"  - headline beside ONE featured image. This is the one to use for
+                  any request like "one big image", "image on the side",
+                  "single image", "image left", or "image right".
+    * "stack"   - an animated 3-card image stack beside the headline.
+- Copy one of those literal strings. Do NOT invent a descriptive value such as
+  "one image left", "hero-left", "image-left" or "two column" — the server
+  REJECTS any value outside the list above and the seller's edit is discarded.
+- The current value shown above may itself be invalid (an earlier edit could have
+  stored a bad one). Never copy or imitate its style — always emit one of
+  {_layout_list}. If the seller's request does not clearly map to one of them,
+  change other hero fields instead and leave "layout" out of the patch entirely.
+- Only include "layout" in the patch if the seller actually asked to change the
+  layout. Rewording a headline does not need a layout change."""
+
+    if not shape_rules and section == "trustBar":
+        shape_rules = f"""
+
+TRUST BAR SHAPE — READ CAREFULLY:
+- The patch shape is {{ "hero": {{ "trustBar": [ ...items... ] }} }}.
+- "trustBar" is a LIST of objects. Each object must contain EXACTLY these keys:
+    * "label" - REQUIRED. The visible text of the trust item (e.g.
+                "Free Shipping over $75"). This is the ONLY key the storefront
+                renders as text — do NOT use "text", "title", or "name"
+                instead, or the item will render as an icon with no words.
+    * "icon"  - REQUIRED. Must be one of exactly: {_TRUSTBAR_ICONS}
+                No other value is allowed; anything else renders as a leaf.
+                Pick the closest fit ("truck" for shipping/delivery,
+                "arrow-path" for returns/exchanges, "shield" for secure
+                payment/warranty, "leaf" for sustainability/natural,
+                "bag" for shopping/orders).
 - You MUST return the COMPLETE updated trustBar array, not just changed items.
-  Returning a partial array will DELETE the seller's other trust-bar items."""
+  Returning a partial array will DELETE the seller's other trust-bar items.
+- Items missing a non-empty "label" are DISCARDED by the server, so always
+  write one."""
 
     system_prompt = f"""You are a storefront design assistant helping a seller improve their online store.
 
