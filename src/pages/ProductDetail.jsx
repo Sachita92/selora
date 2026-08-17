@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { useChat } from '../lib/ChatContext'
+import { supabase } from '../lib/supabase'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -85,7 +86,13 @@ export default function ProductDetail() {
 
     // Fallback fetch if not found and not fetching
     setLoading(true)
-    fetch(`${API_URL}/api/stores/${activeStore.id}/products`)
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!session?.access_token) throw new Error('Not authenticated')
+        return fetch(`${API_URL}/api/stores/${activeStore.id}/products`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+      })
       .then(res => res.json())
       .then(data => {
         const prod = data.products?.find(p => String(p.id) === String(id))

@@ -406,7 +406,7 @@ def get_stores(request: Request):
 
 
 @app.get("/api/stores/{store_id}/logs")
-def get_store_logs(store_id: str, limit: int = 20):
+def get_store_logs(store_id: str, limit: int = 20, store: dict = Depends(require_store_owner)):
     """Get recent agent activity logs for a store."""
     from database import get_recent_logs
     logs = get_recent_logs(store_id, limit=limit)
@@ -414,7 +414,7 @@ def get_store_logs(store_id: str, limit: int = 20):
 
 
 @app.get("/api/stores/{store_id}/reports")
-def get_store_reports(store_id: str, limit: int = 7):
+def get_store_reports(store_id: str, limit: int = 7, store: dict = Depends(require_store_owner)):
     """Get recent growth reports for a store."""
     from database import get_recent_reports
     reports = get_recent_reports(store_id, limit=limit)
@@ -424,9 +424,8 @@ def get_store_reports(store_id: str, limit: int = 7):
 _products_cache = {}
 
 @app.get("/api/stores/{store_id}/products")
-def get_store_products(store_id: str, force_refresh: bool = False):
+def get_store_products(store_id: str, force_refresh: bool = False, store: dict = Depends(require_store_owner)):
     """Fetch live products from the connected store via the Shopify adapter with caching."""
-    from database import get_store_by_id
     from adapters.shopify import ShopifyAdapter
     import time
 
@@ -437,10 +436,6 @@ def get_store_products(store_id: str, force_refresh: bool = False):
         cached = _products_cache[store_id]
         if now - cached["timestamp"] < cache_duration:
             return cached["data"]
-
-    store = get_store_by_id(store_id)
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
 
     if store.get("platform") == "selora":
         from database import supabase_admin as _db
@@ -584,12 +579,9 @@ def get_store_orders_by_wallet(store_id: str, wallet_address: str):
         raise HTTPException(status_code=500, detail=f"Failed to fetch orders for wallet: {e}")
 
 @app.get("/api/stores/{store_id}/settings")
-def get_store_settings(store_id: str):
+def get_store_settings(store_id: str, store: dict = Depends(require_store_owner)):
     """Get the agent configuration settings for a store."""
-    from database import get_store_by_id, get_store_settings
-    store = get_store_by_id(store_id)
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
+    from database import get_store_settings
     settings = get_store_settings(store_id)
     return {"settings": settings}
 

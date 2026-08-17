@@ -364,7 +364,11 @@ export default function Dashboard() {
   const fetchLogs = async (storeId) => {
     setFetchingLogs(true)
     try {
-      const res  = await fetch(`${API_URL}/api/stores/${storeId}/logs`)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
+      const res  = await fetch(`${API_URL}/api/stores/${storeId}/logs`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
       const data = await res.json()
       setLogs(data.logs || [])
     } catch (e) { console.error(e) }
@@ -374,7 +378,11 @@ export default function Dashboard() {
   const fetchReports = async (storeId) => {
     setFetchingReports(true)
     try {
-      const res  = await fetch(`${API_URL}/api/stores/${storeId}/reports`)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
+      const res  = await fetch(`${API_URL}/api/stores/${storeId}/reports`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
       const data = await res.json()
       setReports(data.reports || [])
     } catch (e) { console.error(e) }

@@ -222,7 +222,13 @@ export default function SidebarLayout() {
   // Fetch latest run timestamp for the right panel's next-run line
   useEffect(() => {
     if (!activeStore) { setLatestRunAt(null); return }
-    fetch(`${API_URL}/api/stores/${activeStore.id}/reports`)
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!session?.access_token) throw new Error('Not authenticated')
+        return fetch(`${API_URL}/api/stores/${activeStore.id}/reports`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+      })
       .then(r => r.json())
       .then(d => setLatestRunAt(d.reports?.[0]?.created_at || null))
       .catch(() => {})
@@ -329,7 +335,13 @@ export default function SidebarLayout() {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
       setTimeout(() => {
-        fetch(`${API_URL}/api/stores/${activeStore.id}/reports`)
+        supabase.auth.getSession()
+          .then(({ data: { session } }) => {
+            if (!session?.access_token) throw new Error('Not authenticated')
+            return fetch(`${API_URL}/api/stores/${activeStore.id}/reports`, {
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            })
+          })
           .then(r => r.json())
           .then(d => setLatestRunAt(d.reports?.[0]?.created_at || null))
           .catch(() => {})

@@ -165,7 +165,11 @@ export default function Settings() {
 
   const fetchSettings = async (storeId) => {
     try {
-      const res  = await fetch(`${API_URL}/api/stores/${storeId}/settings`)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
+      const res  = await fetch(`${API_URL}/api/stores/${storeId}/settings`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
       const data = await res.json()
       setSettings(data.settings)
     } catch (e) {

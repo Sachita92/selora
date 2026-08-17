@@ -500,8 +500,12 @@ export function AppProvider({ children }) {
     if (!storeId) return
     if (!silent) setFetchingProducts(true)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
       const url = `${API_URL}/api/stores/${storeId}/products${forceRefresh ? '?force_refresh=true' : ''}`
-      const res = await fetch(url)
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
       const data = await res.json()
       setProducts(data.products || [])
       setProductsStats({
