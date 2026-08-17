@@ -100,6 +100,10 @@ SUPABASE_SERVICE_KEY=your-supabase-service-key
 
 SOLANA_RPC_URL=https://api.devnet.solana.com
 USDC_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+
+# Optional LLM model overrides (defaults live in backend/llm_config.py)
+AGENT_MODEL=openai/gpt-oss-120b
+TITLE_MODEL=llama-3.1-8b-instant
 ```
 
 ```bash

@@ -8,6 +8,7 @@ from agent.tools import get_tools_definition, execute_tool
 load_dotenv()
 
 from product_facts import PRODUCT_FACTS_CORE
+from llm_config import AGENT_MODEL
 
 
 class SeloraBrain:
@@ -21,7 +22,7 @@ class SeloraBrain:
         self.adapter = adapter
         self.dry_run = dry_run
         self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-        self.model = "llama-3.3-70b-versatile"
+        self.model = AGENT_MODEL
         self.actions_taken = []
 
         if not os.getenv("GROQ_API_KEY"):
