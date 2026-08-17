@@ -67,3 +67,33 @@ def require_store_owner(
     if not store or store.get("user_id") != user.user_id:
         raise HTTPException(status_code=404, detail="Store not found")
     return store
+
+
+def require_store_owner_or_demo(store_id: str, request: Request) -> dict:
+    """FastAPI dependency: allow the verified store owner OR the public demo store.
+
+    The demo allowance exists for the landing-page guest chat widget, which
+    reads chat history/sessions for the pinned demo store without a token.
+    Demo resolution goes through ``database.get_demo_store_ids`` — the same
+    ``stores``-table lookup keyed by ``DEMO_STORE_SHOPIFY_DOMAIN`` that the
+    landing stats and the guest gate on ``POST /api/chat/{store_id}`` use.
+    The demo check runs first so a logged-in caller who is not the demo
+    store's owner (e.g. a signed-in user with no store of their own on the
+    landing page) is still allowed.
+
+    Any non-demo store falls through to ``require_store_owner`` unchanged, so
+    the failure modes are identical to the owner-only dependency — 401 for a
+    missing/invalid token, 404 for a missing or foreign store. No new leak
+    paths: a nonexistent store id is never in the demo list, so it takes the
+    owner path exactly as before.
+    """
+    from database import get_demo_store_ids, get_store_by_id  # lazy — see module docstring
+
+    if store_id in get_demo_store_ids():
+        store = get_store_by_id(store_id)
+        if not store:
+            raise HTTPException(status_code=404, detail="Store not found")
+        return store
+
+    user = get_current_user(request)
+    return require_store_owner(store_id, user)

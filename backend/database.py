@@ -641,6 +641,24 @@ def get_public_stats() -> dict:
         }
 
 
+def get_demo_store_ids() -> list:
+    """IDs of the active pinned demo store(s).
+
+    Same lookup the landing page (`get_public_stats`) and the guest chat gate
+    in ``main`` use: active ``stores`` rows whose ``shop_url`` matches
+    ``DEMO_STORE_SHOPIFY_DOMAIN``. Returns ``[]`` on any failure so callers
+    granting a demo allowance fail closed.
+    """
+    demo_domain = os.getenv("DEMO_STORE_SHOPIFY_DOMAIN", "selora-test.myshopify.com")
+    try:
+        client = supabase_admin()
+        res = client.table("stores").select("id").eq("shop_url", demo_domain).eq("is_active", True).execute()
+        return [d["id"] for d in (res.data or [])]
+    except Exception as e:
+        print(f"Error resolving demo store ids: {e}")
+        return []
+
+
 def delete_chat_session(store_id: str, session_id: str):
     """Delete all messages associated with a chat session from database."""
     client = supabase_admin()

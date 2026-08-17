@@ -17,7 +17,7 @@ load_dotenv(dotenv_path)
 
 from product_facts import PRODUCT_FACTS_CORE, PRODUCT_FACTS_CTA
 
-from authz import require_store_owner
+from authz import require_store_owner, require_store_owner_or_demo
 
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
@@ -1181,23 +1181,17 @@ SECURITY RULES — ABSOLUTE:
 
 
 @app.get("/api/chat/{store_id}/history")
-def get_chat_history_endpoint(store_id: str, session_id: str):
+def get_chat_history_endpoint(store_id: str, session_id: str, store: dict = Depends(require_store_owner_or_demo)):
     """Retrieve chat message history for a specific store and session."""
-    from database import get_store_by_id, get_chat_history
-    store = get_store_by_id(store_id)
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
+    from database import get_chat_history
     history = get_chat_history(store_id, session_id)
     return {"history": history}
 
 
 @app.get("/api/chat/{store_id}/sessions")
-def get_chat_sessions_endpoint(store_id: str):
+def get_chat_sessions_endpoint(store_id: str, store: dict = Depends(require_store_owner_or_demo)):
     """Retrieve unique chat sessions for a store."""
-    from database import get_store_by_id, get_chat_sessions
-    store = get_store_by_id(store_id)
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
+    from database import get_chat_sessions
     sessions = get_chat_sessions(store_id)
     return {"sessions": sessions}
 

@@ -32,7 +32,14 @@ export function ChatProvider({ children }) {
   const loadHistory = async (storeId, sid = sessionId) => {
     if (!storeId || !sid) return
     try {
-      const res = await fetch(`${API_URL}/api/chat/${storeId}/history?session_id=${sid}`)
+      // Attach the token when signed in; guests have no session and rely on
+      // the backend's demo-store allowance.
+      const headers = {}
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      const res = await fetch(`${API_URL}/api/chat/${storeId}/history?session_id=${sid}`, { headers })
       const data = await res.json()
       if (data.history && data.history.length > 0) {
         const mapped = data.history.map(msg => {
@@ -67,7 +74,14 @@ export function ChatProvider({ children }) {
   const loadSessions = async (storeId) => {
     if (!storeId) return
     try {
-      const res = await fetch(`${API_URL}/api/chat/${storeId}/sessions`)
+      // Attach the token when signed in; guests have no session and rely on
+      // the backend's demo-store allowance.
+      const headers = {}
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      const res = await fetch(`${API_URL}/api/chat/${storeId}/sessions`, { headers })
       const data = await res.json()
       setSessions(data.sessions || [])
     } catch (e) {
