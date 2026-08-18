@@ -17,7 +17,7 @@ load_dotenv(dotenv_path)
 
 from product_facts import PRODUCT_FACTS_CORE, PRODUCT_FACTS_CTA
 
-from authz import require_store_owner, require_store_owner_or_demo
+from authz import UserIdentity, get_current_user, require_store_owner, require_store_owner_or_demo
 from llm_config import AGENT_MODEL, TITLE_MODEL
 
 ALLOWED_ORIGINS = [
@@ -2614,41 +2614,16 @@ def create_checkout_session(body: CheckoutRequest):
         raise HTTPException(status_code=500, detail=f"Stripe subscription error: {str(e)}")
 
 
-@app.post("/api/billing/portal")
-def create_portal_session(body: dict):
-    """Generate a portal session link for subscription management."""
-    user_id = body.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=400, detail="Missing user_id")
-
-    from database import get_user_by_id
-    user = get_user_by_id(user_id)
-    customer_id = user.get("stripe_customer_id") if user else None
-
-    if not customer_id:
-        raise HTTPException(status_code=400, detail="Stripe customer not found. Subscribed plan required.")
-
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-    try:
-        session = stripe.billing_portal.Session.create(
-            customer=customer_id,
-            return_url=f"{frontend_url}/dashboard",
-        )
-        return {"url": session.url}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Portal error: {str(e)}")
-
-
 class CancelSubscriptionRequest(BaseModel):
     subscription_id: str
 
 @app.get("/api/billing/subscriptions")
-def get_user_subscriptions(email: str = Query(..., description="User email")):
-    """Get active subscriptions from Stripe for a user."""
-    from database import get_or_create_user
+def get_user_subscriptions(user: UserIdentity = Depends(get_current_user)):
+    """Get the caller's active subscriptions from Stripe."""
+    from database import get_user_by_id
     try:
-        user = get_or_create_user(email)
-        customer_id = user.get("stripe_customer_id")
+        row = get_user_by_id(user.user_id)
+        customer_id = row.get("stripe_customer_id") if row else None
         if not customer_id:
             return {"subscriptions": []}
 
@@ -2719,8 +2694,24 @@ def get_user_subscriptions(email: str = Query(..., description="User email")):
 
 
 @app.post("/api/billing/cancel-subscription")
-def cancel_subscription(body: CancelSubscriptionRequest):
-    """Cancel a subscription at the end of the billing period."""
+def cancel_subscription(body: CancelSubscriptionRequest, user: UserIdentity = Depends(get_current_user)):
+    """Cancel one of the caller's own subscriptions at the end of the billing period."""
+    from database import get_user_by_id
+    row = get_user_by_id(user.user_id)
+    customer_id = row.get("stripe_customer_id") if row else None
+    # 404 for unknown and foreign subscriptions alike — existence is never
+    # leaked, matching the require_store_owner convention.
+    if not customer_id:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    try:
+        sub = stripe.Subscription.retrieve(body.subscription_id)
+        sub_dict = sub.to_dict() if hasattr(sub, "to_dict") else dict(sub)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    if sub_dict.get("customer") != customer_id:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
     try:
         sub = stripe.Subscription.modify(body.subscription_id, cancel_at_period_end=True)
         return {"success": True, "subscription": sub}
@@ -2729,13 +2720,12 @@ def cancel_subscription(body: CancelSubscriptionRequest):
 
 
 @app.get("/api/billing/history")
-def get_billing_history(email: str = Query(..., description="User email")):
-    """Get billing history (events) for a user."""
-    from database import get_or_create_user, supabase_admin as db
+def get_billing_history(user: UserIdentity = Depends(get_current_user)):
+    """Get the caller's billing history (events)."""
+    from database import supabase_admin as db
     try:
-        user = get_or_create_user(email)
         client = db()
-        res = client.table("billing_events").select("*").eq("user_id", user["id"]).order("created_at", desc=True).execute()
+        res = client.table("billing_events").select("*").eq("user_id", user.user_id).order("created_at", desc=True).execute()
         return {"history": res.data or []}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch billing history: {str(e)}")

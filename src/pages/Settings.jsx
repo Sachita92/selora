@@ -85,10 +85,14 @@ export default function Settings() {
   const [savingBilling, setSavingBilling] = useState(false)
 
   // Fetch billing history
-  const fetchBillingHistory = async (email) => {
+  const fetchBillingHistory = async () => {
     setLoadingHistory(true)
     try {
-      const res = await fetch(`${API_URL}/api/billing/history?email=${encodeURIComponent(email)}`)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
+      const res = await fetch(`${API_URL}/api/billing/history`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
       const data = await res.json()
       setBillingHistory(data.history || [])
     } catch (e) {
@@ -99,10 +103,14 @@ export default function Settings() {
   }
 
   // Fetch Stripe subscriptions
-  const fetchSubscriptions = async (email) => {
+  const fetchSubscriptions = async () => {
     setLoadingSubscriptions(true)
     try {
-      const res = await fetch(`${API_URL}/api/billing/subscriptions?email=${encodeURIComponent(email)}`)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
+      const res = await fetch(`${API_URL}/api/billing/subscriptions`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
       const data = await res.json()
       setSubscriptions(data.subscriptions || [])
     } catch (e) {
@@ -125,10 +133,15 @@ export default function Settings() {
     if (!window.confirm("Are you sure you want to save these changes and cancel the selected subscription(s)?")) return
     setSavingBilling(true)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
       for (const subId of pendingCancels) {
         const res = await fetch(`${API_URL}/api/billing/cancel-subscription`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
           body: JSON.stringify({ subscription_id: subId })
         })
         const data = await res.json()
@@ -138,9 +151,7 @@ export default function Settings() {
       }
       alert("Billing changes saved successfully. Selected subscription(s) scheduled to cancel.")
       setPendingCancels([])
-      if (user) {
-        fetchSubscriptions(user.email)
-      }
+      fetchSubscriptions()
     } catch (e) {
       console.error(e)
       alert(`Error saving changes: ${e.message || e}`)
@@ -150,9 +161,9 @@ export default function Settings() {
   }
 
   useEffect(() => {
-    if (activeTab === 'billing' && user?.email) {
-      fetchBillingHistory(user.email)
-      fetchSubscriptions(user.email)
+    if (activeTab === 'billing' && user) {
+      fetchBillingHistory()
+      fetchSubscriptions()
       setPendingCancels([])
     }
   }, [activeTab, user])
