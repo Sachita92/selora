@@ -1968,6 +1968,13 @@ def _get_solana_rpc_url() -> str:
         )
     return url.strip()
 
+def _allow_self_transfer_confirm() -> bool:
+    """Devnet-testing opt-in: lets verify_solana_checkout confirm a merchant's
+    self-payment (paying their own store from the payout wallet nets a zero
+    balance change, so the amount check can never pass). Defaults OFF; must
+    never be enabled in production."""
+    return os.getenv("SOLANA_ALLOW_SELF_TRANSFER_CONFIRM", "").strip().lower() in ("1", "true", "yes")
+
 def _redact_rpc_url(url: str) -> str:
     """Redact sensitive query parameters (e.g. api-key) from an RPC URL for safe logging."""
     if not url:
@@ -4172,11 +4179,24 @@ def verify_solana_checkout(reference: str):
                             
                     received_usdc += (post_amount - pre_amount)
                     
-            # Handle self-transfers (merchant testing their own store using the same wallet)
-            buyer_wallet = order.get("buyer_wallet")
-            is_self_transfer = buyer_wallet and (buyer_wallet.strip().lower() == merchant_wallet.lower())
+            # Merchant self-payment allowance, OFF unless the devnet-testing
+            # flag SOLANA_ALLOW_SELF_TRANSFER_CONFIRM is set. Even when on, it
+            # trusts only on-chain facts: the fee payer (first account key, a
+            # required signer) must BE the merchant wallet and the transaction
+            # must touch the merchant's account for the expected mint. The
+            # order's buyer_wallet is client-supplied and must never influence
+            # confirmation.
+            is_merchant_self_payment = False
+            if _allow_self_transfer_confirm():
+                account_keys = (result.get("transaction", {}).get("message", {}) or {}).get("accountKeys") or []
+                fee_payer = account_keys[0] if account_keys else None
+                touched_merchant_usdc = any(
+                    b.get("mint") == usdc_mint and b.get("owner") == merchant_wallet
+                    for b in post_token_balances
+                )
+                is_merchant_self_payment = bool(fee_payer) and fee_payer == merchant_wallet and touched_merchant_usdc
 
-            if received_usdc >= expected_usdc or is_self_transfer:
+            if received_usdc >= expected_usdc or is_merchant_self_payment:
                 confirmed_signature = sig
                 break
                 
