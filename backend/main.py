@@ -1903,8 +1903,13 @@ Agent: {final_response[:300]}"""
 # This endpoint is payment-gated via the x402 middleware registered above.
 # It accepts the same request body as POST /api/chat/{store_id} and proxies to
 # the same underlying chat logic.
-# The store_id is passed in the request body so AI agents can specify which
-# store context they want to chat against.
+# x402 is a devnet showcase, so the chat is pinned to the public demo store
+# (resolved via database.get_demo_store_ids — the same lookup every other demo
+# allowance uses). The x402 payment proves payment, not identity: nothing binds
+# the payer to a store, so a body-supplied store_id must never select the
+# target. If x402 ever becomes a real product surface, the fix is to bind
+# store_id into the signed payment payload (the x402 resource/requirements the
+# client signs over) and verify it here — not to trust the request body.
 
 class X402ChatRequest(ChatRequest):
     """Extended ChatRequest that also accepts an explicit store_id."""
@@ -1918,11 +1923,24 @@ def x402_chat(body: X402ChatRequest, request: Request):
 
     Requires a valid x402 USDC payment header on Solana devnet.
     Accepts the same request body as POST /api/chat/{store_id}, plus:
-    - store_id: the target store UUID (or 'demo' for the public demo store)
+    - store_id: 'demo' or the demo store's UUID — this showcase endpoint is
+      pinned to the public demo store; any other store_id is rejected
 
     Price: $0.001 USDC per call
     Network: solana:devnet
     """
+    from database import get_demo_store_ids  # lazy, same seam the chat gates use
+
+    demo_ids = get_demo_store_ids()
+    if not demo_ids:
+        raise HTTPException(status_code=503, detail="Demo store is unavailable")
+    if body.store_id == "demo":
+        store_id = demo_ids[0]
+    elif body.store_id in demo_ids:
+        store_id = body.store_id
+    else:
+        raise HTTPException(status_code=403, detail="x402 chat is restricted to the public demo store")
+
     # Delegate entirely to the existing chat_with_agent handler.
     # We create a vanilla ChatRequest from the extended body to keep
     # the existing function signature unchanged.
@@ -1934,7 +1952,7 @@ def x402_chat(body: X402ChatRequest, request: Request):
         confirm_delete=body.confirm_delete,
     )
     return chat_with_agent(
-        store_id=body.store_id,
+        store_id=store_id,
         body=chat_body,
         request=request,
     )
@@ -2480,8 +2498,8 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_mock")
 webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 if not webhook_secret:
     print("\n⚠️ WARNING: STRIPE_WEBHOOK_SECRET is not set in backend/.env file.")
-    print("   Webhook signature verification will be bypassed for local development.")
-    print("   Set this variable in production to secure your webhook endpoint.\n")
+    print("   POST /api/billing/webhook will refuse ALL events (500) until it is set —")
+    print("   unsigned payloads are never processed.\n")
 
 # Setup plan lookup mapping
 PLAN_PRICE_MAP = {
@@ -2821,20 +2839,49 @@ def send_payment_failed_email(email: str):
         return False
 
 
+def _jsonable_stripe_payload(value):
+    """Return a copy of a Stripe payload that json.dumps can serialize.
+
+    stripe-python hydrates ``*_decimal`` wire strings (plan.amount_decimal,
+    price.unit_amount_decimal, ...) into ``decimal.Decimal`` when it constructs
+    event objects, and ``to_dict()`` keeps them — so persisting a payload to
+    the JSONB ``billing_events.details`` column crashes inside the supabase
+    client with "Object of type Decimal is not JSON serializable". Decimals
+    are encoded back to strings — their original wire form, so values
+    round-trip losslessly — datetimes to ISO strings, and any other non-native
+    type falls back to ``str`` rather than 500ing the webhook.
+    """
+    import json
+    from datetime import date, datetime
+    from decimal import Decimal
+
+    def _default(v):
+        if isinstance(v, Decimal):
+            return str(v)
+        if isinstance(v, (date, datetime)):
+            return v.isoformat()
+        return str(v)
+
+    return json.loads(json.dumps(value, default=_default))
+
 @app.post("/api/billing/webhook")
 async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
     """Stripe webhook to handle subscription updates in real-time."""
-    import json
     webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    if not webhook_secret or not webhook_secret.strip():
+        # Without the signing secret no payload can be authenticated, and an
+        # unauthenticated checkout.session.completed grants a paid plan — so a
+        # missing secret is a server misconfiguration, never a reason to trust
+        # the body. Locally, simulate_webhook.py signs with this same secret,
+        # and `stripe listen` provides one for forwarded real events.
+        raise HTTPException(
+            status_code=500,
+            detail="STRIPE_WEBHOOK_SECRET is not configured on the backend server."
+        )
     payload = await request.body()
 
     try:
-        if webhook_secret:
-            event = stripe.Webhook.construct_event(payload, stripe_signature, webhook_secret)
-        else:
-            # Fallback for development without local listener CLI signature verification
-            data = json.loads(payload)
-            event = stripe.Event.construct_from(data, stripe.api_key)
+        event = stripe.Webhook.construct_event(payload, stripe_signature, webhook_secret.strip())
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Webhook verification failed: {e}")
 
@@ -2844,6 +2891,10 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
         event_data = event_data.to_dict()
     else:
         event_data = dict(event_data)
+    # Normalize once, up front: every branch below persists event_data as the
+    # billing_events.details JSONB value, and stripe's Decimal-hydrated fields
+    # must never reach that insert.
+    event_data = _jsonable_stripe_payload(event_data)
 
     from database import update_user_subscription, update_user_subscription_by_stripe_id, save_billing_event
 
