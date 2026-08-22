@@ -4075,13 +4075,55 @@ def create_solana_checkout(body: SolanaCheckoutRequest):
 # ─── Solana RPC proxy ─────────────────────────────────────────────────────────
 # The browser cannot call api.devnet.solana.com directly from localhost because
 # Solana's public devnet RPC returns CORS errors for preflight requests.
-# This endpoint forwards any JSON-RPC payload to Solana devnet server-side.
+# This endpoint forwards checkout JSON-RPC calls to Solana devnet server-side.
+#
+# The proxy is deliberately unauthenticated — it serves the public storefront
+# checkout, where buyers pay without accounts. The lockdown is therefore
+# shape-based: only the JSON-RPC methods the checkout flow in Storefront.jsx
+# actually issues (directly or inside @solana/web3.js Connection internals)
+# are forwarded, one request object at a time, with the body size capped, so
+# the keyed upstream endpoint cannot be used as an open relay.
+SOLANA_RPC_ALLOWED_METHODS = frozenset({
+    "getAccountInfo",          # spl-token getMint()
+    "getBalance",              # pre-flight SOL fee check
+    "getTokenAccountBalance",  # pre-flight USDC balance check
+    "getLatestBlockhash",      # transaction assembly
+    "simulateTransaction",     # pre-flight simulation before the wallet prompt
+    "getBlockHeight",          # confirmTransaction block-height expiry polling
+    "getSignatureStatuses",    # confirmTransaction one-shot status check
+})
+# The largest legitimate payload is a simulateTransaction body: a serialized
+# transaction is at most 1232 bytes, ~1.7 KB as base64 plus the JSON envelope.
+SOLANA_RPC_MAX_BODY_BYTES = 16 * 1024
+
+
 @app.post("/api/rpc/solana")
 async def solana_rpc_proxy(request: Request):
+    import json as _json
+
     import httpx
+
+    # Reject a declared-oversized body before reading it into memory; the
+    # post-read check below still governs, since Content-Length can lie.
+    content_length = request.headers.get("content-length", "")
+    if content_length.isdigit() and int(content_length) > SOLANA_RPC_MAX_BODY_BYTES:
+        raise HTTPException(status_code=413, detail="Request body too large")
+    raw = await request.body()
+    if len(raw) > SOLANA_RPC_MAX_BODY_BYTES:
+        raise HTTPException(status_code=413, detail="Request body too large")
+    try:
+        body = _json.loads(raw)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Body must be valid JSON")
+    # web3.js issues one request object at a time; batch arrays are rejected
+    # so the allowlist cannot be bypassed inside a batch.
+    if not isinstance(body, dict) or not isinstance(body.get("method"), str):
+        raise HTTPException(status_code=400, detail="Body must be a single JSON-RPC request object")
+    if body["method"] not in SOLANA_RPC_ALLOWED_METHODS:
+        raise HTTPException(status_code=403, detail=f"JSON-RPC method not allowed: {body['method']}")
+
     rpc_url = _get_solana_rpc_url()
     try:
-        body = await request.json()
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(
                 rpc_url,
