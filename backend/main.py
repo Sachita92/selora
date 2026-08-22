@@ -3682,10 +3682,71 @@ async def track_event(request: Request):
     return {'success': True}
 
 
+# ─── Image upload validation ──────────────────────────────────────────────────
+# Shared by the four image-upload endpoints below. The client's content_type
+# claim is never trusted: the stored type comes from the file's magic bytes,
+# and a claim that contradicts the bytes is rejected outright. Only the image
+# formats the StoreBuilder UI actually produces are accepted — JPEG, PNG and
+# WEBP. SVG is deliberately NOT on the list: it can carry script, and the
+# bucket is public.
+UPLOAD_MAX_BYTES = 10 * 1024 * 1024  # matches StoreBuilder's 10 MB client-side limit
+# Base64 inflates 3 bytes to 4 chars; a longer payload cannot decode under the cap.
+_UPLOAD_MAX_B64_CHARS = ((UPLOAD_MAX_BYTES + 2) // 3) * 4
+
+_UPLOAD_EXTENSIONS = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+}
+
+
+def _sniff_image_content_type(data: bytes):
+    """Identify JPEG/PNG/WEBP from magic bytes; None for anything else."""
+    if data.startswith(b'\xff\xd8\xff'):
+        return 'image/jpeg'
+    if data.startswith(b'\x89PNG\r\n\x1a\n'):
+        return 'image/png'
+    if len(data) >= 12 and data[:4] == b'RIFF' and data[8:12] == b'WEBP':
+        return 'image/webp'
+    return None
+
+
+def _decode_image_upload(body_json: dict) -> tuple[bytes, str]:
+    """Decode and validate an image-upload body ({file_data, content_type?}).
+
+    Returns (file_bytes, content_type), the content type sniffed from the
+    bytes. Raises 400 for missing/undecodable data, 413 over the size cap,
+    415 for anything that is not a JPEG/PNG/WEBP or whose claimed
+    content_type contradicts the bytes.
+    """
+    import base64
+    file_data_b64 = body_json.get('file_data', '')
+    if not isinstance(file_data_b64, str) or not file_data_b64:
+        raise HTTPException(status_code=400, detail='file_data is required')
+    if len(file_data_b64) > _UPLOAD_MAX_B64_CHARS:
+        raise HTTPException(status_code=413, detail='Image exceeds the 10 MB upload limit')
+    try:
+        file_bytes = base64.b64decode(file_data_b64)
+    except Exception:
+        raise HTTPException(status_code=400, detail='file_data is not valid base64')
+    if len(file_bytes) > UPLOAD_MAX_BYTES:
+        raise HTTPException(status_code=413, detail='Image exceeds the 10 MB upload limit')
+    content_type = _sniff_image_content_type(file_bytes)
+    if content_type is None:
+        raise HTTPException(status_code=415, detail='File is not a supported image (JPEG, PNG, or WEBP)')
+    claimed = body_json.get('content_type')
+    if claimed and claimed != content_type:
+        raise HTTPException(
+            status_code=415,
+            detail=f'Claimed content_type does not match the file contents ({content_type})',
+        )
+    return file_bytes, content_type
+
+
 @app.post('/selora-stores/{store_id}/upload-image')
 async def upload_product_image(store_id: str, request: Request):
     """Upload a product image to Supabase Storage and return the public URL."""
-    import uuid, base64
+    import uuid
     from database import supabase_admin as _db
     user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
@@ -3694,11 +3755,10 @@ async def upload_product_image(store_id: str, request: Request):
     if existing.data[0]['user_id'] != user_id:
         raise HTTPException(status_code=403, detail='Forbidden')
     body_json = await request.json()
-    file_data_b64 = body_json.get('file_data', '')
-    file_name = body_json.get('file_name', f'{uuid.uuid4()}.jpg')
-    content_type = body_json.get('content_type', 'image/jpeg')
-    file_bytes = base64.b64decode(file_data_b64)
-    path = f'{store_id}/{uuid.uuid4()}-{file_name}'
+    file_bytes, content_type = _decode_image_upload(body_json)
+    # The stored name is generated entirely server-side; the client's
+    # file_name never reaches the storage path.
+    path = f'{store_id}/{uuid.uuid4()}.{_UPLOAD_EXTENSIONS[content_type]}'
     supabase_url = os.getenv('SUPABASE_URL')
     bucket = 'selora-products'
     storage = _db().storage.from_(bucket)
@@ -3712,7 +3772,6 @@ async def upload_hero_image(store_id: str, role: str, request: Request):
     """Upload a cropped store hero image (main, left, or right) to Supabase Storage and save to settings."""
     if role not in ('main', 'left', 'right'):
         raise HTTPException(status_code=400, detail='Invalid role. Must be main, left, or right.')
-    import base64
     from database import supabase_admin as _db
     user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
@@ -3722,9 +3781,7 @@ async def upload_hero_image(store_id: str, role: str, request: Request):
         raise HTTPException(status_code=403, detail='Forbidden')
 
     body_json = await request.json()
-    file_data_b64 = body_json.get('file_data', '')
-    content_type = body_json.get('content_type', 'image/jpeg')
-    file_bytes = base64.b64decode(file_data_b64)
+    file_bytes, content_type = _decode_image_upload(body_json)
 
     path = f'hero-images/{store_id}/{role}.jpg'
     supabase_url = os.getenv('SUPABASE_URL')
@@ -3765,7 +3822,6 @@ async def classify_image(store_id: str, request: Request):
 @app.post('/selora-stores/{store_id}/upload-product-image/{product_id}')
 async def upload_product_image_by_id(store_id: str, product_id: str, request: Request):
     """Upload a product image named product_id.jpg to product-images/{store_id} path."""
-    import base64
     from database import supabase_admin as _db
     user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
@@ -3773,12 +3829,10 @@ async def upload_product_image_by_id(store_id: str, product_id: str, request: Re
         raise HTTPException(status_code=404, detail='Store not found')
     if existing.data[0]['user_id'] != user_id:
         raise HTTPException(status_code=403, detail='Forbidden')
-        
+
     body_json = await request.json()
-    file_data_b64 = body_json.get('file_data', '')
-    content_type = body_json.get('content_type', 'image/jpeg')
-    file_bytes = base64.b64decode(file_data_b64)
-    
+    file_bytes, content_type = _decode_image_upload(body_json)
+
     path = f'product-images/{store_id}/{product_id}.jpg'
     supabase_url = os.getenv('SUPABASE_URL')
     bucket = 'selora-products'
@@ -3800,7 +3854,6 @@ async def upload_product_image_by_id(store_id: str, product_id: str, request: Re
 @app.post('/selora-stores/{store_id}/upload-category-image/{category_id}')
 async def upload_category_image(store_id: str, category_id: str, request: Request):
     """Upload a category image to Supabase Storage and return the URL."""
-    import base64
     from database import supabase_admin as _db
     user_id, _ = _get_user_id_from_token(request)
     existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
@@ -3808,12 +3861,10 @@ async def upload_category_image(store_id: str, category_id: str, request: Reques
         raise HTTPException(status_code=404, detail='Store not found')
     if existing.data[0]['user_id'] != user_id:
         raise HTTPException(status_code=403, detail='Forbidden')
-        
+
     body_json = await request.json()
-    file_data_b64 = body_json.get('file_data', '')
-    content_type = body_json.get('content_type', 'image/jpeg')
-    file_bytes = base64.b64decode(file_data_b64)
-    
+    file_bytes, content_type = _decode_image_upload(body_json)
+
     path = f'category-images/{store_id}/{category_id}.jpg'
     supabase_url = os.getenv('SUPABASE_URL')
     bucket = 'selora-products'
