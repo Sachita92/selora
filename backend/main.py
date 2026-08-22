@@ -202,24 +202,43 @@ def root():
 # In-memory store for OAuth state tokens (use Redis in production)
 _oauth_states: dict = {}
 
+# A state token is single-use AND short-lived; an install that sits on
+# Shopify's permission screen longer than this must be restarted.
+OAUTH_STATE_TTL_SECONDS = 600
+
 @app.get("/install")
 def install(
+    request: Request,
     shop: str = Query(..., description="The myshopify.com domain"),
-    email: str = Query(None, description="The logged-in user email"),
 ):
     """
-    Step 1 of OAuth — redirect seller to Shopify's permission screen.
-    Usage: GET /install?shop=my-store.myshopify.com&email=user@example.com
+    Step 1 of OAuth — issue the Shopify permission-screen URL.
+
+    Requires a verified Supabase JWT: the store that comes back on the
+    callback binds to THIS user, established here, before the redirect.
+    The identity rides server-side in _oauth_states keyed by the random
+    state token — never in anything the client can set. Returns the URL
+    as JSON (rather than redirecting) because the browser navigation to
+    Shopify cannot carry the Authorization header; the frontend fetches
+    this endpoint with the token, then navigates to install_url.
     """
     from auth import build_install_url
+
+    user_id, email = _get_user_id_from_token(request)
 
     if not shop:
         raise HTTPException(status_code=400, detail="shop parameter is required")
 
     install_url, state = build_install_url(shop)
-    _oauth_states[state] = {"shop": shop, "email": email}  # store state data for verification
-    print(f"→ Redirecting {shop} to Shopify OAuth")
-    return RedirectResponse(url=install_url)
+    import time
+    _oauth_states[state] = {
+        "shop": shop if shop.endswith(".myshopify.com") else f"{shop}.myshopify.com",
+        "user_id": user_id,
+        "email": email,
+        "issued_at": time.time(),
+    }
+    print(f"→ Issued Shopify OAuth install URL for {shop}")
+    return {"install_url": install_url}
 
 
 @app.get("/auth/callback")
@@ -236,19 +255,21 @@ def oauth_callback(
     We verify the request, exchange the code for a token, save it, and redirect to dashboard.
     """
     from auth import verify_hmac, exchange_code_for_token, get_shop_info
-    from database import get_or_create_user, save_store
+    from database import get_or_create_user_by_auth, save_store
 
-    # Verify state to prevent CSRF attacks
-    if state not in _oauth_states:
+    # Verify state to prevent CSRF attacks. The state row was written by
+    # /install after JWT verification, so a present, unexpired entry with a
+    # user_id IS the verified identity of whoever initiated the install —
+    # nothing in this callback's query string can influence who the store
+    # binds to. One-time use: popped whether or not the rest succeeds.
+    import time
+    state_data = _oauth_states.pop(state, None)
+    if not isinstance(state_data, dict) or not state_data.get("user_id"):
         raise HTTPException(status_code=403, detail="Invalid state parameter")
-    state_data = _oauth_states[state]
-    del _oauth_states[state]
-
-    # Extract details from state (handles dict or legacy str formats)
-    if isinstance(state_data, dict):
-        user_email = state_data.get("email")
-    else:
-        user_email = None
+    if time.time() - state_data.get("issued_at", 0) > OAUTH_STATE_TTL_SECONDS:
+        raise HTTPException(status_code=403, detail="Expired state parameter")
+    if shop != state_data.get("shop"):
+        raise HTTPException(status_code=403, detail="State was not issued for this shop")
 
     # Verify HMAC signature from Shopify
     query_params = dict(request.query_params)
@@ -265,16 +286,13 @@ def oauth_callback(
     try:
         shop_info = get_shop_info(shop, access_token)
         shop_name = shop_info.get("name", shop)
-        shop_email = shop_info.get("email", f"owner@{shop}")
     except Exception:
         shop_name = shop
-        shop_email = f"owner@{shop}"
 
-    # Associate store with the logged-in user email if available, otherwise Shopify owner email
-    target_email = user_email if user_email else shop_email
-
-    # Get or create user
-    user = get_or_create_user(target_email)
+    # Bind the store to the user whose JWT initiated the install. The email
+    # captured from that verified token rides along only so the users row can
+    # be created/synced idempotently — it never selects the owner.
+    user = get_or_create_user_by_auth(state_data["user_id"], state_data.get("email"))
 
     # Save store to database
     store = save_store(

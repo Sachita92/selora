@@ -56,7 +56,6 @@ export default function Connect() {
   const [shop, setShop]       = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
-  const [email, setEmail]     = useState('')
   const [ready, setReady]     = useState(false)
   const [darkMode, toggleTheme] = useDarkMode()
   const [showHowItWorks, setShowHowItWorks] = useState(false)
@@ -82,20 +81,29 @@ export default function Connect() {
   }, [activeStore])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data:{ session } }) => {
-      if (session?.user) setEmail(session.user.email)
-    })
     const t = setTimeout(() => setReady(true), 40)
     return () => clearTimeout(t)
   }, [])
 
-  const handleConnect = (e) => {
+  const handleConnect = async (e) => {
     e.preventDefault()
     setError('')
     let shopUrl = shop.trim().replace('https://','').replace('http://','').replace('.myshopify.com','').trim()
     if (!shopUrl) { setError('Please enter your Shopify store URL'); return }
     setLoading(true)
-    window.location.href = `${API_URL}/install?shop=${shopUrl}.myshopify.com&email=${encodeURIComponent(email)}`
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated')
+      const res = await fetch(`${API_URL}/install?shop=${encodeURIComponent(shopUrl + '.myshopify.com')}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (!res.ok) throw new Error('Could not start the Shopify install')
+      const data = await res.json()
+      window.location.href = data.install_url
+    } catch (err) {
+      setError(err.message || 'Could not start the Shopify install')
+      setLoading(false)
+    }
   }
 
   const anim = (name, delay=0, dur=460) =>

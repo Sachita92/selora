@@ -13,14 +13,10 @@ export default function ConnectStoreModal({ isOpen, onClose }) {
   const [shop, setShop]       = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState("")
-  const [email, setEmail]     = useState("")
 
-  // Populate email + reset form each time modal opens
+  // Reset form each time modal opens
   useEffect(() => {
     if (!isOpen) return
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) setEmail(session.user.email)
-    })
     setShop("")
     setError("")
     setLoading(false)
@@ -44,7 +40,7 @@ export default function ConnectStoreModal({ isOpen, onClose }) {
   }, [isOpen, onClose])
 
   // ── Shopify connect (verbatim from Connect.jsx) ───────────────────────────
-  const handleConnect = (e) => {
+  const handleConnect = async (e) => {
     e.preventDefault()
     setError("")
     let shopUrl = shop.trim()
@@ -52,7 +48,19 @@ export default function ConnectStoreModal({ isOpen, onClose }) {
       .replace(".myshopify.com", "").trim()
     if (!shopUrl) { setError("Please enter your Shopify store URL"); return }
     setLoading(true)
-    window.location.href = `${API_URL}/install?shop=${shopUrl}.myshopify.com&email=${encodeURIComponent(email)}`
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error("Not authenticated")
+      const res = await fetch(`${API_URL}/install?shop=${encodeURIComponent(shopUrl + ".myshopify.com")}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (!res.ok) throw new Error("Could not start the Shopify install")
+      const data = await res.json()
+      window.location.href = data.install_url
+    } catch (err) {
+      setError(err.message || "Could not start the Shopify install")
+      setLoading(false)
+    }
   }
 
   // ── Create native store ───────────────────────────────────────────────────
