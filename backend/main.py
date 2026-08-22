@@ -377,6 +377,8 @@ def get_stores(request: Request):
     # Self-healing Stripe plan synchronization on dashboard store list retrieval
     customer_id = user.get("stripe_customer_id")
     if customer_id:
+        import httpx
+        from postgrest.exceptions import APIError as _PostgrestAPIError
         try:
             subs = stripe.Subscription.list(customer=customer_id, status="active", limit=1)
             active_subs = subs.data
@@ -408,7 +410,12 @@ def get_stores(request: Request):
             # If the database is out of sync with actual Stripe subscription status, heal it
             if user.get("subscription_plan") != plan or user.get("subscription_status") != status:
                 from database import update_user_subscription
-                update_user_subscription(
+                # Capture the healed row so the response reflects what was just
+                # written rather than the pre-heal object. update_user_subscription
+                # returns the full updated users row (same shape as
+                # get_or_create_user_by_auth); it returns {} if nothing matched,
+                # so fall back to the existing row in that case.
+                healed = update_user_subscription(
                     user_id=user["id"],
                     plan=plan,
                     status=status,
@@ -416,9 +423,13 @@ def get_stores(request: Request):
                     subscription_id=sub_id,
                     period_end=period_end
                 )
-                # Re-retrieve database record to reflect healed state in the response
-                user = get_or_create_user(email)
-        except Exception as e:
+                user = healed or user
+        except (stripe.StripeError, _PostgrestAPIError, httpx.HTTPError) as e:
+            # Best-effort self-heal: swallow only what the Stripe API and the
+            # Supabase write legitimately raise (incl. the Supabase TLS timeouts
+            # observed on this project). Programming errors (NameError,
+            # AttributeError, …) are deliberately NOT caught here so they surface
+            # as 500s instead of hiding, as the get_or_create_user NameError did.
             print(f"⚠️ Error auto-syncing user subscription plan with Stripe: {e}")
 
     stores = get_stores_for_user(user["id"])
