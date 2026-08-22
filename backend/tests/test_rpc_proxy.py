@@ -60,6 +60,12 @@ def client(monkeypatch):
     monkeypatch.setenv("SOLANA_RPC_URL", "http://rpc.test")
     monkeypatch.setattr("httpx.AsyncClient", _FakeAsyncClient)
     _FakeAsyncClient.calls = []
+    # The proxy now counts forwarded hits via supabase_admin().rpc(); return
+    # count=1 (allowed) so these tests stay hermetic.
+    rpc = lambda *a, **kw: types.SimpleNamespace(
+        execute=lambda: types.SimpleNamespace(data=1)
+    )
+    monkeypatch.setattr("database.supabase_admin", lambda: types.SimpleNamespace(rpc=rpc))
     return TestClient(main.app)
 
 

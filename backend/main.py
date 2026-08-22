@@ -197,6 +197,53 @@ def root():
     return {"status": "ok", "service": "Selora API", "version": "1.0.0"}
 
 
+# ─── Rate limiting ────────────────────────────────────────────────────────────
+# Fixed-window counters in the rate_limit_counters table (migration 015),
+# incremented through the atomic rate_limit_hit() SQL function — a single
+# INSERT ... ON CONFLICT DO UPDATE ... RETURNING per hit, so concurrent
+# requests serialize on the row lock and can never jointly sneak past a
+# limit. In-memory limiters are useless on this deployment: they reset on
+# every deploy and Render's free tier spins the process down on idle.
+#
+# DB errors FAIL OPEN (request allowed, error logged). Deliberate: Supabase
+# TLS timeouts have been observed on this project, and turning each one into
+# a 429 on money paths (checkout) hurts more than an endpoint being briefly
+# unlimited — which is exactly what the in-memory limiters already were after
+# every restart.
+
+def _rate_limit_exceeded(scope: str, identity: str, limit: int, window_seconds: int) -> bool:
+    """Count one hit for (scope, identity); True if now over `limit` this window."""
+    import time
+    from database import supabase_admin
+
+    bucket = int(time.time() // window_seconds)
+    key = f"{scope}:{identity}:{bucket}"
+    try:
+        res = supabase_admin().rpc(
+            "rate_limit_hit", {"p_key": key, "p_window_seconds": window_seconds}
+        ).execute()
+        count = res.data
+    except Exception as e:
+        print(f"⚠️ Rate limiter unavailable for {scope} (failing open): {e}")
+        return False
+    return isinstance(count, int) and count > limit
+
+
+def _enforce_rate_limit(scope: str, identity: str, limit: int, window_seconds: int) -> None:
+    """Raise 429 when over the limit. Guest chat calls _rate_limit_exceeded
+    directly instead — its widget expects a 200 chat-message reply, not a 429."""
+    if _rate_limit_exceeded(scope, identity, limit, window_seconds):
+        raise HTTPException(status_code=429, detail="Too many requests — please try again shortly.")
+
+
+def _client_ip(request: Request) -> str:
+    """The real client IP. Only real because the Procfile runs uvicorn with
+    --proxy-headers --forwarded-allow-ips="*", which rewrites the connection
+    scope's client from the X-Forwarded-For header Render's proxy sets;
+    without those flags every request reports the proxy's own IP."""
+    return request.client.host if request.client else "unknown"
+
+
 # ─── Shopify OAuth ────────────────────────────────────────────────────────────
 
 # In-memory store for OAuth state tokens (use Redis in production)
@@ -621,6 +668,10 @@ def run_agent_on_store(store_id: str, dry_run: bool = True, background_tasks: Ba
     Enforces subscription limits check for non-dry runs.
     """
     from database import check_store_run_limit, increment_store_run_count
+
+    # Per-store rate limit: every run costs LLM calls, but dry runs bypass the
+    # monthly billing quota below — so cap run starts regardless of dry_run.
+    _enforce_rate_limit("agent_run", store_id, 12, 3600)
 
     # Enforce billing limit check on real optimization runs
     if not dry_run:
@@ -1249,7 +1300,6 @@ def delete_chat_session_endpoint(store_id: str, session_id: str, store: dict = D
         raise HTTPException(status_code=500, detail=f"Failed to delete session: {str(e)}")
 
 
-_guest_chat_ip_limits = {}
 _guest_session_counts = {}
 # Pending delete confirmations: key = "store_id:session_id", value = {product_id, title, platform}
 _pending_deletes: dict = {}
@@ -1322,20 +1372,15 @@ def chat_with_agent(store_id: str, body: ChatRequest, request: Request):
                 "actions": []
             }
 
-        # 2. IP Rate limit: 15 requests per IP per hour
-        global _guest_chat_ip_limits
-        ip = request.client.host if request.client else "unknown"
-        now = time.time()
-        
-        ip_history = _guest_chat_ip_limits.get(ip, [])
-        ip_history = [t for t in ip_history if now - t < 3600]
-        if len(ip_history) >= 15:
+        # 2. IP rate limit: 15 requests per IP per hour (Supabase-backed, same
+        # threshold as the old in-memory list). Complementary to the 8-message
+        # session cap above: the cap bounds one conversation's depth, this
+        # bounds how fast one client can farm fresh sessions.
+        if _rate_limit_exceeded("guest_chat", _client_ip(request), 15, 3600):
             return {
                 "response": "I'm getting a lot of questions right now — try again in a bit.",
                 "actions": []
             }
-        ip_history.append(now)
-        _guest_chat_ip_limits[ip] = ip_history
         _guest_session_counts[session_key] = current_session_count + 1
     else:
         # Authenticated owner chat: verify their token and ownership
@@ -1985,11 +2030,8 @@ def x402_chat(body: X402ChatRequest, request: Request):
 # Does NOT touch /api/x402/chat or its middleware.
 
 import asyncio
-import time as _time
 from fastapi.responses import StreamingResponse
 
-# Simple in-memory cooldown: maps IP → last_run_timestamp
-_demo_cooldown: dict = {}
 _DEMO_COOLDOWN_S = 15  # seconds between runs per IP
 
 USDC_MINT_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
@@ -2089,17 +2131,15 @@ async def x402_demo_run(request: Request):
     Each line is a JSON object: { "step": int, "label": str, "detail": str|null, "done": bool, "error": bool }
     The final success line also includes: { "tx_sig": str, "ai_response": str, "balance_after": float }
     """
-    # ── Cooldown guard ──────────────────────────────────────────────────────
-    client_ip = request.client.host if request.client else "unknown"
-    now = _time.time()
-    last_run = _demo_cooldown.get(client_ip, 0)
-    wait_s = _DEMO_COOLDOWN_S - (now - last_run)
-    if wait_s > 0:
+    # ── Cooldown guard: 1 run / 15 s / IP (Supabase-backed) ─────────────────
+    # Fixed windows, so two runs can land closer than 15 s across a bucket
+    # boundary — acceptable for a demo throttle whose real job is stopping
+    # someone draining the funded payer wallet in a loop.
+    if _rate_limit_exceeded("x402_demo", _client_ip(request), 1, _DEMO_COOLDOWN_S):
         raise HTTPException(
             status_code=429,
-            detail=f"Cooldown active — please wait {int(wait_s) + 1} more seconds.",
+            detail="Cooldown active — please wait a few seconds and try again.",
         )
-    _demo_cooldown[client_ip] = now
 
     async def stream():
         import json, base64, httpx
@@ -2444,9 +2484,10 @@ class DemoBookingRequest(BaseModel):
 
 
 @app.post("/api/support")
-def create_support_ticket(body: SupportTicketRequest):
+def create_support_ticket(body: SupportTicketRequest, request: Request):
     """Submit a support ticket and store in Supabase."""
     from database import save_support_ticket
+    _enforce_rate_limit("support", _client_ip(request), 5, 3600)
     try:
         ticket = save_support_ticket(body.dict())
         return {"success": True, "ticket": ticket}
@@ -2455,9 +2496,10 @@ def create_support_ticket(body: SupportTicketRequest):
 
 
 @app.post("/api/demo")
-def create_demo_booking(body: DemoBookingRequest):
+def create_demo_booking(body: DemoBookingRequest, request: Request):
     """Book a demo slot and store in Supabase."""
     from database import save_demo_booking
+    _enforce_rate_limit("demo_request", _client_ip(request), 5, 3600)
     try:
         # Map frontend field names to database structure (which handles both camelCase and snake_case)
         booking_data = {
@@ -2484,7 +2526,7 @@ class NewsletterSubscribeRequest(BaseModel):
     email: str
 
 @app.post("/api/newsletter/subscribe")
-def newsletter_subscribe(body: NewsletterSubscribeRequest):
+def newsletter_subscribe(body: NewsletterSubscribeRequest, request: Request):
     """Save a newsletter subscriber email to Supabase.
     
     Requires a newsletter_subscribers table in Supabase:
@@ -2499,6 +2541,7 @@ def newsletter_subscribe(body: NewsletterSubscribeRequest):
     # Basic email validation
     if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', body.email.strip()):
         raise HTTPException(status_code=422, detail="Invalid email address")
+    _enforce_rate_limit("newsletter", _client_ip(request), 5, 3600)
     try:
         result = save_newsletter_subscriber(body.email.strip().lower())
         return {"success": True, "message": "Subscribed successfully", "data": result}
@@ -2542,6 +2585,9 @@ def create_checkout_session(body: CheckoutRequest, user: UserIdentity = Depends(
     plan_key = f"{body.plan}_{body.billing_period}"
     if plan_key not in PLAN_PRICE_MAP:
         raise HTTPException(status_code=400, detail="Invalid plan or billing period selection")
+
+    # Every call creates Stripe customer/subscription objects; cap per user.
+    _enforce_rate_limit("billing_checkout", user.user_id, 10, 3600)
 
     price_id = PLAN_PRICE_MAP[plan_key]
 
@@ -3694,6 +3740,9 @@ async def track_event(request: Request):
     event_type = body_json.get('event_type', '')
     if event_type not in ('view', 'add_to_cart', 'purchase'):
         raise HTTPException(status_code=400, detail='Invalid event_type')
+    # Public beacon writing a row per call. Generous ceiling: a shopper
+    # browsing hard emits well under this; a flood loop does not.
+    _enforce_rate_limit("events", _client_ip(request), 240, 3600)
     _db().table('selora_events').insert({
         'store_id': body_json.get('store_id'),
         'product_id': body_json.get('product_id'),
@@ -3775,6 +3824,7 @@ async def upload_product_image(store_id: str, request: Request):
         raise HTTPException(status_code=404, detail='Store not found')
     if existing.data[0]['user_id'] != user_id:
         raise HTTPException(status_code=403, detail='Forbidden')
+    _enforce_rate_limit("upload", user_id, 60, 3600)
     body_json = await request.json()
     file_bytes, content_type = _decode_image_upload(body_json)
     # The stored name is generated entirely server-side; the client's
@@ -3801,6 +3851,7 @@ async def upload_hero_image(store_id: str, role: str, request: Request):
     if existing.data[0]['user_id'] != user_id:
         raise HTTPException(status_code=403, detail='Forbidden')
 
+    _enforce_rate_limit("upload", user_id, 60, 3600)
     body_json = await request.json()
     file_bytes, content_type = _decode_image_upload(body_json)
 
@@ -3851,6 +3902,7 @@ async def upload_product_image_by_id(store_id: str, product_id: str, request: Re
     if existing.data[0]['user_id'] != user_id:
         raise HTTPException(status_code=403, detail='Forbidden')
 
+    _enforce_rate_limit("upload", user_id, 60, 3600)
     body_json = await request.json()
     file_bytes, content_type = _decode_image_upload(body_json)
 
@@ -3883,6 +3935,7 @@ async def upload_category_image(store_id: str, category_id: str, request: Reques
     if existing.data[0]['user_id'] != user_id:
         raise HTTPException(status_code=403, detail='Forbidden')
 
+    _enforce_rate_limit("upload", user_id, 60, 3600)
     body_json = await request.json()
     file_bytes, content_type = _decode_image_upload(body_json)
 
@@ -4042,9 +4095,14 @@ class SolanaCheckoutRequest(BaseModel):
 
 
 @app.post("/api/checkout/solana/create")
-def create_solana_checkout(body: SolanaCheckoutRequest):
+def create_solana_checkout(body: SolanaCheckoutRequest, request: Request):
     from database import supabase_admin as _db
-    
+
+    # Public endpoint: each call inserts an order row and mints a reference
+    # keypair. 20 per 10 min per IP covers repeated purchase attempts (and a
+    # shared NAT) while stopping order-table flooding.
+    _enforce_rate_limit("solana_checkout", _client_ip(request), 20, 600)
+
     store_id = body.store_id
     buyer_wallet = body.buyer_wallet
     cart = body.cart
@@ -4193,6 +4251,12 @@ async def solana_rpc_proxy(request: Request):
         raise HTTPException(status_code=400, detail="Body must be a single JSON-RPC request object")
     if body["method"] not in SOLANA_RPC_ALLOWED_METHODS:
         raise HTTPException(status_code=403, detail=f"JSON-RPC method not allowed: {body['method']}")
+
+    # Per-IP cap sized for the checkout flow it serves: confirmTransaction
+    # polls getBlockHeight roughly once a second for up to ~90 s, so a single
+    # purchase is ~100 calls. 300/10 min allows a few concurrent purchases
+    # behind one IP while still bounding upstream quota burn.
+    _enforce_rate_limit("rpc_proxy", _client_ip(request), 300, 600)
 
     rpc_url = _get_solana_rpc_url()
     try:

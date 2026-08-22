@@ -17,10 +17,21 @@ Seams mocked:
   * database.get_store_by_id       -> simulate store ownership
   * the handler's own DB/agent call -> no-op so nothing real runs
 """
+import types
+
 import pytest
 from fastapi.testclient import TestClient
 
 import main
+
+
+def _stub_rate_limiter(monkeypatch):
+    """The agent-run handler now counts hits via supabase_admin().rpc();
+    return count=1 (allowed) so the test stays hermetic."""
+    rpc = lambda *a, **kw: types.SimpleNamespace(
+        execute=lambda: types.SimpleNamespace(data=1)
+    )
+    monkeypatch.setattr("database.supabase_admin", lambda: types.SimpleNamespace(rpc=rpc))
 
 OWNER = "user-A"
 OTHER = "user-B"
@@ -84,6 +95,7 @@ def test_agent_run_other_users_store_is_404(client, monkeypatch):
 def test_agent_run_own_store_reaches_handler(client, monkeypatch):
     _as_user(monkeypatch, OWNER)
     _store_is(monkeypatch, _store(owner=OWNER))
+    _stub_rate_limiter(monkeypatch)
     # Default dry_run=True skips the billing branch; stub the background task.
     monkeypatch.setattr("main._run_agent_task", lambda store, dry_run: None)
     r = client.post("/api/agent/run/store-1", headers=AUTH)

@@ -61,8 +61,9 @@ def hermetic(monkeypatch):
     monkeypatch.setattr("groq.Groq", _FakeGroq)
     monkeypatch.setattr("database.supabase_admin", lambda: _FakeSupabase())
     monkeypatch.setattr("database.save_chat_message", lambda **kw: None)
-    # Fresh in-memory guest limits so runs don't bleed into each other
-    monkeypatch.setattr(main, "_guest_chat_ip_limits", {})
+    # Fresh in-memory session counts so runs don't bleed into each other.
+    # (The guest IP limit is DB-backed now; _FakeSupabase's chainable stub
+    # returns data=[] for its rpc() call, which the limiter treats as allow.)
     monkeypatch.setattr(main, "_guest_session_counts", {})
 
 

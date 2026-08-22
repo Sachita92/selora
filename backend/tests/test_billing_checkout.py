@@ -52,6 +52,12 @@ def _wire(monkeypatch, user_row=None):
     )
     monkeypatch.setattr(main, "stripe", fake_stripe)
     monkeypatch.setattr("database.get_user_by_id", lambda user_id: user_row)
+    # The handler now counts hits via supabase_admin().rpc(); return count=1
+    # (allowed) so these tests stay hermetic.
+    rpc = lambda *a, **kw: types.SimpleNamespace(
+        execute=lambda: types.SimpleNamespace(data=1)
+    )
+    monkeypatch.setattr("database.supabase_admin", lambda: types.SimpleNamespace(rpc=rpc))
 
     def fake_update_user_subscription(**kw):
         calls["sub_update"].append(kw)
