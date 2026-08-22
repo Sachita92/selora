@@ -2528,14 +2528,17 @@ PLAN_PRICE_MAP = {
 }
 
 class CheckoutRequest(BaseModel):
-    user_id: str
-    email: str
     plan: str  # 'growth' or 'scale'
     billing_period: str = "monthly"  # 'monthly' or 'annual'
 
 @app.post("/api/billing/create-checkout")
-def create_checkout_session(body: CheckoutRequest):
-    """Create a Stripe subscription and return the client secret for payment element."""
+def create_checkout_session(body: CheckoutRequest, user: UserIdentity = Depends(get_current_user)):
+    """Create a Stripe subscription for the verified caller and return the client secret.
+
+    Identity comes from the token, never the body: the Stripe customer,
+    metadata, and the pending-subscription write below all use the caller's
+    own user_id, so this route can no longer touch another user's row.
+    """
     plan_key = f"{body.plan}_{body.billing_period}"
     if plan_key not in PLAN_PRICE_MAP:
         raise HTTPException(status_code=400, detail="Invalid plan or billing period selection")
@@ -2545,17 +2548,17 @@ def create_checkout_session(body: CheckoutRequest):
     try:
         # Check if user already has stripe_customer_id in Supabase
         from database import get_user_by_id, update_user_subscription
-        user = get_user_by_id(body.user_id)
-        customer_id = user.get("stripe_customer_id") if user else None
+        user_row = get_user_by_id(user.user_id)
+        customer_id = user_row.get("stripe_customer_id") if user_row else None
 
         if not customer_id:
             customer = stripe.Customer.create(
-                email=body.email,
-                metadata={"user_id": body.user_id}
+                email=user.email,
+                metadata={"user_id": user.user_id}
             )
             customer_id = customer.id
             update_user_subscription(
-                user_id=body.user_id,
+                user_id=user.user_id,
                 plan="free",
                 status="active",
                 customer_id=customer_id
@@ -2607,7 +2610,7 @@ def create_checkout_session(body: CheckoutRequest):
                     'pending_setup_intent',
                 ],
                 metadata={
-                    "user_id": body.user_id,
+                    "user_id": user.user_id,
                     "plan": body.plan,
                     "billing_period": body.billing_period,
                 }
@@ -2615,7 +2618,7 @@ def create_checkout_session(body: CheckoutRequest):
 
         # Save subscription ID and customer ID to user record (status incomplete initially)
         update_user_subscription(
-            user_id=body.user_id,
+            user_id=user.user_id,
             plan=body.plan,
             status="inactive",
             customer_id=customer_id,

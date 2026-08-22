@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
+import { supabase } from '../lib/supabase'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { useDarkMode } from '../hooks/useDarkMode'
@@ -1066,12 +1067,15 @@ function CheckoutModal({ planSlug, billingPeriod, onClose, user }) {
 
     const initCheckout = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) throw new Error('Not authenticated')
         const res = await fetch(`${API_URL}/api/billing/create-checkout`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
           body: JSON.stringify({
-            user_id: user.id,
-            email: user.email,
             plan: planSlug,
             billing_period: billingPeriod
           })
