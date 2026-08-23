@@ -4525,37 +4525,22 @@ def verify_solana_checkout(reference: str):
                 break
                 
         if confirmed_signature:
-            # 3. Update status in database
-            _db().table("selora_orders").update({"status": "paid", "signature": confirmed_signature}).eq("id", order["id"]).execute()
-            
-            # 3.5 Decrement product inventory (stock)
-            try:
-                for item in order.get("items", []):
-                    prod_id = item.get("product_id")
-                    qty = item.get("quantity", 1)
-                    if prod_id:
-                        # Get current inventory
-                        prod_res = _db().table("selora_products").select("inventory").eq("id", prod_id).execute()
-                        if prod_res.data:
-                            current_inv = prod_res.data[0].get("inventory")
-                            if current_inv is not None:
-                                new_inv = current_inv - qty
-                                _db().table("selora_products").update({"inventory": new_inv}).eq("id", prod_id).execute()
-                                print(f"📉 Decremented product {prod_id} inventory from {current_inv} to {new_inv}")
-            except Exception as inv_err:
-                print(f"⚠️ Failed to decrement inventory: {inv_err}")
-            
-            # 4. Insert purchase events into selora_events
-            try:
-                for item in order["items"]:
-                    _db().table("selora_events").insert({
-                        "store_id": store_id,
-                        "product_id": item["product_id"],
-                        "event_type": "purchase"
-                    }).execute()
-            except Exception as ev_err:
-                print(f"⚠️ Failed to track purchase event: {ev_err}")
-                
+            # Atomic confirm (migration 017): one SQL function claims the order
+            # pending -> paid, and ONLY the caller that wins the claim decrements
+            # inventory (single statement, floored at zero) and inserts one
+            # purchase event per item. A concurrent verify that loses the claim
+            # re-runs no work, so double-decrement / double-events are impossible.
+            fulfil = _db().rpc("claim_and_fulfill_order", {
+                "p_order_id": order["id"],
+                "p_signature": confirmed_signature,
+            }).execute()
+            row = (fulfil.data or [{}])[0]
+            if row.get("oversold"):
+                # Overselling is allowed by design (USDC is irreversible), but it
+                # is recorded on the order (selora_orders.oversold_items, returned
+                # by the owner's GET /orders) so the seller can act on it.
+                print(f"⚠️ Order {order['id']} oversold: {row['oversold']}")
+
             return {"status": "confirmed", "order_id": order["id"], "signature": confirmed_signature}
             
         return {"status": "pending", "message": "Transaction found but merchant did not receive expected USDC amount"}

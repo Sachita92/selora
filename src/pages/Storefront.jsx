@@ -471,7 +471,8 @@ export default function Storefront({ previewData = null, editMode = false, selec
           setPurchasedItems([...cart])
           setPaymentStatus('confirmed')
           setCart([])
-          triggerEvent(null, 'purchase')
+          // Purchase events are recorded server-side per item during verify
+          // (one authoritative source); no client-side purchase event here.
         } else if (data.status === 'failed') {
           clearInterval(interval)
           setPaymentStatus('failed')

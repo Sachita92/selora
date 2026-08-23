@@ -74,15 +74,38 @@ class _FakeQuery:
 
 
 class _FakeDb:
-    """Routes table() calls to canned rows; records updates/inserts."""
+    """Routes table() calls to canned rows; records updates/inserts.
+
+    The confirm now marks paid + decrements + inserts events via one atomic RPC
+    (claim_and_fulfill_order, migration 017), so rpc() reproduces its claim: it
+    flips the pending order to paid and records the claim. These tests carry no
+    inventory (items == []), so the decrement/event loop is a no-op here — they
+    only exercise the on-chain confirmation decision.
+    """
 
     def __init__(self, rows):
         self.rows = rows
         self.updates = []
         self.inserts = []
+        self.claims = []
 
     def table(self, name):
         return _FakeQuery(self, name)
+
+    def rpc(self, fn, params):
+        assert fn == "claim_and_fulfill_order"
+        oid = params["p_order_id"]
+
+        def execute():
+            order = next((o for o in self.rows.get("selora_orders", []) if o["id"] == oid), None)
+            if order is None or order["status"] != "pending":
+                return types.SimpleNamespace(data=[{"claimed": False, "oversold": []}])
+            order["status"] = "paid"
+            order["signature"] = params["p_signature"]
+            self.claims.append(oid)
+            return types.SimpleNamespace(data=[{"claimed": True, "oversold": []}])
+
+        return types.SimpleNamespace(execute=execute)
 
 
 class _FakeRpc:
@@ -150,7 +173,9 @@ def _wire(monkeypatch, order, tx_result):
 
 
 def _paid(db):
-    return [u for t, u in db.updates if t == "selora_orders" and u.get("status") == "paid"]
+    # A confirm now flips the order to paid via the atomic claim RPC, recorded
+    # in db.claims (was a direct table update before migration 017).
+    return db.claims
 
 
 @pytest.fixture
