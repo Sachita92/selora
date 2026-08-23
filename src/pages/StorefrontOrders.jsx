@@ -20,15 +20,7 @@ const DollarIcon = ({ size = 20, color = "currentColor" }) => (
 
 export default function StorefrontOrders() {
   const { handle } = useParams()
-  const [theme, setTheme] = useState(() => localStorage.getItem('sf-theme') || 'light')
-
-  useEffect(() => {
-    localStorage.setItem('sf-theme', theme)
-  }, [theme])
-
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light')
-  }
+  const [theme] = useState('light')
 
   const [store, setStore] = useState(null)
   const [loadingStore, setLoadingStore] = useState(true)
@@ -40,6 +32,7 @@ export default function StorefrontOrders() {
   const [orders, setOrders] = useState([])
   const [loadingOrders, setLoadingOrders] = useState(false)
   const [errorOrders, setErrorOrders] = useState('')
+  const [walletVerified, setWalletVerified] = useState(false)
 
   // Load store config
   useEffect(() => {
@@ -74,16 +67,73 @@ export default function StorefrontOrders() {
     }
   }, [buyerWallet, store])
 
+  // Obtain a wallet-proof token: reuse a cached, unexpired one (so refreshing
+  // does not prompt a new signature), otherwise run the challenge → sign →
+  // verify flow once and cache the short-lived session token.
+  const getWalletProof = async (walletAddress) => {
+    const cacheKey = `selora-order-proof:${walletAddress}`
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(cacheKey) || 'null')
+      if (cached?.token && cached.exp && cached.exp * 1000 > Date.now() + 5000) {
+        return cached.token
+      }
+    } catch { /* ignore malformed cache */ }
+
+    // 1. Ask for a challenge bound to this wallet.
+    const chRes = await fetch(`${API}/api/orders/challenge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet_address: walletAddress }),
+    })
+    if (!chRes.ok) throw new Error('Could not start wallet verification')
+    const { nonce, challenge } = await chRes.json()
+
+    // 2. Sign the challenge with the connected Phantom wallet.
+    const phantom = window.solana
+    if (!phantom?.signMessage) throw new Error('This wallet cannot sign messages')
+    const encoded = new TextEncoder().encode(challenge)
+    const { signature } = await phantom.signMessage(encoded, 'utf8')
+    const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+
+    // 3. Exchange the signature for a short-lived proof token.
+    const vRes = await fetch(`${API}/api/orders/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet_address: walletAddress, nonce, signature: signatureB64 }),
+    })
+    if (!vRes.ok) throw new Error('Wallet verification failed')
+    const { token, expires_at } = await vRes.json()
+    try { sessionStorage.setItem(cacheKey, JSON.stringify({ token, exp: expires_at })) } catch { /* ignore */ }
+    return token
+  }
+
+  // Presentation-only probe (reads, never writes the cache): true when a still-
+  // valid proof token is already cached, so a refresh renders the verified panel
+  // directly instead of flashing "approve signature" when none is actually needed.
+  const hasValidCachedProof = (walletAddress) => {
+    try {
+      const c = JSON.parse(sessionStorage.getItem(`selora-order-proof:${walletAddress}`) || 'null')
+      return !!(c?.token && c.exp && c.exp * 1000 > Date.now() + 5000)
+    } catch { return false }
+  }
+
   const fetchOrdersForWallet = async (walletAddress, storeId) => {
     setLoadingOrders(true)
     setErrorOrders('')
+    // Verified immediately only if a valid proof is cached; otherwise the render
+    // shows "signature pending" until getWalletProof resolves.
+    setWalletVerified(hasValidCachedProof(walletAddress))
     try {
-      const res = await fetch(`${API}/api/stores/${storeId}/orders/by-wallet/${walletAddress}`)
+      const token = await getWalletProof(walletAddress)
+      setWalletVerified(true)
+      const res = await fetch(`${API}/api/stores/${storeId}/orders/by-wallet/${walletAddress}`, {
+        headers: { 'X-Wallet-Proof': token },
+      })
       if (!res.ok) throw new Error('Failed to fetch orders')
       const data = await res.json()
       setOrders(data.orders || [])
     } catch (e) {
-      setErrorOrders(e.message)
+      setErrorOrders(e.message === 'User rejected the request.' ? 'Signature cancelled — approve it to view your orders.' : e.message)
     } finally {
       setLoadingOrders(false)
     }
@@ -111,7 +161,9 @@ export default function StorefrontOrders() {
     if (phantom) {
       await phantom.disconnect()
     }
+    try { if (buyerWallet) sessionStorage.removeItem(`selora-order-proof:${buyerWallet}`) } catch { /* ignore */ }
     setWalletConnected(false)
+    setWalletVerified(false)
     setBuyerWallet('')
     setOrders([])
   }
@@ -226,37 +278,6 @@ export default function StorefrontOrders() {
               My Orders
             </Link>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <button
-              onClick={toggleTheme}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--sf-text-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0.5rem',
-                borderRadius: 8,
-                transition: 'all 0.2s',
-              }}
-              title="Toggle theme"
-              className="sf-theme-toggle-btn"
-            >
-              {theme === 'light' ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
-                </svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="4"/>
-                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
-                </svg>
-              )}
-            </button>
-          </div>
         </div>
       </nav>
 
@@ -300,6 +321,40 @@ export default function StorefrontOrders() {
             <p style={{ fontSize: '.8rem', color: 'var(--sf-text-muted)', marginTop: '1rem', marginBottom: 0 }}>
               Supports Phantom browser extension.
             </p>
+          </div>
+        ) : !walletVerified ? (
+          // Wallet address is known but ownership is not yet proven. Show the
+          // honest signature-pending state, or a retry path if it was cancelled —
+          // NOT the settled "connected" panel.
+          <div style={{ background: 'var(--sf-surface)', border: '1px solid var(--sf-border)', borderRadius: 16, padding: '3rem 2rem', textAlign: 'center', boxShadow: 'var(--sf-card-shadow)', maxWidth: 480, margin: '0 auto' }}>
+            {errorOrders ? (
+              <>
+                <p style={{ fontWeight: 600, color: 'var(--sf-text-primary)', fontSize: '1rem', margin: '0 0 1.25rem' }}>⚠️ {errorOrders}</p>
+                <div style={{ display: 'flex', gap: '.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => fetchOrdersForWallet(buyerWallet, store.id)}
+                    style={{ background: 'var(--sf-text-primary)', color: 'var(--sf-bg)', border: 'none', padding: '.8rem 1.75rem', borderRadius: 10, fontSize: '.95rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Try again
+                  </button>
+                  <button
+                    onClick={disconnectWallet}
+                    style={{ background: 'none', border: '1px solid var(--sf-border)', color: 'var(--sf-text-primary)', padding: '.8rem 1.75rem', borderRadius: 10, fontSize: '.95rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Use a different wallet
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+                <div style={{ width: 32, height: 32, border: '2px solid var(--sf-border)', borderTop: '2px solid var(--sf-primary)', borderRadius: '50%', animation: 'spin .8s linear infinite', margin: '0 auto 1.25rem' }} />
+                <p style={{ fontWeight: 600, color: 'var(--sf-text-primary)', fontSize: '1rem', margin: '0 0 .35rem' }}>Approve the signature request</p>
+                <p style={{ color: 'var(--sf-text-muted)', fontSize: '.9rem', margin: 0 }}>
+                  Check your Phantom wallet and approve the signature to view your orders — it proves you own this wallet and moves no funds.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="sf-orders-layout">

@@ -603,15 +603,174 @@ def get_store_orders(store_id: str, request: Request, limit: int = None):
         raise HTTPException(status_code=500, detail=f"Failed to fetch orders: {e}")
 
 
-@app.get("/api/stores/{store_id}/orders/by-wallet/{wallet_address}")
-def get_store_orders_by_wallet(store_id: str, wallet_address: str):
-    """Fetch orders for a specific buyer wallet on a store (public buyer endpoint)."""
+ORDER_CHALLENGE_TTL_SECONDS = 300   # 5 min to read + sign the challenge
+ORDER_PROOF_TTL_SECONDS = 900       # 15 min session before a re-sign is needed
+
+import secrets as _secrets_mod
+_ORDER_PROOF_FALLBACK_SECRET = _secrets_mod.token_hex(32)
+
+
+def _order_proof_secret() -> bytes:
+    env = os.getenv("ORDER_PROOF_SECRET", "").strip()
+    return (env or _ORDER_PROOF_FALLBACK_SECRET).encode("utf-8")
+
+
+def _mint_wallet_proof(wallet_address: str) -> tuple[str, int]:
+    """Return (token, exp_epoch). token = base64url(payload).hexhmac, payload='wallet:exp'."""
+    import base64
+    import hashlib
+    import hmac
+    import time
+    exp = int(time.time()) + ORDER_PROOF_TTL_SECONDS
+    payload = f"{wallet_address}:{exp}"
+    sig = hmac.new(_order_proof_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    token = base64.urlsafe_b64encode(payload.encode("utf-8")).decode("ascii") + "." + sig
+    return token, exp
+
+
+def _verify_wallet_proof(token: str, wallet_address: str) -> bool:
+    """True iff token is a valid, unexpired proof issued for exactly this wallet."""
+    import base64
+    import hashlib
+    import hmac
+    import time
+    if not token or "." not in token:
+        return False
+    try:
+        payload_b64, sig = token.split(".", 1)
+        payload = base64.urlsafe_b64decode(payload_b64.encode("ascii")).decode("utf-8")
+    except Exception:
+        return False
+    expected = hmac.new(_order_proof_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, sig):
+        return False
+    try:
+        tok_wallet, exp_str = payload.rsplit(":", 1)
+        exp = int(exp_str)
+    except Exception:
+        return False
+    if tok_wallet != wallet_address:
+        return False
+    return time.time() < exp
+
+
+def _valid_solana_pubkey_bytes(wallet_address: str) -> bytes:
+    """Decode a base58 Solana address to its 32 raw pubkey bytes, or 400."""
+    from solders.pubkey import Pubkey
+    try:
+        pk = Pubkey.from_string(wallet_address)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid wallet address")
+    b = bytes(pk)
+    if len(b) != 32:
+        raise HTTPException(status_code=400, detail="Invalid wallet address")
+    return b
+
+
+from pydantic import BaseModel as _BaseModel  # BaseModel's module-level import is further down
+
+
+class OrderChallengeRequest(_BaseModel):
+    wallet_address: str
+
+
+class OrderVerifyRequest(_BaseModel):
+    wallet_address: str
+    nonce: str
+    signature: str  # base64-encoded 64-byte ed25519 signature over the challenge
+
+
+@app.post("/api/orders/challenge")
+def create_order_challenge(body: OrderChallengeRequest, request: Request):
+    """Issue a short-lived, single-use challenge bound to the claimed wallet."""
+    import time
+    from datetime import datetime, timezone, timedelta
     from database import supabase_admin as _db
+
+    wallet = body.wallet_address.strip()
+    _valid_solana_pubkey_bytes(wallet)  # 400 on a non-base58 / wrong-length address
+
+    # Rate limit: this writes a row per call.
+    _enforce_rate_limit("order_challenge", _client_ip(request), 30, 600)
+
+    nonce = _secrets_mod.token_urlsafe(24)
+    issued = datetime.now(timezone.utc)
+    expires = issued + timedelta(seconds=ORDER_CHALLENGE_TTL_SECONDS)
+    challenge = (
+        "Selora — prove wallet ownership to view your orders.\n"
+        f"Wallet: {wallet}\n"
+        f"Nonce: {nonce}\n"
+        f"Issued: {issued.isoformat()}\n"
+        "Signing this reveals your order history only to you. It moves no funds."
+    )
+    _db().table("order_auth_challenges").insert({
+        "nonce": nonce,
+        "wallet_address": wallet,
+        "challenge": challenge,
+        "expires_at": expires.isoformat(),
+    }).execute()
+
+    return {"nonce": nonce, "challenge": challenge, "expires_at": expires.isoformat()}
+
+
+@app.post("/api/orders/verify")
+def verify_order_challenge(body: OrderVerifyRequest):
+    """Verify a signed challenge and mint a short-lived wallet-proof token."""
+    import base64
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    from database import supabase_admin as _db
+
+    wallet = body.wallet_address.strip()
+    pub_bytes = _valid_solana_pubkey_bytes(wallet)
+
+    claim = _db().rpc("claim_order_challenge", {"p_nonce": body.nonce}).execute()
+    rows = claim.data or []
+    if not rows:
+        raise HTTPException(status_code=401, detail="Challenge is invalid, expired, or already used")
+    bound_wallet = rows[0]["wallet_address"]
+    challenge = rows[0]["challenge"]
+
+    # The challenge was issued for a specific wallet; only that wallet may redeem
+    # it. This rejects "sign someone else's nonce with my own wallet".
+    if bound_wallet != wallet:
+        raise HTTPException(status_code=401, detail="Challenge was not issued for this wallet")
+
+    try:
+        sig_bytes = base64.b64decode(body.signature)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Signature is not valid base64")
+
+    try:
+        Ed25519PublicKey.from_public_bytes(pub_bytes).verify(sig_bytes, challenge.encode("utf-8"))
+    except (InvalidSignature, ValueError):
+        raise HTTPException(status_code=401, detail="Signature does not verify for this wallet")
+
+    token, exp = _mint_wallet_proof(wallet)
+    return {"token": token, "expires_at": exp}
+
+
+@app.get("/api/stores/{store_id}/orders/by-wallet/{wallet_address}")
+def get_store_orders_by_wallet(store_id: str, wallet_address: str, request: Request):
+    """Fetch orders for a buyer wallet on a store.
+
+    Requires a valid wallet-proof token (from POST /api/orders/verify) in the
+    ``X-Wallet-Proof`` header, bound to this exact wallet. Carried in a header,
+    not the URL, so the proof stays out of logs and referrers; the token is a
+    short session so a refresh does not re-sign.
+    """
+    from database import supabase_admin as _db
+
+    wallet = wallet_address.strip()
+    proof = request.headers.get("x-wallet-proof", "")
+    if not _verify_wallet_proof(proof, wallet):
+        raise HTTPException(status_code=401, detail="Missing or invalid wallet proof")
+
     try:
         result = _db().table("selora_orders") \
             .select("*") \
             .eq("store_id", store_id) \
-            .ilike("buyer_wallet", wallet_address.strip()) \
+            .eq("buyer_wallet", wallet) \
             .order("created_at", desc=True) \
             .execute()
         
@@ -2033,13 +2192,6 @@ def x402_chat(body: X402ChatRequest, request: Request):
 
 
 # ─── x402 Demo Endpoint ───────────────────────────────────────────────────────
-# POST /api/x402/demo-run  — runs the full agent-payment loop end-to-end and
-# streams each step as JSON lines so the frontend can display them live.
-# GET  /api/x402/payer-balance — returns the devnet USDC balance of the test wallet.
-#
-# Ports the logic from backend/test_x402_payer.py without modifying that file.
-# Does NOT touch /api/x402/chat or its middleware.
-
 import asyncio
 from fastapi.responses import StreamingResponse
 
