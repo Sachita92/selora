@@ -30,6 +30,7 @@ import PricingPage    from './pages/PricingPage'
 import StoreBuilder   from './pages/StoreBuilder'
 import Storefront     from './pages/Storefront'
 import StorefrontOrders from './pages/StorefrontOrders'
+import StorefrontCheckout from './pages/StorefrontCheckout'
 import Reports        from './pages/Reports'
 import Profile        from './pages/Profile'
 import Orders         from './pages/Orders'
@@ -159,6 +160,8 @@ export default function App() {
               <Route path="/store/:handle/product/:productId" element={<Storefront key="sf-pdp" />} />
               <Route path="/store/:handle/category/:categoryId" element={<Storefront key="sf-cat" />} />
               <Route path="/store/:handle/orders" element={<StorefrontOrders />} />
+              <Route path="/store/:handle/checkout" element={<StorefrontCheckout key="sf-checkout" />} />
+              <Route path="/store/:handle/checkout/:reference" element={<StorefrontCheckout key="sf-checkout-pay" />} />
 
               {/* Protected — standalone (own header/footer) */}
               <Route path="/connect" element={<ProtectedRoute><Connect /></ProtectedRoute>} />

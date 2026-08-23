@@ -564,6 +564,11 @@ export default function Storefront({ previewData = null, editMode = false, selec
     }, 850)
   }
 
+  // RETIRED ENTRY POINT: the drawer's Checkout button now navigates to the
+  // dedicated /store/{handle}/checkout page, which owns order creation and
+  // payment. This function and the in-drawer payment UI below are kept
+  // untouched until the page fully replaces them, then deleted together.
+  // eslint-disable-next-line no-unused-vars
   const handleCheckoutInitiate = async () => {
     if (previewData) {
       alert("Checkout is disabled in preview mode");
@@ -2403,8 +2408,15 @@ export default function Storefront({ previewData = null, editMode = false, selec
 
                   {!checkoutDetails ? (
                     <button
-                      onClick={handleCheckoutInitiate}
-                      disabled={checkoutLoading}
+                      onClick={() => {
+                        // Hand the bag to the dedicated checkout page. The page
+                        // owns order creation and payment; the in-drawer payment
+                        // UI below is no longer reachable from here (left in
+                        // place, untouched, until the page fully replaces it).
+                        try { sessionStorage.setItem(`selora-checkout-cart:${handle}`, JSON.stringify(cart)) } catch { /* ignore */ }
+                        setIsCartOpen(false)
+                        navigate(`/store/${handle}/checkout`)
+                      }}
                       style={{
                         width: '100%',
                         padding: '1rem',
@@ -2421,14 +2433,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                         gap: '.5rem'
                       }}
                     >
-                      {checkoutLoading ? (
-                        <>
-                          <div style={{ width: 16, height: 16, border: '2px solid #fff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin .6s linear infinite' }} />
-                          Preparing Payment...
-                        </>
-                      ) : (
-                        <>Pay with Solana (USDC)</>
-                      )}
+                      Checkout
                     </button>
                   ) : (
                     <div style={{ textAlign: 'center', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem', background: 'var(--bg-2)', position: 'relative' }}>
