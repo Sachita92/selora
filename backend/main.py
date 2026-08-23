@@ -2401,25 +2401,14 @@ def _run_agent_task(store: dict, dry_run: bool):
 # ─── Store Health Check Endpoint ───────────────────────────────────────────
 
 @app.get("/api/stores/{store_id}/health")
-def get_store_health(store_id: str, request: Request):
+def get_store_health(store_id: str, store: dict = Depends(require_store_owner)):
     """
     Run a Store Health Check on a connected store and return a structured report.
     Works for both Shopify and native Selora stores.
     """
-    from database import get_store_by_id
     from agent.health_check import StoreHealthAnalyzer
     from adapters.base import StoreSnapshot, UniversalProduct
     from adapters.shopify import ShopifyAdapter
-
-    user_id, _ = _get_user_id_from_token(request)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    store = get_store_by_id(store_id)
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
-    if store.get("user_id") != user_id:
-        raise HTTPException(status_code=403, detail="Forbidden")
 
     try:
         if store.get("platform") == "selora":
@@ -3626,16 +3615,10 @@ def get_public_store(handle: str):
 
 
 @app.put('/selora-stores/{store_id}')
-def update_selora_store(store_id: str, body: StoreUpdateRequest, request: Request):
+def update_selora_store(store_id: str, body: StoreUpdateRequest, store: dict = Depends(require_store_owner)):
     """Update store details (owner only)."""
     from database import supabase_admin as _db
     import re
-    user_id, _ = _get_user_id_from_token(request)
-    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
-    if not existing.data:
-        raise HTTPException(status_code=404, detail='Store not found')
-    if existing.data[0]['user_id'] != user_id:
-        raise HTTPException(status_code=403, detail='Forbidden')
     update_data = {k: v for k, v in body.dict().items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail='No fields to update')
@@ -3655,15 +3638,9 @@ def update_selora_store(store_id: str, body: StoreUpdateRequest, request: Reques
 
 
 @app.post('/selora-stores/{store_id}/products')
-async def add_product_to_store(store_id: str, request: Request):
+async def add_product_to_store(store_id: str, request: Request, store: dict = Depends(require_store_owner)):
     """Add a product to a store."""
     from database import supabase_admin as _db
-    user_id, _ = _get_user_id_from_token(request)
-    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
-    if not existing.data:
-        raise HTTPException(status_code=404, detail='Store not found')
-    if existing.data[0]['user_id'] != user_id:
-        raise HTTPException(status_code=403, detail='Forbidden')
     body_json = await request.json()
     try:
         price = float(body_json.get('price', 0))
@@ -3692,30 +3669,18 @@ async def add_product_to_store(store_id: str, request: Request):
 
 
 @app.get('/selora-stores/{store_id}/products')
-def list_store_products(store_id: str, request: Request):
+def list_store_products(store_id: str, store: dict = Depends(require_store_owner)):
     """List all products in a store."""
     from database import supabase_admin as _db
-    user_id, _ = _get_user_id_from_token(request)
-    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
-    if not existing.data:
-        raise HTTPException(status_code=404, detail='Store not found')
-    if existing.data[0]['user_id'] != user_id:
-        raise HTTPException(status_code=403, detail='Forbidden')
     result = _db().table('selora_products').select('*').eq('store_id', store_id).order('created_at', desc=False).execute()
     products_list = [{**p, "platform": "selora"} for p in result.data or []]
     return {'products': products_list}
 
 
 @app.put('/selora-stores/{store_id}/products/{product_id}')
-async def update_product(store_id: str, product_id: str, request: Request):
+async def update_product(store_id: str, product_id: str, request: Request, store: dict = Depends(require_store_owner)):
     """Edit a product."""
     from database import supabase_admin as _db
-    user_id, _ = _get_user_id_from_token(request)
-    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
-    if not existing.data:
-        raise HTTPException(status_code=404, detail='Store not found')
-    if existing.data[0]['user_id'] != user_id:
-        raise HTTPException(status_code=403, detail='Forbidden')
     body_json = await request.json()
     allowed = ['title', 'description', 'price', 'compare_at_price', 'inventory', 'images', 'tags', 'is_active', 'category_id']
     update_data = {k: v for k, v in body_json.items() if k in allowed}
@@ -3730,15 +3695,9 @@ async def update_product(store_id: str, product_id: str, request: Request):
 
 
 @app.delete('/selora-stores/{store_id}/products/{product_id}')
-def delete_product(store_id: str, product_id: str, request: Request):
+def delete_product(store_id: str, product_id: str, store: dict = Depends(require_store_owner)):
     """Delete a product."""
     from database import supabase_admin as _db
-    user_id, _ = _get_user_id_from_token(request)
-    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
-    if not existing.data:
-        raise HTTPException(status_code=404, detail='Store not found')
-    if existing.data[0]['user_id'] != user_id:
-        raise HTTPException(status_code=403, detail='Forbidden')
     _db().table('selora_products').delete().eq('id', product_id).eq('store_id', store_id).execute()
     return {'success': True}
 
@@ -3825,17 +3784,11 @@ def _decode_image_upload(body_json: dict) -> tuple[bytes, str]:
 
 
 @app.post('/selora-stores/{store_id}/upload-image')
-async def upload_product_image(store_id: str, request: Request):
+async def upload_product_image(store_id: str, request: Request, store: dict = Depends(require_store_owner)):
     """Upload a product image to Supabase Storage and return the public URL."""
     import uuid
     from database import supabase_admin as _db
-    user_id, _ = _get_user_id_from_token(request)
-    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
-    if not existing.data:
-        raise HTTPException(status_code=404, detail='Store not found')
-    if existing.data[0]['user_id'] != user_id:
-        raise HTTPException(status_code=403, detail='Forbidden')
-    _enforce_rate_limit("upload", user_id, 60, 3600)
+    _enforce_rate_limit("upload", store["user_id"], 60, 3600)
     body_json = await request.json()
     file_bytes, content_type = _decode_image_upload(body_json)
     # The stored name is generated entirely server-side; the client's
@@ -3850,19 +3803,12 @@ async def upload_product_image(store_id: str, request: Request):
 
 
 @app.post('/selora-stores/{store_id}/upload-hero-image/{role}')
-async def upload_hero_image(store_id: str, role: str, request: Request):
+async def upload_hero_image(store_id: str, role: str, request: Request, store: dict = Depends(require_store_owner)):
     """Upload a cropped store hero image (main, left, or right) to Supabase Storage and save to settings."""
     if role not in ('main', 'left', 'right'):
         raise HTTPException(status_code=400, detail='Invalid role. Must be main, left, or right.')
     from database import supabase_admin as _db
-    user_id, _ = _get_user_id_from_token(request)
-    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
-    if not existing.data:
-        raise HTTPException(status_code=404, detail='Store not found')
-    if existing.data[0]['user_id'] != user_id:
-        raise HTTPException(status_code=403, detail='Forbidden')
-
-    _enforce_rate_limit("upload", user_id, 60, 3600)
+    _enforce_rate_limit("upload", store["user_id"], 60, 3600)
     body_json = await request.json()
     file_bytes, content_type = _decode_image_upload(body_json)
 
@@ -3903,17 +3849,10 @@ async def classify_image(store_id: str, request: Request):
 
 
 @app.post('/selora-stores/{store_id}/upload-product-image/{product_id}')
-async def upload_product_image_by_id(store_id: str, product_id: str, request: Request):
+async def upload_product_image_by_id(store_id: str, product_id: str, request: Request, store: dict = Depends(require_store_owner)):
     """Upload a product image named product_id.jpg to product-images/{store_id} path."""
     from database import supabase_admin as _db
-    user_id, _ = _get_user_id_from_token(request)
-    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
-    if not existing.data:
-        raise HTTPException(status_code=404, detail='Store not found')
-    if existing.data[0]['user_id'] != user_id:
-        raise HTTPException(status_code=403, detail='Forbidden')
-
-    _enforce_rate_limit("upload", user_id, 60, 3600)
+    _enforce_rate_limit("upload", store["user_id"], 60, 3600)
     body_json = await request.json()
     file_bytes, content_type = _decode_image_upload(body_json)
 
@@ -3936,17 +3875,10 @@ async def upload_product_image_by_id(store_id: str, product_id: str, request: Re
 
 
 @app.post('/selora-stores/{store_id}/upload-category-image/{category_id}')
-async def upload_category_image(store_id: str, category_id: str, request: Request):
+async def upload_category_image(store_id: str, category_id: str, request: Request, store: dict = Depends(require_store_owner)):
     """Upload a category image to Supabase Storage and return the URL."""
     from database import supabase_admin as _db
-    user_id, _ = _get_user_id_from_token(request)
-    existing = _db().table('selora_stores').select('id,user_id').eq('id', store_id).execute()
-    if not existing.data:
-        raise HTTPException(status_code=404, detail='Store not found')
-    if existing.data[0]['user_id'] != user_id:
-        raise HTTPException(status_code=403, detail='Forbidden')
-
-    _enforce_rate_limit("upload", user_id, 60, 3600)
+    _enforce_rate_limit("upload", store["user_id"], 60, 3600)
     body_json = await request.json()
     file_bytes, content_type = _decode_image_upload(body_json)
 

@@ -94,7 +94,7 @@ class _FakeDb:
 
 @pytest.fixture
 def env(monkeypatch):
-    db = _FakeDb({"selora_stores": [{"id": STORE, "user_id": OWNER}]})
+    db = _FakeDb({"selora_stores": [{"id": STORE, "user_id": OWNER, "handle": "myshop", "name": "My Shop"}]})
     monkeypatch.setenv("SUPABASE_URL", "http://supa.test")
     monkeypatch.setattr("database.supabase_admin", lambda: db)
     monkeypatch.setattr(main, "_get_user_id_from_token", lambda request: (OWNER, "owner@example.com"))
