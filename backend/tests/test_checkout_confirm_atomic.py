@@ -71,6 +71,10 @@ class _FakeDb:
                     return types.SimpleNamespace(data=[{"claimed": False, "oversold": []}])
                 order["status"] = "paid"
                 order["signature"] = sig
+                # Migration 018: claim winner writes the fee payer as
+                # buyer_wallet (COALESCE keeps the old value when null).
+                if params.get("p_buyer_wallet"):
+                    order["buyer_wallet"] = params["p_buyer_wallet"]
                 self.claims.append(oid)
                 oversold = []
                 for item in order.get("items", []):

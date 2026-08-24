@@ -102,6 +102,10 @@ class _FakeDb:
                 return types.SimpleNamespace(data=[{"claimed": False, "oversold": []}])
             order["status"] = "paid"
             order["signature"] = params["p_signature"]
+            # Migration 018: the claim winner writes the on-chain fee payer as
+            # buyer_wallet; COALESCE keeps the create-time value when null.
+            if params.get("p_buyer_wallet"):
+                order["buyer_wallet"] = params["p_buyer_wallet"]
             self.claims.append(oid)
             return types.SimpleNamespace(data=[{"claimed": True, "oversold": []}])
 
@@ -274,3 +278,66 @@ def test_flag_on_attacker_tx_still_does_not_confirm(client, monkeypatch):
     r = client.get(f"/api/checkout/solana/verify/{REF}")
     assert r.json()["status"] == "pending"
     assert _paid(db) == []
+
+
+# ── confirm-time buyer_wallet capture (migration 018) ─────────────────────────
+
+def test_qr_order_gets_fee_payer_as_buyer_wallet(client, monkeypatch):
+    # QR-created order: buyer_wallet is null at create (no browser wallet).
+    # At confirm the on-chain fee payer becomes the order's buyer_wallet.
+    order = _order(buyer_wallet=None)
+    _wire(monkeypatch, order, _tx(pre=0.0, post=25.0, fee_payer=BUYER))
+    r = client.get(f"/api/checkout/solana/verify/{REF}")
+    assert r.json()["status"] == "confirmed"
+    assert order["buyer_wallet"] == BUYER
+
+
+def test_confirm_overwrites_create_time_wallet_guess(client, monkeypatch):
+    # Created with the browser Phantom key (BUYER), but a different wallet
+    # actually paid. Confirm-time fact overwrites the create-time guess,
+    # verbatim base58 — no case folding.
+    payer = "PayRz9dTgH2kLmQw8xR4vNc7bJ5aE3fY6sUhWiXpKoQd"
+    order = _order(buyer_wallet=BUYER)
+    _wire(monkeypatch, order, _tx(pre=0.0, post=25.0, fee_payer=payer))
+    r = client.get(f"/api/checkout/solana/verify/{REF}")
+    assert r.json()["status"] == "confirmed"
+    assert order["buyer_wallet"] == payer
+    assert order["buyer_wallet"] != payer.lower()
+
+
+# ── RPC response-shape tolerance ──────────────────────────────────────────────
+
+class _WrappedRpc:
+    """httpx.Client stand-in whose RPC results arrive wrapped in the
+    {context, value} envelope instead of the raw JSON-RPC shapes."""
+
+    def __init__(self, tx_result):
+        self._tx_result = tx_result
+
+    def post(self, url, json=None, headers=None):
+        if json.get("method") == "getSignaturesForAddress":
+            body = {"jsonrpc": "2.0",
+                    "result": {"context": {"slot": 1}, "value": [{"signature": "sig-1"}]}}
+        else:
+            body = {"jsonrpc": "2.0",
+                    "result": {"context": {"slot": 1}, "value": self._tx_result}}
+        return types.SimpleNamespace(status_code=200, json=lambda: body)
+
+
+def test_wrapped_context_value_rpc_shapes_still_confirm(client, monkeypatch):
+    # Both getSignaturesForAddress and getTransaction are normalized through
+    # _rpc_result, so a provider that wraps results in {context, value} (the
+    # client-library envelope) confirms exactly like the raw shapes.
+    order = _order(total=25.0)
+    db = _FakeDb({
+        "selora_orders": [order],
+        "selora_stores": [{"id": "store-1", "user_id": "u1",
+                           "payout_wallet_address": MERCHANT}],
+    })
+    monkeypatch.setattr("database.supabase_admin", lambda: db)
+    monkeypatch.setattr("httpx.Client", lambda **kw: _WrappedRpc(_tx(pre=0.0, post=25.0)))
+    r = client.get(f"/api/checkout/solana/verify/{REF}")
+    assert r.status_code == 200
+    assert r.json()["status"] == "confirmed"
+    assert r.json()["signature"] == "sig-1"
+    assert len(_paid(db)) == 1

@@ -579,7 +579,7 @@ def get_store_products(store_id: str, force_refresh: bool = False, store: dict =
 
 
 @app.get("/api/stores/{store_id}/orders")
-def get_store_orders(store_id: str, request: Request, limit: int = None):
+def get_store_orders(store_id: str, request: Request, background_tasks: BackgroundTasks, limit: int = None):
     """Fetch all native orders for the active store (owner only)."""
     import traceback
     from database import supabase_admin as _db, get_store_by_id
@@ -590,6 +590,12 @@ def get_store_orders(store_id: str, request: Request, limit: int = None):
     if store.get("user_id") != user_id:
         # If user is not the owner of this store, return empty orders list cleanly instead of crashing
         return {"orders": []}
+
+    # Piggyback reconciliation on the dashboard's ~10s poll: re-verify this
+    # store's recent pending Solana orders after the response is sent. Owner
+    # requests only; throttling lives inside the sweep so this path pays
+    # nothing. See _sweep_pending_orders.
+    background_tasks.add_task(_sweep_pending_orders, store_id)
 
     try:
         query = _db().table("selora_orders").select("*").eq("store_id", store_id).order("created_at", desc=True)
@@ -4375,22 +4381,49 @@ async def solana_rpc_proxy(request: Request):
 
 
 @app.get("/api/checkout/solana/verify/{reference}")
-
 def verify_solana_checkout(reference: str):
-    import httpx
     from database import supabase_admin as _db
-    
-    # 1. Fetch order details from DB
+
+    # Fetch order details from DB; everything after the fetch is the shared
+    # verification core (also driven by the server-side pending-order sweep).
     order_res = _db().table("selora_orders").select("*").eq("reference", reference).execute()
     if not order_res.data:
         raise HTTPException(status_code=404, detail="Order not found for reference")
-    order = order_res.data[0]
-    
+    return _verify_and_confirm_order(order_res.data[0])
+
+
+def _rpc_result(rpc_body: dict, default=None):
+    """Unwrap a Solana JSON-RPC ``result`` that may arrive either raw (plain
+    JSON-RPC: a list for getSignaturesForAddress, an object for getTransaction)
+    or wrapped in the ``{context, value}`` envelope some providers and client
+    libraries add. Both RPC reads in the verifier go through this so the two
+    calls tolerate the same shapes."""
+    result = rpc_body.get("result", default)
+    if isinstance(result, dict) and "context" in result and "value" in result:
+        return result["value"]
+    return result
+
+
+def _verify_and_confirm_order(order: dict) -> dict:
+    """Core of Solana checkout verification: given a selora_orders row, look
+    for a qualifying on-chain payment to the merchant and, if found, confirm
+    the order through the atomic claim_and_fulfill_order RPC.
+
+    Shared verbatim by GET /api/checkout/solana/verify/{reference} (browser
+    polling) and _sweep_pending_orders (server-side reconciliation), so the two
+    paths can never diverge on what counts as paid. Returns exactly the dicts
+    the endpoint has always returned; raises HTTPException for store/config
+    problems (the endpoint propagates these, the sweep catches them per order).
+    """
+    import httpx
+    from database import supabase_admin as _db
+
     if order["status"] == "paid":
         return {"status": "confirmed", "order_id": order["id"]}
     if order["status"] == "failed":
         return {"status": "failed", "order_id": order["id"]}
-        
+
+    reference = order["reference"]
     store_id = order["store_id"]
     expected_usdc = float(order["total_usd"])
     
@@ -4442,12 +4475,13 @@ def verify_solana_checkout(reference: str):
         rpc_data = res.json()
         if "error" in rpc_data:
             return {"status": "pending", "message": f"RPC error: {rpc_data['error']}"}
-            
-        signatures = rpc_data.get("result", [])
+
+        signatures = _rpc_result(rpc_data, []) or []
         if not signatures:
             return {"status": "pending", "message": "No transaction found for reference"}
             
         confirmed_signature = None
+        confirmed_fee_payer = None
         for sig_info in signatures:
             sig = sig_info.get("signature")
             if not sig:
@@ -4472,15 +4506,23 @@ def verify_solana_checkout(reference: str):
                 continue
                 
             tx_data = tx_res.json()
-            if "error" in tx_data or not tx_data.get("result"):
+            result = _rpc_result(tx_data)
+            if "error" in tx_data or not result:
                 continue
-                
-            result = tx_data["result"]
+
             meta = result.get("meta", {})
             if meta.get("err") is not None:
                 # Execution failed
                 continue
-                
+
+            # The on-chain fee payer: first account key, a required signer
+            # (encoding "json" pins accountKeys to plain base58 strings, for
+            # legacy and v0 transactions alike). Captured at confirm time as
+            # the order's buyer_wallet — the wallet that actually paid — and
+            # kept exact: no case folding, ever.
+            account_keys = ((result.get("transaction", {}) or {}).get("message", {}) or {}).get("accountKeys") or []
+            fee_payer = account_keys[0] if account_keys else None
+
             # C. Perform explicit owner filter and token balance change check
             post_token_balances = meta.get("postTokenBalances", [])
             pre_token_balances = meta.get("preTokenBalances", [])
@@ -4512,8 +4554,6 @@ def verify_solana_checkout(reference: str):
             # confirmation.
             is_merchant_self_payment = False
             if _allow_self_transfer_confirm():
-                account_keys = (result.get("transaction", {}).get("message", {}) or {}).get("accountKeys") or []
-                fee_payer = account_keys[0] if account_keys else None
                 touched_merchant_usdc = any(
                     b.get("mint") == usdc_mint and b.get("owner") == merchant_wallet
                     for b in post_token_balances
@@ -4522,17 +4562,23 @@ def verify_solana_checkout(reference: str):
 
             if received_usdc >= expected_usdc or is_merchant_self_payment:
                 confirmed_signature = sig
+                confirmed_fee_payer = fee_payer
                 break
                 
         if confirmed_signature:
-            # Atomic confirm (migration 017): one SQL function claims the order
-            # pending -> paid, and ONLY the caller that wins the claim decrements
-            # inventory (single statement, floored at zero) and inserts one
-            # purchase event per item. A concurrent verify that loses the claim
-            # re-runs no work, so double-decrement / double-events are impossible.
+            # Atomic confirm (migrations 017/018): one SQL function claims the
+            # order pending -> paid, and ONLY the caller that wins the claim
+            # decrements inventory (single statement, floored at zero) and
+            # inserts one purchase event per item. A concurrent verify that
+            # loses the claim re-runs no work, so double-decrement /
+            # double-events are impossible. The winner also writes the on-chain
+            # fee payer as buyer_wallet in that same claim UPDATE — confirm-time
+            # fact overwrites the create-time guess (null falls back to the
+            # existing value inside the function).
             fulfil = _db().rpc("claim_and_fulfill_order", {
                 "p_order_id": order["id"],
                 "p_signature": confirmed_signature,
+                "p_buyer_wallet": confirmed_fee_payer,
             }).execute()
             row = (fulfil.data or [{}])[0]
             if row.get("oversold"):
@@ -4548,6 +4594,75 @@ def verify_solana_checkout(reference: str):
     except Exception as err:
         print(f"Error during payment verification: {err}")
         return {"status": "pending", "error": str(err)}
+
+
+# ─── Server-side pending-order reconciliation sweep ──────────────────────────
+# Verification used to happen only while a buyer's browser polled the verify
+# endpoint, so a pending order whose buyer closed the tab stayed pending
+# forever even with the payment confirmed on-chain. The seller dashboard
+# already polls GET /api/stores/{store_id}/orders every ~10s; that endpoint
+# schedules this sweep as a background task after serving the owner.
+
+SWEEP_WINDOW_SECONDS = 120   # at most one sweep per store per fixed window
+SWEEP_MAX_ORDERS = 10        # most recent pendings per sweep
+SWEEP_MAX_AGE_HOURS = 48     # older pendings are the expiry task's problem
+
+
+def _sweep_pending_orders(store_id: str) -> None:
+    """Opportunistically re-verify a store's recent pending Solana orders
+    through the same _verify_and_confirm_order core the browser path uses.
+
+    Runs AFTER the orders response is sent (BackgroundTasks), so the request
+    path pays nothing — even the throttle check happens in here. Confirmations
+    therefore land by the dashboard's next poll, not the current one. Every
+    failure is logged and swallowed: this is a best-effort reconciliation
+    pass, never a request breaker.
+    """
+    import time
+    from datetime import datetime, timezone, timedelta
+    from database import supabase_admin as _db
+
+    # Throttle: reuse the rate_limit_counters table via the atomic
+    # rate_limit_hit() function (migration 015) under a "sweep:" key prefix —
+    # same "{scope}:{identity}:{bucket}" key shape, survives restarts, and the
+    # row-lock serialization means concurrent polls can never both win the
+    # window. Unlike the request limiters this fails CLOSED (skip the sweep):
+    # if Supabase is unreachable the sweep could not list or confirm orders
+    # anyway, and failing open would let every ~10s dashboard poll start one.
+    bucket = int(time.time() // SWEEP_WINDOW_SECONDS)
+    key = f"sweep:{store_id}:{bucket}"
+    try:
+        res = _db().rpc(
+            "rate_limit_hit", {"p_key": key, "p_window_seconds": SWEEP_WINDOW_SECONDS}
+        ).execute()
+        count = res.data
+    except Exception as e:
+        print(f"⚠️ Order sweep throttle unavailable for store {store_id} (skipping sweep): {e}")
+        return
+    if not isinstance(count, int) or count > 1:
+        return  # another request already swept this store's window
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=SWEEP_MAX_AGE_HOURS)).isoformat()
+    try:
+        pending_res = (
+            _db().table("selora_orders").select("*")
+            .eq("store_id", store_id).eq("status", "pending")
+            .gte("created_at", cutoff)
+            .order("created_at", desc=True).limit(SWEEP_MAX_ORDERS)
+            .execute()
+        )
+        pending = pending_res.data or []
+    except Exception as e:
+        print(f"⚠️ Order sweep could not list pending orders for store {store_id}: {e}")
+        return
+
+    for order in pending:
+        try:
+            _verify_and_confirm_order(order)
+        except Exception as e:
+            # One bad order (malformed row, store/config problem) must not
+            # stop the rest of the sweep.
+            print(f"⚠️ Order sweep: verify failed for order {order.get('id')} (continuing): {e}")
 
 
 # ─── CLI entry point ──────────────────────────────────────────────────────────
