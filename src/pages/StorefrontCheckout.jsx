@@ -84,6 +84,13 @@ export default function StorefrontCheckout() {
   // "checking automatically" line so the UI never claims a watch that stopped.
   const [slowExhausted, setSlowExhausted] = useState(false)
 
+  // Optional receipt email, offered on the confirmed receipt only. Purely
+  // additive: the on-screen receipt is the buyer's proof either way.
+  // emailState: 'idle' | 'sending' | 'sent' | 'error'
+  const [email, setEmail] = useState('')
+  const [emailState, setEmailState] = useState('idle')
+  const [emailError, setEmailError] = useState('')
+
   const pollRef = useRef(null)
   const phaseRef = useRef(phase)
   useEffect(() => { phaseRef.current = phase }, [phase])
@@ -343,6 +350,32 @@ export default function StorefrontCheckout() {
     }
   }
 
+  // Attaches the address to the paid order and sends the receipt. A failed
+  // send is reported inline and never disturbs the receipt above it.
+  const submitEmail = async (e) => {
+    e.preventDefault()
+    const address = email.trim()
+    if (!address || emailState === 'sending') return
+    setEmailState('sending')
+    setEmailError('')
+    try {
+      const res = await fetch(`${API}/api/checkout/${reference}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: address }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.detail || 'We could not send your receipt.')
+      // success:true with sent:false means the address was saved but the mail
+      // did not go out — say so rather than promising an email that never lands.
+      if (!data.sent) throw new Error('We saved your email, but the receipt could not be sent right now.')
+      setEmailState('sent')
+    } catch (err) {
+      setEmailError(err.message || 'We could not send your receipt.')
+      setEmailState('error')
+    }
+  }
+
   const copyReference = async () => {
     try {
       await navigator.clipboard.writeText(reference)
@@ -517,6 +550,51 @@ export default function StorefrontCheckout() {
             <div style={{ background: palette.surface, borderRadius: 10, padding: '.9rem 1rem', fontSize: '.8rem', color: palette.secondaryText, lineHeight: 1.55, marginBottom: '1.25rem' }}>
               <strong style={{ color: palette.text }}>What happens next:</strong> the seller has your order and will start preparing it. Track its progress any time under My Orders — connect the wallet you paid with.
             </div>
+
+            {/* Optional receipt email. Skippable and non-blocking: nothing on
+                this page depends on it, and the receipt above stands alone. */}
+            {emailState === 'sent' ? (
+              <div style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: '.9rem 1rem', fontSize: '.82rem', color: palette.text, lineHeight: 1.5, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={palette.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m9 12 2 2 4-4"/></svg>
+                <span>Receipt sent — check your inbox.</span>
+              </div>
+            ) : (
+              <form onSubmit={submitEmail} style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: '1rem', marginBottom: '1.25rem' }}>
+                <label htmlFor="sfc-email" style={{ display: 'block', fontSize: '.82rem', color: palette.text, fontWeight: 600, marginBottom: '.5rem' }}>
+                  Want a receipt and order updates by email?
+                </label>
+                <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+                  <input
+                    id="sfc-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    disabled={emailState === 'sending'}
+                    style={{ flex: '1 1 180px', minWidth: 0, padding: '.7rem .8rem', border: `1px solid ${palette.border}`, borderRadius: 8, fontSize: '.85rem', fontFamily: 'Inter, sans-serif', color: palette.text, background: '#fff', minHeight: 44 }}
+                  />
+                  <button
+                    className="sfc-btn"
+                    type="submit"
+                    disabled={!email.trim() || emailState === 'sending'}
+                    style={{ ...primaryBtn, width: 'auto', flex: '0 0 auto', padding: '.7rem 1.1rem', minHeight: 44, opacity: !email.trim() || emailState === 'sending' ? .6 : 1 }}
+                  >
+                    {emailState === 'sending' ? (
+                      <><div style={{ width: 14, height: 14, border: '2px solid #fff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin .6s linear infinite' }} /> Sending…</>
+                    ) : 'Send receipt'}
+                  </button>
+                </div>
+                {emailState === 'error' && (
+                  <p style={{ fontSize: '.78rem', color: '#DC2626', margin: '.6rem 0 0', lineHeight: 1.45 }}>
+                    {emailError} <span style={{ color: palette.secondaryText }}>Your order is safe regardless — this receipt page stays available.</span>
+                  </p>
+                )}
+                <p style={{ fontSize: '.72rem', color: palette.secondaryText, margin: '.6rem 0 0', lineHeight: 1.45 }}>
+                  Optional — we only use it for this order.
+                </p>
+              </form>
+            )}
 
             <Link to={`/store/${handle}/orders`} style={{ ...primaryBtn, textDecoration: 'none' }} className="sfc-btn">View My Orders</Link>
             <Link to={`/store/${handle}`} style={{ display: 'block', textAlign: 'center', marginTop: '.9rem', color: palette.secondaryText, fontSize: '.85rem', textDecoration: 'none', fontWeight: 500 }}>

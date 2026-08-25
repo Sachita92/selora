@@ -4404,6 +4404,65 @@ def _rpc_result(rpc_body: dict, default=None):
     return result
 
 
+DEFAULT_TOKEN_DECIMALS = 6   # USDC
+
+
+def _token_base_units(ui_token_amount: dict) -> int:
+    """Exact integer base units (indivisible token units) from an RPC
+    ``uiTokenAmount``.
+
+    Payment math must never go through float. The RPC's own ``amount`` field is
+    already a decimal string of base units, so it is used when present; the
+    human-readable ``uiAmount`` is only a fallback, and even then it is scaled
+    through Decimal rather than float. Subtracting two float uiAmounts is what
+    made a real 10.000000 USDC payment (40.888 - 30.888) evaluate to
+    9.999999999999996 and never confirm.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    ui = ui_token_amount or {}
+
+    raw = ui.get("amount")
+    if raw is not None and str(raw).strip():
+        try:
+            return int(str(raw).strip())
+        except (TypeError, ValueError):
+            pass   # fall through to the uiAmount path
+
+    try:
+        return int((Decimal(str(ui.get("uiAmount") or "0"))
+                    * (10 ** _token_decimals(ui))).to_integral_value())
+    except (InvalidOperation, TypeError, ValueError):
+        return 0
+
+
+def _token_decimals(ui_token_amount: dict) -> int:
+    """Decimal places for a token, from an RPC ``uiTokenAmount``."""
+    value = (ui_token_amount or {}).get("decimals")
+    if value is None:
+        return DEFAULT_TOKEN_DECIMALS
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return DEFAULT_TOKEN_DECIMALS
+
+
+def _usd_to_base_units(amount, decimals: int) -> int:
+    """Scale an order total to integer base units, exactly.
+
+    Decimal(str(x)) reads the shortest representation of the stored NUMERIC
+    (e.g. 10.0 -> '10.0'), so the scaled value is exact rather than the
+    0.999999-style artifact float multiplication would give.
+    """
+    from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+    try:
+        scaled = Decimal(str(amount)) * (10 ** decimals)
+    except (InvalidOperation, TypeError, ValueError):
+        return 0
+    return int(scaled.to_integral_value(rounding=ROUND_HALF_UP))
+
+
 def _verify_and_confirm_order(order: dict) -> dict:
     """Core of Solana checkout verification: given a selora_orders row, look
     for a qualifying on-chain payment to the merchant and, if found, confirm
@@ -4527,24 +4586,30 @@ def _verify_and_confirm_order(order: dict) -> dict:
             post_token_balances = meta.get("postTokenBalances", [])
             pre_token_balances = meta.get("preTokenBalances", [])
             
-            received_usdc = 0.0
+            # Summed in integer base units, never float: see _token_base_units.
+            received_base_units = 0
+            token_decimals = None
             for post_bal in post_token_balances:
                 bal_mint = post_bal.get("mint")
                 bal_owner = post_bal.get("owner")
-                
+
                 # Verify owner is the merchant wallet and mint is the Devnet USDC mint
                 if bal_mint == usdc_mint and bal_owner == merchant_wallet:
-                    post_amount = float(post_bal.get("uiTokenAmount", {}).get("uiAmount") or 0.0)
-                    
-                    pre_amount = 0.0
+                    post_ui = post_bal.get("uiTokenAmount", {})
+                    if token_decimals is None:
+                        # The mint's own precision, as reported for this account.
+                        token_decimals = _token_decimals(post_ui)
+                    post_units = _token_base_units(post_ui)
+
+                    pre_units = 0
                     acc_idx = post_bal.get("accountIndex")
                     for pre_bal in pre_token_balances:
                         if pre_bal.get("accountIndex") == acc_idx:
-                            pre_amount = float(pre_bal.get("uiTokenAmount", {}).get("uiAmount") or 0.0)
+                            pre_units = _token_base_units(pre_bal.get("uiTokenAmount", {}))
                             break
-                            
-                    received_usdc += (post_amount - pre_amount)
-                    
+
+                    received_base_units += (post_units - pre_units)
+
             # Merchant self-payment allowance, OFF unless the devnet-testing
             # flag SOLANA_ALLOW_SELF_TRANSFER_CONFIRM is set. Even when on, it
             # trusts only on-chain facts: the fee payer (first account key, a
@@ -4560,7 +4625,13 @@ def _verify_and_confirm_order(order: dict) -> dict:
                 )
                 is_merchant_self_payment = bool(fee_payer) and fee_payer == merchant_wallet and touched_merchant_usdc
 
-            if received_usdc >= expected_usdc or is_merchant_self_payment:
+            # Both sides in the same integer base units, so an exact-amount
+            # payment compares equal instead of landing an epsilon short.
+            expected_base_units = _usd_to_base_units(
+                expected_usdc,
+                token_decimals if token_decimals is not None else DEFAULT_TOKEN_DECIMALS,
+            )
+            if received_base_units >= expected_base_units or is_merchant_self_payment:
                 confirmed_signature = sig
                 confirmed_fee_payer = fee_payer
                 break
@@ -4594,6 +4665,82 @@ def _verify_and_confirm_order(order: dict) -> dict:
     except Exception as err:
         print(f"Error during payment verification: {err}")
         return {"status": "pending", "error": str(err)}
+
+
+# ─── Buyer receipt email ──────────────────────────────────────────────────────
+
+class CheckoutEmailRequest(BaseModel):
+    email: str
+
+
+# Deliberately permissive: one @, a dotted domain, no spaces. Anything
+# stricter rejects valid addresses; the real delivery check is Resend's.
+EMAIL_PATTERN = r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$"
+MAX_EMAIL_LENGTH = 254   # RFC 5321 maximum
+
+
+@app.post("/api/checkout/{reference}/email")
+def send_checkout_receipt(reference: str, body: CheckoutEmailRequest, request: Request):
+    """Attach an email to a PAID order and send the buyer their receipt.
+
+    Optional, buyer-initiated, offered on the receipt page after payment
+    confirms. Unauthenticated (the buyer may have no wallet connected and no
+    account), so it is rate limited twice: per IP, and per order reference so
+    a single order cannot be used to mail-bomb an address from rotating IPs.
+
+    A send failure is NOT an endpoint failure — the address is stored either
+    way and the buyer keeps the on-screen receipt.
+    """
+    import re
+    from database import supabase_admin as _db
+    from emails import render_order_receipt, send_email
+
+    # Before any DB work: this endpoint sends email, so the cheap limiter runs
+    # first. 10 per hour per IP covers a buyer retrying and a shared NAT.
+    _enforce_rate_limit("checkout_email", _client_ip(request), 10, 3600)
+
+    email = (body.email or "").strip()
+    if len(email) > MAX_EMAIL_LENGTH or not re.match(EMAIL_PATTERN, email):
+        raise HTTPException(status_code=400, detail="Please enter a valid email address.")
+
+    order_res = _db().table("selora_orders").select("*").eq("reference", reference).execute()
+    if not order_res.data:
+        raise HTTPException(status_code=404, detail="Order not found for reference")
+    order = order_res.data[0]
+
+    # Only paid orders get a receipt: a receipt for an unpaid order is a lie,
+    # and it would let anyone with a reference mail an arbitrary address.
+    if order.get("status") != "paid":
+        raise HTTPException(
+            status_code=400,
+            detail="This order is not confirmed yet — a receipt is available once payment lands.",
+        )
+
+    _enforce_rate_limit("checkout_email_order", reference, 5, 3600)
+
+    store_res = _db().table("selora_stores").select("name, handle").eq("id", order["store_id"]).execute()
+    store_data = store_res.data[0] if store_res.data else {}
+
+    try:
+        _db().table("selora_orders").update({"buyer_email": email}).eq("id", order["id"]).execute()
+    except Exception as e:
+        print(f"❌ Could not save buyer email for order {order['id']}: {e}")
+        raise HTTPException(status_code=500, detail="Could not save your email — please try again.")
+
+    frontend = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+    order_url = f"{frontend}/store/{store_data.get('handle', '')}/checkout/{reference}"
+
+    subject, html = render_order_receipt(
+        store_name=store_data.get("name") or "Selora",
+        order_id=order["id"],
+        items=order.get("items") or [],
+        total_usd=order.get("total_usd"),
+        order_url=order_url,
+    )
+    # ref is the order id, never the address: deliveries are logged without PII.
+    sent = send_email(email, subject, html, ref=f"order {order['id'][:8]} receipt")
+
+    return {"success": True, "sent": sent}
 
 
 # ─── Server-side pending-order reconciliation sweep ──────────────────────────
