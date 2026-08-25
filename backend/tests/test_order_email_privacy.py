@@ -8,7 +8,9 @@ buyer_email is PII the buyer hands to ONE order. The rule:
     address. It builds an explicit field allowlist, so the column is excluded
     by construction.
   * GET /api/checkout/solana/verify/{reference}     — public (reference only),
-    must NOT expose it. Returns a fixed status/order_id/signature dict.
+    must NOT expose it. Confirmed responses carry the public receipt payload
+    (items, total_usd, created_at) plus the has_email FLAG — the flag only,
+    never the address.
   * GET /api/stores/{id}/orders                     — the seller's own orders,
     behind the ownership check. The seller MAY see it: they need it to serve
     the buyer.
@@ -99,10 +101,19 @@ def test_by_wallet_lookup_omits_buyer_email(client, db, monkeypatch):
 
 
 def test_verify_response_omits_buyer_email(client, db, monkeypatch):
-    # Already-paid short circuit: returns status + order_id only.
+    # Already-paid short circuit: status/order_id plus the public receipt
+    # payload the session-less receipt page renders from. buyer_email crosses
+    # only as the has_email flag, never the address.
     r = client.get(f"/api/checkout/solana/verify/{REF}")
     assert r.status_code == 200
-    assert r.json() == {"status": "confirmed", "order_id": "order-1"}
+    assert r.json() == {
+        "status": "confirmed",
+        "order_id": "order-1",
+        "items": [{"product_id": "p1", "quantity": 1, "price": 25.0}],
+        "total_usd": 25.0,
+        "created_at": "2026-08-24T10:00:00+00:00",
+        "has_email": True,
+    }
     assert SECRET_EMAIL not in r.text
 
 

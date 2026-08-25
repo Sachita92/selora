@@ -81,6 +81,11 @@ export default function StorefrontCheckout() {
   const [copied, setCopied] = useState(false)
   const [orderCtx] = useState(() => (reference ? readJSON(orderKey(reference)) : null))
   const [confirmedOrderId, setConfirmedOrderId] = useState('')
+  // Server-side receipt payload from a confirmed verify: the fallback source
+  // for email-link visits with no sessionStorage (items, total, order date),
+  // plus the has_email flag that suppresses the email ask once an address is
+  // already attached to the order.
+  const [receipt, setReceipt] = useState(null)
   // Signature of a wallet transaction submitted in THIS session — when set, a
   // payment definitely left the buyer's wallet, so leaving the page gets a
   // double-charge warning. QR payments never set it (the phone wallet signs).
@@ -135,6 +140,12 @@ export default function StorefrontCheckout() {
     if (data.status === 'confirmed') {
       setTxSignature(data.signature || '')
       setConfirmedOrderId(data.order_id || '')
+      setReceipt({
+        items: Array.isArray(data.items) ? data.items : [],
+        total_usd: data.total_usd,
+        created_at: data.created_at,
+        has_email: !!data.has_email,
+      })
       setPhase('confirmed')
       try {
         sessionStorage.removeItem(cartKey(handle))
@@ -441,7 +452,11 @@ export default function StorefrontCheckout() {
   }
 
   const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
-  const ctxTotal = orderCtx?.amount_usdc ?? null
+  // Session context is the fast path; the confirmed verify's receipt payload
+  // fills in for email-link visits where sessionStorage is empty.
+  const ctxTotal = orderCtx?.amount_usdc ?? (receipt?.total_usd != null ? Number(receipt.total_usd) : null)
+  const receiptItems = orderCtx?.items?.length > 0 ? orderCtx.items : (receipt?.items || [])
+  const receiptDate = orderCtx || !receipt?.created_at ? new Date() : new Date(receipt.created_at)
   const qrUri = orderCtx
     ? `solana:${orderCtx.recipient}?amount=${orderCtx.amount_usdc}&spl-token=${orderCtx.spl_token_mint}&reference=${orderCtx.reference}&label=Selora%20Store&message=${encodeURIComponent(orderCtx.memo || '')}`
     : null
@@ -570,7 +585,7 @@ export default function StorefrontCheckout() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', marginBottom: '.4rem' }}>
               <span style={{ color: palette.secondaryText }}>Date</span>
-              <span>{new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              <span>{receiptDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
             </div>
             {txSignature && (
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', marginBottom: '.4rem', gap: '1rem' }}>
@@ -582,10 +597,10 @@ export default function StorefrontCheckout() {
               </div>
             )}
 
-            {orderCtx?.items?.length > 0 && (
+            {receiptItems.length > 0 && (
               <>
                 <div style={dashedRule} />
-                {itemRows(orderCtx.items)}
+                {itemRows(receiptItems)}
               </>
             )}
 
@@ -600,8 +615,11 @@ export default function StorefrontCheckout() {
             </div>
 
             {/* Optional receipt email. Skippable and non-blocking: nothing on
-                this page depends on it, and the receipt above stands alone. */}
-            {emailState === 'sent' ? (
+                this page depends on it, and the receipt above stands alone.
+                Once an address is attached (sent this session, or has_email
+                from the server on a revisit) the quiet confirmation replaces
+                the form — the buyer is never asked twice. */}
+            {emailState === 'sent' || receipt?.has_email ? (
               <div style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: '.9rem 1rem', fontSize: '.82rem', color: palette.text, lineHeight: 1.5, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={palette.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m9 12 2 2 4-4"/></svg>
                 <span>Receipt sent — check your inbox.</span>

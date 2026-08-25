@@ -201,6 +201,33 @@ def test_exact_amount_confirms(client, monkeypatch):
     assert len(_paid(db)) == 1
 
 
+def test_fresh_confirm_carries_receipt_fields(client, monkeypatch):
+    # Confirmed responses (fresh claim included) carry the public receipt
+    # payload the session-less receipt page renders from — and the has_email
+    # flag, never buyer_email itself (pinned in test_order_email_privacy).
+    order = _order(total=25.0)
+    order["items"] = [{"product_id": "p1", "title": "Linen Scarf", "price": 25.0, "quantity": 1}]
+    order["created_at"] = "2026-08-24T10:00:00+00:00"
+    _wire(monkeypatch, order, _tx(pre=0.0, post=25.0))
+    body = client.get(f"/api/checkout/solana/verify/{REF}").json()
+    assert body["status"] == "confirmed"
+    assert body["items"] == order["items"]
+    assert body["total_usd"] == 25.0
+    assert body["created_at"] == "2026-08-24T10:00:00+00:00"
+    assert body["has_email"] is False
+    assert "buyer_email" not in body
+
+
+def test_pending_response_carries_no_receipt_fields(client, monkeypatch):
+    # The receipt payload is for CONFIRMED orders only; a pending response
+    # stays exactly as it was.
+    _wire(monkeypatch, _order(total=25.0), _tx(pre=0.0, post=24.99))
+    body = client.get(f"/api/checkout/solana/verify/{REF}").json()
+    assert body["status"] == "pending"
+    for key in ("items", "total_usd", "created_at", "has_email"):
+        assert key not in body
+
+
 def test_underpayment_does_not_confirm(client, monkeypatch):
     db = _wire(monkeypatch, _order(total=25.0), _tx(pre=0.0, post=24.99))
     r = client.get(f"/api/checkout/solana/verify/{REF}")

@@ -4540,6 +4540,29 @@ def _usd_to_base_units(amount, decimals: int) -> int:
     return int(scaled.to_integral_value(rounding=ROUND_HALF_UP))
 
 
+def _receipt_fields(order: dict) -> dict:
+    """Public receipt payload appended to CONFIRMED verify responses only —
+    what the receipt page needs to render for an email-link visitor with no
+    sessionStorage: line items, total, order date, and whether an email is
+    already attached.
+
+    Deliberately exposed on this unauthenticated endpoint: the reference is an
+    unguessable ed25519 pubkey and already the trust anchor for the whole
+    checkout page — anyone holding it can already see the confirmation status
+    and the transaction signature, whose public on-chain record shows the
+    amount and merchant. Items and total are the same class of information.
+    buyer_email itself must NEVER appear here (test_order_email_privacy pins
+    that); only the has_email flag crosses, so the page can stop re-asking
+    for an address that is already attached.
+    """
+    return {
+        "items": order.get("items") or [],
+        "total_usd": order.get("total_usd"),
+        "created_at": order.get("created_at"),
+        "has_email": bool(order.get("buyer_email")),
+    }
+
+
 def _verify_and_confirm_order(order: dict) -> dict:
     """Core of Solana checkout verification: given a selora_orders row, look
     for a qualifying on-chain payment to the merchant and, if found, confirm
@@ -4555,7 +4578,7 @@ def _verify_and_confirm_order(order: dict) -> dict:
     from database import supabase_admin as _db
 
     if order["status"] == "paid":
-        return {"status": "confirmed", "order_id": order["id"]}
+        return {"status": "confirmed", "order_id": order["id"], **_receipt_fields(order)}
     if order["status"] == "failed":
         return {"status": "failed", "order_id": order["id"]}
     if order["status"] == "expired":
@@ -4744,7 +4767,8 @@ def _verify_and_confirm_order(order: dict) -> dict:
                 # by the owner's GET /orders) so the seller can act on it.
                 print(f"⚠️ Order {order['id']} oversold: {row['oversold']}")
 
-            return {"status": "confirmed", "order_id": order["id"], "signature": confirmed_signature}
+            return {"status": "confirmed", "order_id": order["id"], "signature": confirmed_signature,
+                    **_receipt_fields(order)}
             
         # Verification completed; whatever touched the reference did not pay in
         # full ("unpaid": see the no-signatures return above).
