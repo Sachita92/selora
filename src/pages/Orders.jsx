@@ -37,7 +37,7 @@ function getRelativeTime(dateString) {
 export default function Orders() {
   const { orders, fetchingOrders, activeStore } = useAppContext()
   const [selectedOrder, setSelectedOrder] = useState(null)
-  const [filter, setFilter] = useState('all') // all, paid, pending, failed
+  const [filter, setFilter] = useState('all') // all, paid, pending, failed, expired
   const [search, setSearch] = useState('')
 
   const filteredOrders = (orders || []).filter(order => {
@@ -90,6 +90,7 @@ export default function Orders() {
             <button onClick={() => setFilter('paid')} className={`sf-tab-btn ${filter === 'paid' ? 'active' : ''}`}>Confirmed</button>
             <button onClick={() => setFilter('pending')} className={`sf-tab-btn ${filter === 'pending' ? 'active' : ''}`}>Pending</button>
             <button onClick={() => setFilter('failed')} className={`sf-tab-btn ${filter === 'failed' ? 'active' : ''}`}>Failed</button>
+            <button onClick={() => setFilter('expired')} className={`sf-tab-btn ${filter === 'expired' ? 'active' : ''}`}>Expired</button>
           </div>
           <div>
             <input
@@ -155,10 +156,10 @@ export default function Orders() {
                           borderRadius: 12,
                           fontSize: '0.72rem',
                           fontWeight: 600,
-                          background: order.status === 'paid' ? 'var(--badge-success-bg, #DCFCE7)' : order.status === 'failed' ? 'var(--inventory-empty-bg, #FEF2F2)' : 'var(--inventory-low-bg, #FFFBEB)',
-                          color: order.status === 'paid' ? 'var(--badge-success-text, #166534)' : order.status === 'failed' ? 'var(--inventory-empty-text, #DC2626)' : 'var(--inventory-low-text, #D97706)'
+                          background: order.status === 'paid' ? 'var(--badge-success-bg, #DCFCE7)' : order.status === 'failed' ? 'var(--inventory-empty-bg, #FEF2F2)' : order.status === 'expired' ? 'var(--badge-neutral-bg, #F3F4F6)' : 'var(--inventory-low-bg, #FFFBEB)',
+                          color: order.status === 'paid' ? 'var(--badge-success-text, #166534)' : order.status === 'failed' ? 'var(--inventory-empty-text, #DC2626)' : order.status === 'expired' ? 'var(--badge-neutral-text, #6B7280)' : 'var(--inventory-low-text, #D97706)'
                         }}>
-                          {order.status === 'paid' ? 'Confirmed' : order.status === 'failed' ? 'Failed' : 'Pending'}
+                          {order.status === 'paid' ? 'Confirmed' : order.status === 'failed' ? 'Failed' : order.status === 'expired' ? 'Expired' : 'Pending'}
                         </span>
                       </td>
                       <td style={{ padding: '0.85rem 0.5rem', color: c.muted }}>
@@ -203,10 +204,10 @@ export default function Orders() {
                     borderRadius: 20,
                     fontSize: '0.75rem',
                     fontWeight: 600,
-                    background: selectedOrder.status === 'paid' ? 'var(--badge-success-bg, #DCFCE7)' : selectedOrder.status === 'failed' ? 'var(--inventory-empty-bg, #FEF2F2)' : 'var(--inventory-low-bg, #FFFBEB)',
-                    color: selectedOrder.status === 'paid' ? 'var(--badge-success-text, #166534)' : selectedOrder.status === 'failed' ? 'var(--inventory-empty-text, #DC2626)' : 'var(--inventory-low-text, #D97706)'
+                    background: selectedOrder.status === 'paid' ? 'var(--badge-success-bg, #DCFCE7)' : selectedOrder.status === 'failed' ? 'var(--inventory-empty-bg, #FEF2F2)' : selectedOrder.status === 'expired' ? 'var(--badge-neutral-bg, #F3F4F6)' : 'var(--inventory-low-bg, #FFFBEB)',
+                    color: selectedOrder.status === 'paid' ? 'var(--badge-success-text, #166534)' : selectedOrder.status === 'failed' ? 'var(--inventory-empty-text, #DC2626)' : selectedOrder.status === 'expired' ? 'var(--badge-neutral-text, #6B7280)' : 'var(--inventory-low-text, #D97706)'
                   }}>
-                    {selectedOrder.status === 'paid' ? 'Confirmed' : selectedOrder.status === 'failed' ? 'Failed' : 'Pending'}
+                    {selectedOrder.status === 'paid' ? 'Confirmed' : selectedOrder.status === 'failed' ? 'Failed' : selectedOrder.status === 'expired' ? 'Expired' : 'Pending'}
                   </span>
                 </div>
               </div>

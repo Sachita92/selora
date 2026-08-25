@@ -9,15 +9,20 @@ table (sweep: key prefix, migration 015), bounded to the 10 most recent
 pendings of the last 48h, and re-verifying each through the same
 _verify_and_confirm_order core the browser path uses.
 
+The sweep also owns pending-order EXPIRY: pendings past the 15-minute TTL get
+one final verification and, if cleanly unpaid, move to status 'expired' —
+those paths are covered in test_order_expiry_dedup.py; this file covers the
+reconciliation pass and the shared bounds/throttle/isolation machinery.
+
 TestClient runs background tasks inside the request cycle, so sweep effects
 are observable right after the call returns — while the response body itself
 was built BEFORE the sweep ran (the next poll shows the confirmations).
 
 Hermetic: auth + store resolution stubbed (test_selora_store_authz pattern);
-supabase_admin is a table-routing fake with real eq/gte/order/limit filtering
-whose rpc() reproduces both rate_limit_hit (migration 015) and
-claim_and_fulfill_order (migrations 017/018); httpx serves canned
-per-reference RPC responses. No network.
+supabase_admin is a table-routing fake with real eq/gte/lt/order/limit
+filtering and update support, whose rpc() reproduces both rate_limit_hit
+(migration 015) and claim_and_fulfill_order (migrations 017/018); httpx
+serves canned per-reference RPC responses. No network.
 """
 import types
 from datetime import datetime, timezone, timedelta
@@ -37,16 +42,24 @@ MINT = "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr"
 # ── fakes ─────────────────────────────────────────────────────────────────────
 
 class _FakeQuery:
-    """Table query with real eq/gte/order/limit semantics, so the sweep's
-    bounded listing (status filter, 48h cutoff, cap) is actually exercised."""
+    """Table query with real eq/gte/lt/order/limit semantics, so the sweep's
+    bounded listings (status filter, 48h cutoff, TTL cutoff, caps) are
+    actually exercised. update() mutates the canonical rows through the same
+    filters — which is what makes the expiry UPDATE's status='pending' guard
+    testable."""
 
     def __init__(self, db, table):
         self._db, self._table = db, table
         self._filters = []
         self._order_col, self._desc = None, False
         self._limit = None
+        self._op, self._payload = "select", None
 
     def select(self, *a, **kw):
+        return self
+
+    def update(self, payload):
+        self._op, self._payload = "update", payload
         return self
 
     def eq(self, col, val):
@@ -57,12 +70,8 @@ class _FakeQuery:
         self._filters.append(("gte", col, val))
         return self
 
-    def order(self, col, desc=False):
-        self._order_col, self._desc = col, desc
-        return self
-
-    def limit(self, n):
-        self._limit = n
+    def lt(self, col, val):
+        self._filters.append(("lt", col, val))
         return self
 
     def execute(self):
@@ -70,15 +79,29 @@ class _FakeQuery:
         for op, col, val in self._filters:
             if op == "eq":
                 rows = [r for r in rows if r.get(col) == val]
-            else:  # gte — created_at ISO strings from the same clock, so
-                   # lexicographic comparison is chronological
+            elif op == "gte":
+                # created_at ISO strings from the same clock, so lexicographic
+                # comparison is chronological
                 rows = [r for r in rows if r.get(col) is not None and r.get(col) >= val]
+            else:  # lt
+                rows = [r for r in rows if r.get(col) is not None and r.get(col) < val]
         if self._order_col:
             rows = sorted(rows, key=lambda r: r.get(self._order_col) or "", reverse=self._desc)
         if self._limit is not None:
             rows = rows[: self._limit]
+        if self._op == "update":
+            for r in rows:   # references into db.rows — mutates canonical rows
+                r.update(self._payload)
         # Snapshots, like a real DB read: the claim rpc mutates canonical rows.
         return types.SimpleNamespace(data=[dict(r) for r in rows])
+
+    def order(self, col, desc=False):
+        self._order_col, self._desc = col, desc
+        return self
+
+    def limit(self, n):
+        self._limit = n
+        return self
 
 
 class _FakeDb:
@@ -200,8 +223,10 @@ def test_sweep_writes_fee_payer_for_qr_order(client, monkeypatch):
     assert db.rows["selora_orders"][0]["buyer_wallet"] == PAYER
 
 
-def test_unpaid_pending_order_stays_pending(client, monkeypatch):
-    order = _mk_order(1, hours_ago=1)
+def test_unpaid_fresh_pending_order_stays_pending(client, monkeypatch):
+    # Within the 15-min TTL, so the expiry pass may not touch it either.
+    # (Over-TTL unpaid pendings expire — covered in test_order_expiry_dedup.)
+    order = _mk_order(1, hours_ago=0.1)
     db = _wire(monkeypatch, [order], {})   # nothing on chain
     r = _poll(client)
     assert r.status_code == 200
@@ -233,25 +258,28 @@ def test_sweep_respects_per_store_throttle(client, monkeypatch):
     assert db.rows["selora_orders"][0]["status"] == "paid"
 
 
-# ── bounds: cap per sweep, 48h age window ─────────────────────────────────────
+# ── bounds: each pass has its own cap ─────────────────────────────────────────
 
-def test_sweep_caps_orders_and_skips_old_pendings(client, monkeypatch):
-    # 12 recent pendings (hours_ago 1..12) plus one 3-day-old pending, all
-    # with confirmed payments on chain. Cap is 10, cutoff is 48h.
-    recent = [_mk_order(i, hours_ago=i + 1) for i in range(12)]
-    old = _mk_order(99, hours_ago=72)
-    paid = {o["reference"]: PAYER for o in recent + [old]}
-    db = _wire(monkeypatch, recent + [old], paid)
+def test_sweep_caps_each_pass(client, monkeypatch):
+    # 22 pendings (hours_ago 1..22), all with confirmed payments on chain.
+    # The reconciliation pass verifies the 10 NEWEST; the expiry pass gives the
+    # 10 OLDEST over-TTL pendings their final verification (which here finds
+    # the payments and confirms them — a paid order is never expired). The 2 in
+    # the middle wait for a later sweep.
+    orders = [_mk_order(i, hours_ago=i + 1) for i in range(22)]
+    paid = {o["reference"]: PAYER for o in orders}
+    db = _wire(monkeypatch, orders, paid)
 
     _poll(client)
-    # The 10 most recent pendings were verified; the 2 oldest recents wait for
-    # a later sweep, the 3-day-old one is the expiry task's problem.
-    assert len(db.claims) == 10
-    assert set(db.claims) == {o["id"] for o in recent[:10]}
+    assert len(db.claims) == 20
+    claimed = set(db.claims)
+    assert {o["id"] for o in orders[:10]} <= claimed     # newest 10
+    assert {o["id"] for o in orders[12:]} <= claimed     # oldest 10
     by_id = {o["id"]: o for o in db.rows["selora_orders"]}
-    assert by_id[recent[10]["id"]]["status"] == "pending"
-    assert by_id[recent[11]["id"]]["status"] == "pending"
-    assert by_id[old["id"]]["status"] == "pending"
+    assert by_id[orders[10]["id"]]["status"] == "pending"
+    assert by_id[orders[11]["id"]]["status"] == "pending"
+    # Everything verified was paid on chain; nothing may have expired.
+    assert all(o["status"] != "expired" for o in db.rows["selora_orders"])
 
 
 # ── failure isolation ─────────────────────────────────────────────────────────

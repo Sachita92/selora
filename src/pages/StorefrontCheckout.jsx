@@ -4,13 +4,18 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 // ── Session persistence ───────────────────────────────────────────────────────
-// The checkout survives refresh/tab-restore through two sessionStorage keys:
-//   selora-checkout-cart:{handle}  — the bag snapshot the drawer handed over
-//   selora-checkout-order:{ref}    — the created order's payment context
+// The checkout survives refresh/tab-restore through three sessionStorage keys:
+//   selora-checkout-cart:{handle}    — the bag snapshot the drawer handed over
+//   selora-checkout-order:{ref}      — the created order's payment context
+//   selora-checkout-pending:{handle} — reference of the buyer's latest open
+//     order, sent with the next create so the server RESUMES that order (same
+//     store + same cart, still pending, within its 15-min TTL) instead of
+//     minting a duplicate. Staleness is harmless: the server re-validates.
 // The /checkout/{reference} URL is the durable pointer; this context lets the
 // page rebuild the QR and item list after a reload without a backend read.
 const cartKey = (handle) => `selora-checkout-cart:${handle}`
 const orderKey = (reference) => `selora-checkout-order:${reference}`
+const pendingKey = (handle) => `selora-checkout-pending:${handle}`
 
 const readJSON = (key) => {
   try { return JSON.parse(sessionStorage.getItem(key) || 'null') } catch { return null }
@@ -131,11 +136,21 @@ export default function StorefrontCheckout() {
       setTxSignature(data.signature || '')
       setConfirmedOrderId(data.order_id || '')
       setPhase('confirmed')
-      try { sessionStorage.removeItem(cartKey(handle)) } catch { /* ignore */ }
+      try {
+        sessionStorage.removeItem(cartKey(handle))
+        sessionStorage.removeItem(pendingKey(handle))
+      } catch { /* ignore */ }
       return true
     }
     if (data.status === 'failed') {
       setPhase('failed')
+      return true
+    }
+    // The order sat unpaid past its TTL and the server expired it. Terminal:
+    // the bag survives, so "Back to your bag" starts a fresh order.
+    if (data.status === 'expired') {
+      try { sessionStorage.removeItem(pendingKey(handle)) } catch { /* ignore */ }
+      setPhase('expired')
       return true
     }
     // Distinguish "no transaction yet" from "transaction seen, settling".
@@ -208,6 +223,20 @@ export default function StorefrontCheckout() {
     return () => window.removeEventListener('beforeunload', warn)
   }, [reference, phase, paying, submittedSig])
 
+  // ── In-page leaving guard ───────────────────────────────────────────────────
+  // The same don't-pay-again warning the stalled state's "Back to bag" uses,
+  // shared by every in-page way off the payment page (brand link, back link).
+  // Guarded while a payment may be in flight: awaiting/confirming, a wallet
+  // prompt open, or a wallet transaction submitted this session. Terminal
+  // phases (confirmed/expired/failed) — and the bag page, which has no
+  // reference — leave freely.
+  const terminalPhase = phase === 'confirmed' || phase === 'expired' || phase === 'failed'
+  const paymentMayBeInFlight = !!reference && !terminalPhase &&
+    (phase === 'awaiting' || phase === 'confirming' || paying || !!submittedSig)
+  const confirmLeave = () =>
+    !paymentMayBeInFlight ||
+    window.confirm('Your payment may still be processing. Paying again could charge you twice.\n\nLeave this page anyway?')
+
   // ── Create the order (relocated from Storefront's handleCheckoutInitiate) ──
   const createOrder = async () => {
     setCreating(true)
@@ -215,16 +244,20 @@ export default function StorefrontCheckout() {
     try {
       const activeWallet = window.solana?.publicKey?.toString() || null
       const cartPayload = cart.map(item => ({ product_id: item.product.id, quantity: item.quantity }))
+      // If this session already created a still-open order, present its
+      // reference so the server resumes it instead of inserting a duplicate.
+      const priorReference = readJSON(pendingKey(handle))
       const response = await fetch(`${API}/api/checkout/solana/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ store_id: store.id, buyer_wallet: activeWallet, cart: cartPayload }),
+        body: JSON.stringify({ store_id: store.id, buyer_wallet: activeWallet, cart: cartPayload, prior_reference: priorReference || null }),
       })
       if (!response.ok) {
         const errData = await response.json()
         throw new Error(errData.detail || 'Failed to initiate checkout')
       }
       const data = await response.json()
+      writeJSON(pendingKey(handle), data.reference)
       writeJSON(orderKey(data.reference), {
         order_id: data.order_id,
         reference: data.reference,
@@ -447,7 +480,11 @@ export default function StorefrontCheckout() {
       {/* Storefront nav — same sticky bar language as Storefront.jsx */}
       <nav style={{ position: 'sticky', top: 0, zIndex: 100, background: palette.background + 'F2', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${palette.border}`, padding: '0 1.25rem' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link to={`/store/${handle}`} style={{ fontFamily: 'Fraunces, serif', fontSize: '1.15rem', fontWeight: 600, color: palette.text, textDecoration: 'none', letterSpacing: '-0.02em' }}>
+          <Link
+            to={`/store/${handle}`}
+            onClick={(e) => { if (!confirmLeave()) e.preventDefault() }}
+            style={{ fontFamily: 'Fraunces, serif', fontSize: '1.15rem', fontWeight: 600, color: palette.text, textDecoration: 'none', letterSpacing: '-0.02em' }}
+          >
             {store.name}
           </Link>
           <span style={{ fontSize: '.72rem', fontWeight: 700, background: palette.surface, color: palette.accent, padding: '.25rem .6rem', borderRadius: 20, letterSpacing: '.04em', textTransform: 'uppercase' }}>
@@ -457,6 +494,17 @@ export default function StorefrontCheckout() {
       </nav>
 
       <main className="sfc-main">
+        {/* Escape hatch, not a CTA: quiet way back to the storefront. Plain on
+            the bag page and terminal states; guarded while payment is in flight. */}
+        <div style={{ marginBottom: '1rem' }}>
+          <Link
+            to={`/store/${handle}`}
+            onClick={(e) => { if (!confirmLeave()) e.preventDefault() }}
+            style={{ fontSize: '.85rem', color: palette.secondaryText, textDecoration: 'none', fontWeight: 500 }}
+          >
+            &larr; Back to store
+          </Link>
+        </div>
         {!reference ? (
           /* ══ Page 1: bag review + payment method ══ */
           cart.length === 0 ? (
@@ -606,7 +654,7 @@ export default function StorefrontCheckout() {
           <div style={{ ...card, padding: '2.5rem 1.5rem', textAlign: 'center' }}>
             <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 500, margin: '0 0 .5rem', letterSpacing: '-0.03em' }}>This checkout link has expired</h1>
             <p style={{ fontSize: '.85rem', color: palette.secondaryText, margin: '0 0 1.5rem', lineHeight: 1.5 }}>
-              We couldn't find an order for this reference. Your bag is still saved — start the checkout again.
+              Unpaid checkouts expire after 15 minutes, or this order may no longer exist. Nothing was charged, and your bag is still saved — start the checkout again.
             </p>
             <button className="sfc-btn" onClick={() => navigate(`/store/${handle}/checkout`)} style={primaryBtn}>Back to your bag</button>
           </div>
@@ -712,7 +760,7 @@ export default function StorefrontCheckout() {
                     <button
                       className="sfc-btn"
                       onClick={() => {
-                        if (submittedSig && !window.confirm('Your payment may still be processing. Paying again could charge you twice.\n\nLeave this page anyway?')) return
+                        if (!confirmLeave()) return
                         navigate(`/store/${handle}/checkout`)
                       }}
                       style={quietBtn}

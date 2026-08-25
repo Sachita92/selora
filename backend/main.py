@@ -4193,6 +4193,48 @@ class SolanaCheckoutRequest(BaseModel):
     store_id: str
     buyer_wallet: Optional[str] = None
     cart: List[CheckoutItem]
+    # Reference of a pending order this buyer created earlier for this cart
+    # (the checkout page keeps it in sessionStorage). Presenting it lets create
+    # resume that order instead of minting a twin. Optional and untrusted: the
+    # server re-validates store, status, age and cart before reusing anything.
+    prior_reference: Optional[str] = None
+
+
+# A pending order is resumable for this long; past it, the reconciliation sweep
+# gives it one final verification and expires it if unpaid. 15 minutes is long
+# enough for a QR payer to fetch their phone.
+PENDING_ORDER_TTL_MINUTES = 15
+
+
+def _order_past_pending_ttl(order: dict) -> bool:
+    """Whether a pending order's TTL has elapsed. Unparseable creation times
+    return False: never expire (or refuse to resume) on bad data alone."""
+    from datetime import datetime, timezone, timedelta
+
+    raw = str(order.get("created_at") or "")
+    try:
+        created = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    return created < datetime.now(timezone.utc) - timedelta(minutes=PENDING_ORDER_TTL_MINUTES)
+
+
+def _cart_lines(items) -> list:
+    """Canonical order-insensitive form of line items for cart equality:
+    sorted (product_id, quantity, price) triples. Price is part of identity, so
+    a price change since the pending order was created blocks reuse — the buyer
+    gets a fresh order at the current price instead."""
+    lines = []
+    for item in items or []:
+        try:
+            lines.append((str(item.get("product_id")),
+                          int(item.get("quantity") or 0),
+                          float(item.get("price") or 0)))
+        except (TypeError, ValueError):
+            lines.append((str(item.get("product_id")), 0, 0.0))
+    return sorted(lines)
 
 
 @app.post("/api/checkout/solana/create")
@@ -4257,7 +4299,49 @@ def create_solana_checkout(body: SolanaCheckoutRequest, request: Request):
         
     if total_usd <= 0:
         raise HTTPException(status_code=400, detail="Invalid order total")
-        
+
+    # Hoisted above the insert so both the reuse and fresh-create responses can
+    # carry it (and a misconfigured mint no longer leaves an orphan order row).
+    usdc_mint = os.getenv("USDC_MINT")
+    if not usdc_mint or not usdc_mint.strip():
+        raise HTTPException(
+            status_code=500,
+            detail="USDC_MINT environment variable is not configured on the backend server."
+        )
+    usdc_mint = usdc_mint.strip()
+
+    # 2b. Dedup: resume the buyer's still-open order instead of minting a twin.
+    # Keyed ONLY on the prior reference the page presents (an unguessable
+    # ed25519 pubkey, so knowing it stands in for "this is my order" — same
+    # model as the signed-wallet order lookup). Never matched on cart shape
+    # alone: two anonymous buyers with identical carts must get distinct
+    # orders. The reuse conditions re-check everything server-side — same
+    # store, still pending, within the TTL, and the exact same cart at the
+    # exact same prices (a price change forces a fresh order).
+    prior_ref = (body.prior_reference or "").strip()
+    if prior_ref:
+        prior_res = _db().table("selora_orders").select("*").eq("reference", prior_ref).execute()
+        prior = (prior_res.data or [None])[0]
+        if (
+            prior
+            and prior.get("store_id") == store_id
+            and prior.get("status") == "pending"
+            and not _order_past_pending_ttl(prior)
+            and _cart_lines(prior.get("items")) == _cart_lines(items_ordered)
+        ):
+            return {
+                "success": True,
+                "order_id": prior["id"],
+                "reference": prior["reference"],
+                "recipient": recipient,
+                # The amount verify will require is the PRIOR row's total (equal
+                # to the fresh computation whenever the carts matched).
+                "amount_usdc": round(float(prior["total_usd"]), 2),
+                "spl_token_mint": usdc_mint,
+                "memo": f"Order {prior['id'][:8]} on {store_data['name']}",
+                "reused": True,
+            }
+
     # 3. Generate reference public key (must be a base58 string, not bytes)
     try:
         from cryptography.hazmat.primitives.asymmetric import ed25519 as crypto_ed25519
@@ -4283,15 +4367,7 @@ def create_solana_checkout(body: SolanaCheckoutRequest, request: Request):
     except Exception as e:
         print(f"Error inserting order record: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create pending order: {e}")
-        
-    usdc_mint = os.getenv("USDC_MINT")
-    if not usdc_mint or not usdc_mint.strip():
-        raise HTTPException(
-            status_code=500,
-            detail="USDC_MINT environment variable is not configured on the backend server."
-        )
-    usdc_mint = usdc_mint.strip()
-    
+
     return {
         "success": True,
         "order_id": order["id"],
@@ -4299,7 +4375,8 @@ def create_solana_checkout(body: SolanaCheckoutRequest, request: Request):
         "recipient": recipient,
         "amount_usdc": round(total_usd, 2),
         "spl_token_mint": usdc_mint,
-        "memo": f"Order {order['id'][:8]} on {store_data['name']}"
+        "memo": f"Order {order['id'][:8]} on {store_data['name']}",
+        "reused": False,
     }
 
 
@@ -4481,6 +4558,11 @@ def _verify_and_confirm_order(order: dict) -> dict:
         return {"status": "confirmed", "order_id": order["id"]}
     if order["status"] == "failed":
         return {"status": "failed", "order_id": order["id"]}
+    if order["status"] == "expired":
+        # Terminal for the checkout page (it shows its EXPIRED state). Expiry
+        # only ever happens after a final clean verification found no payment,
+        # so there is no on-chain state left to check here.
+        return {"status": "expired", "order_id": order["id"]}
 
     reference = order["reference"]
     store_id = order["store_id"]
@@ -4537,7 +4619,11 @@ def _verify_and_confirm_order(order: dict) -> dict:
 
         signatures = _rpc_result(rpc_data, []) or []
         if not signatures:
-            return {"status": "pending", "message": "No transaction found for reference"}
+            # "unpaid" marks the two returns where verification COMPLETED and
+            # found no qualifying payment — the only results the sweep's expiry
+            # is allowed to act on. RPC failures and exceptions never carry it,
+            # so a paid order behind a flaky RPC can never be expired.
+            return {"status": "pending", "message": "No transaction found for reference", "unpaid": True}
             
         confirmed_signature = None
         confirmed_fee_payer = None
@@ -4660,7 +4746,9 @@ def _verify_and_confirm_order(order: dict) -> dict:
 
             return {"status": "confirmed", "order_id": order["id"], "signature": confirmed_signature}
             
-        return {"status": "pending", "message": "Transaction found but merchant did not receive expected USDC amount"}
+        # Verification completed; whatever touched the reference did not pay in
+        # full ("unpaid": see the no-signatures return above).
+        return {"status": "pending", "message": "Transaction found but merchant did not receive expected USDC amount", "unpaid": True}
         
     except Exception as err:
         print(f"Error during payment verification: {err}")
@@ -4751,19 +4839,29 @@ def send_checkout_receipt(reference: str, body: CheckoutEmailRequest, request: R
 # schedules this sweep as a background task after serving the owner.
 
 SWEEP_WINDOW_SECONDS = 120   # at most one sweep per store per fixed window
-SWEEP_MAX_ORDERS = 10        # most recent pendings per sweep
-SWEEP_MAX_AGE_HOURS = 48     # older pendings are the expiry task's problem
+SWEEP_MAX_ORDERS = 10        # per pass: newest pendings re-verified, oldest over-TTL pendings expired
+SWEEP_MAX_AGE_HOURS = 48     # how far back the reconciliation pass looks; expiry has no floor
 
 
 def _sweep_pending_orders(store_id: str) -> None:
     """Opportunistically re-verify a store's recent pending Solana orders
-    through the same _verify_and_confirm_order core the browser path uses.
+    through the same _verify_and_confirm_order core the browser path uses,
+    and expire pendings whose TTL (PENDING_ORDER_TTL_MINUTES) has elapsed.
 
     Runs AFTER the orders response is sent (BackgroundTasks), so the request
     path pays nothing — even the throttle check happens in here. Confirmations
     therefore land by the dashboard's next poll, not the current one. Every
     failure is logged and swallowed: this is a best-effort reconciliation
     pass, never a request breaker.
+
+    Expiry ordering, stated once: each over-TTL pending gets its ONE final
+    verification FIRST — if the payment landed, that call atomically claims
+    pending -> paid and the order confirms like any other. Only a verification
+    that completed and found no qualifying payment (result carries "unpaid")
+    may expire, and the expire UPDATE itself is guarded with status='pending',
+    so a concurrent confirm (browser poll racing this sweep) that wins the
+    atomic claim turns the expire into a zero-row no-op. A paid order can
+    therefore never become expired from either direction.
     """
     import time
     from datetime import datetime, timezone, timedelta
@@ -4803,13 +4901,50 @@ def _sweep_pending_orders(store_id: str) -> None:
         print(f"⚠️ Order sweep could not list pending orders for store {store_id}: {e}")
         return
 
-    for order in pending:
+    # Expiry candidates: pendings past the TTL, OLDEST first so the backlog
+    # (including rows the 48h reconciliation window no longer reaches) drains a
+    # capful per sweep. Overlap with the recent listing is deduped below so
+    # each order is verified at most once per sweep.
+    ttl_cutoff = (datetime.now(timezone.utc)
+                  - timedelta(minutes=PENDING_ORDER_TTL_MINUTES)).isoformat()
+    try:
+        stale_res = (
+            _db().table("selora_orders").select("*")
+            .eq("store_id", store_id).eq("status", "pending")
+            .lt("created_at", ttl_cutoff)
+            .order("created_at", desc=False).limit(SWEEP_MAX_ORDERS)
+            .execute()
+        )
+        stale = stale_res.data or []
+    except Exception as e:
+        print(f"⚠️ Order sweep could not list stale pending orders for store {store_id}: {e}")
+        stale = []
+
+    seen_ids = set()
+    for order in pending + stale:
+        if order["id"] in seen_ids:
+            continue
+        seen_ids.add(order["id"])
         try:
-            _verify_and_confirm_order(order)
+            result = _verify_and_confirm_order(order)
         except Exception as e:
             # One bad order (malformed row, store/config problem) must not
-            # stop the rest of the sweep.
+            # stop the rest of the sweep — and an order whose verification
+            # raised gets no expiry decision this sweep.
             print(f"⚠️ Order sweep: verify failed for order {order.get('id')} (continuing): {e}")
+            continue
+
+        # Expire only after the final verification above completed and found
+        # no qualifying payment ("unpaid"). The status='pending' guard is the
+        # race protection: if any concurrent path confirmed meanwhile, the
+        # atomic claim already moved the row to 'paid' and this matches zero
+        # rows. See the docstring for the full ordering argument.
+        if result.get("unpaid") and _order_past_pending_ttl(order):
+            try:
+                _db().table("selora_orders").update({"status": "expired"}) \
+                    .eq("id", order["id"]).eq("status", "pending").execute()
+            except Exception as e:
+                print(f"⚠️ Order sweep: could not expire order {order.get('id')} (continuing): {e}")
 
 
 # ─── CLI entry point ──────────────────────────────────────────────────────────

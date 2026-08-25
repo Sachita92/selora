@@ -451,6 +451,58 @@ export default function Storefront({ previewData = null, editMode = false, selec
   const [purchasedItems, setPurchasedItems] = useState([])
   const [txSignature, setTxSignature] = useState('')
 
+  // ── Resume-checkout notice ──────────────────────────────────────────────────
+  // The Checkout button hands the bag to the dedicated checkout page, which
+  // stores its order's reference under selora-checkout-pending:{handle}. A
+  // buyer who navigates back before paying would otherwise find no path to
+  // that order (the drawer just shows an empty bag). On drawer open, validate
+  // the stored reference with ONE verify call: still pending -> offer a link
+  // back to the payment page; any other status or 404 -> drop the key (a stale
+  // notice pointing at a dead order is worse than none). A network error shows
+  // nothing but KEEPS the key — it could not be validated either way.
+  const [pendingCheckoutRef, setPendingCheckoutRef] = useState(null)
+  useEffect(() => {
+    if (!isCartOpen) return
+    let stale = false
+    ;(async () => {
+      let ref = null
+      try { ref = JSON.parse(sessionStorage.getItem(`selora-checkout-pending:${handle}`) || 'null') } catch { /* ignore */ }
+      if (!ref) { if (!stale) setPendingCheckoutRef(null); return }
+      try {
+        const res = await fetch(`${API}/api/checkout/solana/verify/${ref}`)
+        if (stale) return
+        const dead = res.status === 404 ||
+          (res.ok && (await res.json()).status !== 'pending')
+        if (stale) return
+        if (dead) {
+          try { sessionStorage.removeItem(`selora-checkout-pending:${handle}`) } catch { /* ignore */ }
+          setPendingCheckoutRef(null)
+        } else if (res.ok) {
+          setPendingCheckoutRef(ref)
+        } else {
+          setPendingCheckoutRef(null)   // 5xx: unvalidated, show nothing, keep the key
+        }
+      } catch { if (!stale) setPendingCheckoutRef(null) }
+    })()
+    return () => { stale = true }
+  }, [isCartOpen, handle])
+
+  // Rendered in BOTH drawer bag states (empty and filled). A function, not a
+  // const, so palette/currency resolve at render time.
+  const renderPendingCheckoutNotice = (extraStyle) => pendingCheckoutRef ? (
+    <div style={{ border: `1px solid ${palette.border}`, borderRadius: 12, padding: '.9rem 1rem', background: palette.surface, textAlign: 'left', ...extraStyle }}>
+      <p style={{ fontSize: '.85rem', fontWeight: 600, color: palette.text, margin: '0 0 .25rem' }}>You have a checkout in progress</p>
+      <p style={{ fontSize: '.8rem', color: palette.secondaryText, margin: '0 0 .5rem', lineHeight: 1.4 }}>Your earlier order is still awaiting payment.</p>
+      <Link
+        to={`/store/${handle}/checkout/${pendingCheckoutRef}`}
+        onClick={() => setIsCartOpen(false)}
+        style={{ fontSize: '.85rem', color: palette.accent, fontWeight: 600, textDecoration: 'none' }}
+      >
+        Resume checkout &rarr;
+      </Link>
+    </div>
+  ) : null
+
   const startPolling = (reference) => {
     if (pollingInterval) clearInterval(pollingInterval)
     let attempts = 0
@@ -2341,6 +2393,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                 </div>
                 <p style={{ fontWeight: 600, color: palette.text, marginBottom: '.25rem' }}>Your bag is empty</p>
                 <p style={{ fontSize: '.85rem', margin: 0 }}>Browse the collection and add some items to get started.</p>
+                {renderPendingCheckoutNotice({ width: '100%', marginTop: '1.25rem' })}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -2399,6 +2452,8 @@ export default function Storefront({ previewData = null, editMode = false, selec
                     <span>Total USD</span>
                     <span>{currency} {cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0).toFixed(2)}</span>
                   </div>
+
+                  {renderPendingCheckoutNotice({ marginBottom: '1rem' })}
 
                   {paymentError && (
                     <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '.75rem', fontSize: '.8rem', color: '#DC2626', marginBottom: '1rem', lineHeight: 1.4, textAlign: 'left' }}>
