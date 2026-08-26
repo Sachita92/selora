@@ -3,16 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-// ── Session persistence ───────────────────────────────────────────────────────
-// The checkout survives refresh/tab-restore through three sessionStorage keys:
-//   selora-checkout-cart:{handle}    — the bag snapshot the drawer handed over
-//   selora-checkout-order:{ref}      — the created order's payment context
-//   selora-checkout-pending:{handle} — reference of the buyer's latest open
-//     order, sent with the next create so the server RESUMES that order (same
-//     store + same cart, still pending, within its 15-min TTL) instead of
-//     minting a duplicate. Staleness is harmless: the server re-validates.
-// The /checkout/{reference} URL is the durable pointer; this context lets the
-// page rebuild the QR and item list after a reload without a backend read.
 const cartKey = (handle) => `selora-checkout-cart:${handle}`
 const orderKey = (reference) => `selora-checkout-order:${reference}`
 const pendingKey = (handle) => `selora-checkout-pending:${handle}`
@@ -49,11 +39,26 @@ const DEFAULT_PALETTE = {
 
 const POLL_MS = 2500
 const MAX_ATTEMPTS = 24
-// After the fast cycle exhausts, keep watching in the background: devnet
-// confirmations can take minutes, and a buyer who concludes "failed" and pays
-// again gets charged twice. ~10 minutes of slow checks.
 const SLOW_POLL_MS = 10000
 const SLOW_MAX_ATTEMPTS = 60
+
+// ── Wallet pre-flight copy ────────────────────────────────────────────────────
+const insufficientSolCopy = (solBalance) =>
+  `Insufficient Devnet SOL for network fees. You have ${solBalance.toFixed(4)} SOL, but at least 0.005 SOL is required. Please airdrop Devnet SOL to your wallet.`
+const insufficientUsdcCopy = (neededUsdc, usdcBalance) =>
+  `You need ${Number(neededUsdc).toFixed(2)} USDC but your wallet has ${usdcBalance.toFixed(2)} USDC. Get Devnet USDC from faucet.circle.com.`
+
+const simulationFailureCopy = (err, neededUsdc, solBalance, usdcBalance) => {
+  let detail = ''
+  try { detail = JSON.stringify(err) ?? String(err) } catch { detail = String(err) }
+  if (/InsufficientFundsForFee|InsufficientFundsForRent|AccountNotFound/.test(detail)) {
+    return insufficientSolCopy(solBalance)
+  }
+  if (/"Custom":1\b|InsufficientFunds/.test(detail)) {
+    return insufficientUsdcCopy(neededUsdc, usdcBalance)
+  }
+  return 'The network reported that this payment would fail, so your wallet was not opened and nothing was sent. Please try again — or scan the QR code below to pay from a wallet on your phone.'
+}
 
 export default function StorefrontCheckout() {
   const { handle, reference } = useParams()
@@ -70,9 +75,6 @@ export default function StorefrontCheckout() {
   const [createError, setCreateError] = useState('')
 
   // Payment page state
-  // phase: 'awaiting' (no tx seen yet) | 'confirming' (tx seen, not enough yet /
-  // still settling) | 'stalled' (poll cycle exhausted) | 'confirmed' | 'failed'
-  // | 'expired' (order not found)
   const [phase, setPhase] = useState('awaiting')
   const [attempts, setAttempts] = useState(0)
   const [txSignature, setTxSignature] = useState('')
@@ -81,22 +83,10 @@ export default function StorefrontCheckout() {
   const [copied, setCopied] = useState(false)
   const [orderCtx] = useState(() => (reference ? readJSON(orderKey(reference)) : null))
   const [confirmedOrderId, setConfirmedOrderId] = useState('')
-  // Server-side receipt payload from a confirmed verify: the fallback source
-  // for email-link visits with no sessionStorage (items, total, order date),
-  // plus the has_email flag that suppresses the email ask once an address is
-  // already attached to the order.
   const [receipt, setReceipt] = useState(null)
-  // Signature of a wallet transaction submitted in THIS session — when set, a
-  // payment definitely left the buyer's wallet, so leaving the page gets a
-  // double-charge warning. QR payments never set it (the phone wallet signs).
   const [submittedSig, setSubmittedSig] = useState('')
-  // True once the background slow watch has given up (~10 min); hides the
-  // "checking automatically" line so the UI never claims a watch that stopped.
   const [slowExhausted, setSlowExhausted] = useState(false)
 
-  // Optional receipt email, offered on the confirmed receipt only. Purely
-  // additive: the on-screen receipt is the buyer's proof either way.
-  // emailState: 'idle' | 'sending' | 'sent' | 'error'
   const [email, setEmail] = useState('')
   const [emailState, setEmailState] = useState('idle')
   const [emailError, setEmailError] = useState('')
@@ -337,14 +327,14 @@ export default function StorefrontCheckout() {
       ])
       const solBalance = solBalanceLamports / 1e9
       if (solBalance < 0.005) {
-        throw new Error(`Insufficient Devnet SOL for network fees. You have ${solBalance.toFixed(4)} SOL, but at least 0.005 SOL is required. Please airdrop Devnet SOL to your wallet.`)
+        throw new Error(insufficientSolCopy(solBalance))
       }
       let usdcBalance = 0
       if (usdcBalanceRes && usdcBalanceRes.value) {
         usdcBalance = usdcBalanceRes.value.uiAmount ?? (Number(usdcBalanceRes.value.amount) / Math.pow(10, decimals))
       }
       if (usdcBalance < orderCtx.amount_usdc) {
-        throw new Error(`You need ${Number(orderCtx.amount_usdc).toFixed(2)} USDC but your wallet has ${usdcBalance.toFixed(2)} USDC. Get Devnet USDC from faucet.circle.com.`)
+        throw new Error(insufficientUsdcCopy(orderCtx.amount_usdc, usdcBalance))
       }
 
       const amountRaw = BigInt(Math.round(orderCtx.amount_usdc * Math.pow(10, decimals)))
@@ -367,10 +357,25 @@ export default function StorefrontCheckout() {
       }).compileToV0Message()
       const versionedTx = new VersionedTransaction(txMsg)
 
+      // Blocking pre-flight simulation — the middle of three layers: the cheap
+      // explicit balance checks above run first, Phantom's own simulation
+      // stands third behind this one. An error HERE means the network says
+      // this exact transaction would fail, so the wallet prompt never opens;
+      // setting payError while staying in 'awaiting' keeps the QR path
+      // rendered and correct — an extension-wallet problem must not block
+      // paying from a phone. If the simulation CALL itself throws, proceed to
+      // Phantom as before: an unavailable simulation is not a failed
+      // simulation, and Phantom's gate still stands behind it.
+      let simulationErr = null
       try {
         const simResult = await conn.simulateTransaction(versionedTx)
-        if (simResult.value.err) console.warn('[Checkout] simulation error', simResult.value.err)
-      } catch { /* non-fatal */ }
+        simulationErr = simResult.value.err
+      } catch { /* simulation unavailable — not a failed simulation */ }
+      if (simulationErr) {
+        console.warn('[Checkout] simulation failed, blocking wallet prompt', simulationErr)
+        setPayError(simulationFailureCopy(simulationErr, orderCtx.amount_usdc, solBalance, usdcBalance))
+        return
+      }
 
       const { signature } = await phantom.signAndSendTransaction(versionedTx)
       setSubmittedSig(signature || 'submitted')
