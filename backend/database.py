@@ -119,7 +119,14 @@ def get_or_create_user_by_auth(user_id: str, email: str) -> dict:
     # If the user doesn't exist, insert a new row
     user_data = {"id": user_id, "email": email}
     result = client.table("users").insert(user_data).execute()
-    return result.data[0] if result.data else None
+    user = result.data[0] if result.data else None
+    if user:
+        # New-user branch only — returning logins took the select return above.
+        # Never raises, and its atomic welcome_email_sent_at claim means a
+        # concurrent double-create sends at most one welcome.
+        from emails import send_welcome_email
+        send_welcome_email(user)
+    return user
 
 
 def get_user_by_id(user_id: str) -> dict:

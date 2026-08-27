@@ -3525,6 +3525,11 @@ def privy_sync(body: PrivySyncRequest, request: Request):
             }
             new_res = _db().table("users").insert(user_data).execute()
             db_user = new_res.data[0]
+            # New-user branch only. Wallet-only users carry the synthetic
+            # {wallet}@selora.io placeholder and are skipped inside; a failed
+            # send never breaks the sync (the helper swallows everything).
+            from emails import send_welcome_email
+            send_welcome_email(db_user)
 
         # 6. Ensure user exists in Supabase Auth for session generation
         session_email = db_user.get("email") if db_user else email

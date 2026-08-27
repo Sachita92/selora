@@ -106,11 +106,12 @@ def _order(status="paid", buyer_email=None, reference=REF, order_id=ORDER_ID):
 
 @pytest.fixture
 def sent(monkeypatch):
-    """Captures send_email calls; returns the list of (to, subject, ref)."""
+    """Captures send_email calls; returns the list of (to, subject, ref, sender)."""
     calls = []
 
-    def _fake_send(to, subject, html, ref=""):
-        calls.append({"to": to, "subject": subject, "html": html, "ref": ref})
+    def _fake_send(to, subject, html, ref="", sender=""):
+        calls.append({"to": to, "subject": subject, "html": html, "ref": ref,
+                      "sender": sender})
         return True
 
     monkeypatch.setattr("emails.send_email", _fake_send)
@@ -148,6 +149,9 @@ def test_paid_order_stores_email_and_sends_receipt(client, monkeypatch, sent):
     assert sent[0]["to"] == BUYER_EMAIL
     assert BUYER_EMAIL not in sent[0]["ref"]
     assert ORDER_ID[:8] in sent[0]["ref"]
+    # No per-template sender: receipts resolve EMAIL_FROM inside send_email
+    # (the welcome mail's EMAIL_FROM_WELCOME must not leak in here).
+    assert sent[0]["sender"] == ""
 
 
 def test_receipt_contains_items_total_and_durable_link(client, monkeypatch, sent):
