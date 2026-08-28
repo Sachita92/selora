@@ -19,6 +19,11 @@
   --g: #5A8A67;
   --g2: #78A885;
 
+  /* Fixed navbar height — the hero sizes itself against this */
+  --nav-h: 68px;
+  /* Hero trust-strip text (dark-mode override lives in the .dark block) */
+  --trust-color: var(--text-secondary);
+
   --check-bg: #EEF4EF;
   --check-border: 1px solid #C7DACB;
   --check-stroke: #5A8A67;

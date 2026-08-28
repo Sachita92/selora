@@ -1,9 +1,9 @@
-import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAppContext } from "./lib/AppContext";
-import { useDarkMode } from "./hooks/useDarkMode";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import HeroBackground from "./components/HeroBackground";
 
 // ─── SVG Icons ───────────────────────────────────────────────────────────────
 function TagIcon({ size = 20, color = 'currentColor' }) {
@@ -72,32 +72,32 @@ const iconMap = {
 }
 
 // ─── Global Styles ────────────────────────────────────────────────────────────
+// Design tokens live in src/index.css (:root / .dark) — this block holds only
+// landing-scoped resets, keyframes, and layout classes.
 const GlobalStyles = () => (
   <style>{`
-    :root {
-      --g: #5A8A67; --g2: #78A885; --gpale: #EDF3EE;
-      --bg: #F8FAF8; --bg2: #F1F5F1;
-      --border: #E4EBE5; --border-strong: #C7DACB; --dark: #1A271C; --text: #2E3D30; --muted: #7B907D;
-      --trust-color: var(--text-secondary, #3B5A44);
-    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow-x: hidden; font-size: 15px; }
     h1, h2, h3 { font-family: 'Fraunces', serif; }
 
     @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes pulse  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(1.7)} }
     @keyframes float  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
-    @keyframes spin   { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-    @keyframes growBar { from{width:0} to{width:100%} }
-    @keyframes shimmer { 0%{transform:translateX(-100%) skewX(-15deg)} 100%{transform:translateX(260%) skewX(-15deg)} }
 
-    .au  { animation: fadeUp .65s ease both; }
-    .au1 { animation: fadeUp .65s .08s ease both; }
-    .au2 { animation: fadeUp .65s .18s ease both; }
-    .au3 { animation: fadeUp .65s .28s ease both; }
-    .au4 { animation: fadeUp .65s .42s ease both; }
-    .pdot  { animation: pulse 2.2s infinite; }
+    .au  { animation: fadeUp .65s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .au1 { animation: fadeUp .65s .08s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .au2 { animation: fadeUp .65s .18s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .au3 { animation: fadeUp .65s .28s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .au4 { animation: fadeUp .65s .42s cubic-bezier(0.16, 1, 0.3, 1) both; }
     .float { animation: float 4.5s ease-in-out infinite; }
+
+    .hero-viewport {
+      position: relative; z-index: 2;
+      min-height: calc(100vh - var(--nav-h, 68px));
+      min-height: calc(100svh - var(--nav-h, 68px));
+      display: flex; align-items: center;
+      padding: 3rem 0 4.5rem;
+    }
+    .hero-stage { animation: fadeUp .4s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
     .feat-card { background:var(--bg-1,#fff); border:1px solid var(--border); border-radius:14px; padding:2.6rem 2.2rem; transition:border-color 0.2s ease, transform 0.2s ease; position:relative; overflow:hidden; }
     .feat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--g),var(--g2)); opacity:0; transition:opacity .3s; }
@@ -115,13 +115,6 @@ const GlobalStyles = () => (
     .testi-card { background:var(--bg-1,#fff); border:1px solid var(--border); border-radius:13px; padding:1.6rem; transition:border-color 0.2s ease, transform 0.2s ease; }
     .testi-card:hover { border-color:var(--border-strong); transform:translateY(-2px); }
 
-    .faq-item { border-bottom:1px solid var(--border); }
-    .faq-item:last-child { border-bottom:none; }
-    .faq-btn { width:100%; background:none; border:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding:1.3rem 0; text-align:left; gap:1rem; }
-    .faq-chevron { width:18px; height:18px; transition:transform .25s ease; color:var(--muted); flex-shrink:0; }
-    .faq-chevron.open { transform:rotate(180deg); }
-    .faq-body { overflow:hidden; transition:max-height .3s ease, opacity .25s ease; }
-
     .integ-card { background:var(--bg-1,#fff); border:1px solid var(--border); border-radius:14px; transition:transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease; text-decoration:none; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; text-align:left; padding:1.5rem; }
     .integ-card:hover { transform:translateY(-5px); border-color:var(--g); box-shadow:0 12px 30px rgba(90,138,103,0.08); }
     .integ-card.disabled { cursor:default; }
@@ -136,20 +129,14 @@ const GlobalStyles = () => (
 
 
     @media (max-width: 900px) {
-      .nav-links { display:none !important; }
       .two-col, .how-grid, .feat-inner, .price-inner, .testi-inner { grid-template-columns:1fr !important; }
-      .hero-grid { grid-template-columns:1fr !important; }
-      .hero-visual { display:none !important; }
+      .hero-grid { grid-template-columns:1fr !important; gap:2.5rem !important; }
       .footer-grid { grid-template-columns:1fr 1fr !important; }
       .mob-pad { padding-left:1.2rem !important; padding-right:1.2rem !important; }
       .mob-vpad { padding-top:3.5rem !important; padding-bottom:3.5rem !important; }
     }
     @media (max-width: 600px) {
       .footer-grid { grid-template-columns:1fr !important; }
-      .stats-bar { gap:1.5rem !important; }
-    }
-    @media (max-width: 480px) {
-      .nav-btn-text-long { display: none; }
     }
     @keyframes skeleton-pulse {
       0%, 100% { opacity: 0.6; }
@@ -158,112 +145,14 @@ const GlobalStyles = () => (
     .skeleton-pulse {
       animation: skeleton-pulse 1.5s ease-in-out infinite;
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      .au, .au1, .au2, .au3, .au4, .hero-stage, .float, .marquee-track { animation: none; }
+    }
   `}</style>
 );
 
-// ─── Snowflake Canvas ─────────────────────────────────────────────────────────
-function SnowCanvas({ color }) {
-  const canvasRef = useRef(null);
-  const rafRef = useRef(null);
-  const lastRef = useRef(null);
-  const particlesRef = useRef([]);
-  const colorRef = useRef(color || 'rgba(90, 138, 103, 0.45)');
-  const PHI = 1.6180339887;
-  const COUNT = 20;
-
-  useEffect(() => {
-    colorRef.current = color || 'rgba(90, 138, 103, 0.45)';
-  }, [color]);
-
-  function goldenX(i, w) { return (((i * PHI) % 1) * 0.88 + 0.06) * w; }
-
-  function drawArm(ctx, len) {
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -len); ctx.stroke();
-    const b1 = len * 0.38, b2 = len * 0.62, bl = len * 0.22;
-    [-b1, -b2].forEach(by => {
-      ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(bl * 0.7, by - bl * 0.7); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(-bl * 0.7, by - bl * 0.7); ctx.stroke();
-    });
-  }
-
-  function drawSnowflake(ctx, x, y, size, angle, opacity) {
-    ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
-    ctx.globalAlpha = opacity; ctx.strokeStyle = colorRef.current;
-    ctx.lineWidth = 1; ctx.lineCap = 'round';
-    for (let i = 0; i < 6; i++) {
-      ctx.save(); ctx.rotate((Math.PI / 3) * i); drawArm(ctx, size); ctx.restore();
-    }
-    ctx.restore();
-  }
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
-    resize();
-    window.addEventListener('resize', resize);
-    const w = canvas.width || 800; const h = canvas.height || 600;
-    particlesRef.current = Array.from({ length: COUNT }, (_, i) => ({
-      baseX: goldenX(i, w), x: goldenX(i, w), y: Math.random() * h,
-      size: 5 + Math.random() * 9, speed: 3 + Math.random() * 3,
-      swayAmp: 4 + Math.random() * 6, swayFreq: 0.25 + Math.random() * 0.35,
-      spinSpeed: (Math.random() - 0.5) * 0.4, angle: Math.random() * Math.PI * 2,
-      opacity: 0.18 + Math.random() * 0.18, phase: Math.random() * Math.PI * 2,
-    }));
-    function animate(ts) {
-      if (!lastRef.current) lastRef.current = ts;
-      const dt = Math.min((ts - lastRef.current) / 1000, 0.05);
-      lastRef.current = ts;
-      const W = canvas.width, H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-      particlesRef.current.forEach(p => {
-        p.y += p.speed * dt; p.angle += p.spinSpeed * dt;
-        p.x = p.baseX + Math.sin(ts / 1000 * p.swayFreq * Math.PI * 2 + p.phase) * p.swayAmp;
-        if (p.y - p.size > H) { p.y = -p.size * 2; p.baseX = goldenX(Math.random() * COUNT | 0, W); }
-        drawSnowflake(ctx, p.x, p.y, p.size, p.angle, p.opacity);
-      });
-      rafRef.current = requestAnimationFrame(animate);
-    }
-    rafRef.current = requestAnimationFrame(animate);
-    return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener('resize', resize); };
-  }, []);
-
-  return <canvas ref={canvasRef} style={{ position:"absolute", inset:0, width:"100%", height:"100%", pointerEvents:"none", zIndex:1 }} />;
-}
-
 // ─── Data ─────────────────────────────────────────────────────────────────────
-const SLIDES = [
-  {
-    eyebrow: "AI Growth Agent for Fashion",
-    h1: ["Your Fashion Store Grows", "While You Sleep"],
-    italic: 1,
-    p: "Selora is built exclusively for fashion sellers. It handles pricing, listings, ads, and inventory — automatically, every night.",
-    cta: "Start Growing for Free →", cta2: "See How It Works",
-  },
-  {
-    eyebrow: "Listing Intelligence",
-    h1: ["Fashion listings that turn", "browsers into buyers"],
-    italic: 1,
-    p: "Selora rewrites your titles and descriptions with styling tips, fit guidance, and occasion copy — the kind of copy that actually converts.",
-    cta: "See It in Action", cta2: "Learn More",
-  },
-  {
-    eyebrow: "Inventory Intelligence",
-    h1: ["Never lose a sale to an empty", " rack again"],
-    italic: 2,
-    p: "Selora tracks how fast each piece sells and warns you before you run out — so your bestsellers are always there when customers want them.",
-    cta: "Start for Free", cta2: "Book a Demo",
-  },
-];
-
-const STATS = [
-  { num: "12K+", label: "Stores Growing" },
-  { num: "$2B+", label: "Revenue Grown" },
-  { num: "3.8x", label: "Avg Growth Rate" },
-  { num: "99%",  label: "Uptime" },
-];
-
 const FEATURES = [
   { icon:"tag", title:"Fashion-Smart Pricing",      desc:"Selora understands seasonality and trends. It adjusts prices at exactly the right moment — peak season, end of season, or when a style is trending." },
   { icon:"pencil", title:"Listings That Convert",       desc:"Weak listings kill fashion sales. Selora rewrites titles and descriptions with styling tips, fit guidance, and occasion copy that makes buyers act." },
@@ -280,32 +169,15 @@ const STEPS = [
 ];
 
 const SHOWCASE_EXAMPLES = [
-  { before: "Floral wrap dress. 100% rayon. S, M, L. Machine washable.",   after: "Effortless floral wrap dress — flowy, flattering, brunch-to-backyard.",         bgImage: "/hero-dress.png",  bgPos: "center 30%" },
-  { before: "Woolen sweater. Sage green. Oversized fit. Hand wash.",         after: "Cozy sage green woolen sweater — warm, oversized, fireside-ready.",         bgImage: "/hero-blazer.png", bgPos: "center 40%" },
-  { before: "Leather boots. Black. Size 6-10. rubber sole. round toe.",     after: "Handcrafted black leather boots — weather-resistant, all-day cushioned walk.", bgImage: "/hero-boots.png",  bgPos: "center 45%" },
+  { before: "Floral wrap dress. 100% rayon. S, M, L. Machine washable.",   after: "Effortless floral wrap dress — flowy, flattering, brunch-to-backyard.",         bgImage: "/hero-dress.webp",  bgPos: "center 30%" },
+  { before: "Woolen sweater. Sage green. Oversized fit. Hand wash.",         after: "Cozy sage green woolen sweater — warm, oversized, fireside-ready.",         bgImage: "/hero-blazer.webp", bgPos: "center 40%" },
+  { before: "Leather boots. Black. Size 6-10. rubber sole. round toe.",     after: "Handcrafted black leather boots — weather-resistant, all-day cushioned walk.", bgImage: "/hero-boots.webp",  bgPos: "center 45%" },
 ];
 
 const PLANS = [
   { name:"Free",   price:"0",     slug:"free",   desc:"Get started at no cost. Perfect for exploring what Selora can do.",                   features:["1 Store","Up to 50 Products","3 Optimizations / mo","Basic Reports","Community Support"],                                    feat:false, cta:"Get Started Free" },
   { name:"Growth", price:"4.99",  slug:"growth", desc:"For fashion sellers ready to accelerate with AI-powered growth.",                     features:["1 Store","Unlimited Products","30 Optimizations / mo","Full Growth Agent","Auto Pricing","Listing Rewriter","Email Support"], feat:true,  cta:"Upgrade to Growth" },
   { name:"Scale",  price:"19.99", slug:"scale",  desc:"For established brands scaling across multiple stores.",                              features:["3 Stores","Unlimited Products","Unlimited Optimizations","Priority Support","Ad Optimization","Early pay.sh Access"],          feat:false, cta:"Upgrade to Scale" },
-];
-
-const FAQS = [
-  { q: "How long does setup take?", a: "Under 5 minutes. Connect your Shopify store or launch a new native storefront on Selora, set your goals, and Selora handles the rest." },
-  { q: "Do I need technical skills?", a: "Not at all. Selora is built for fashion sellers, not developers. Everything is plain English — no code required." },
-  { q: "Will Selora change things without my approval?", a: "You're always in control. You can set Selora to auto-apply changes, or require your approval before any action is taken." },
-  { q: "Is my customer data safe?", a: "Yes. Selora never stores or accesses individual customer personal data. We only load order metrics and product data — no names, emails, or payment information." },
-  { q: "What if I want to pause Selora?", a: "One click. You can pause or resume the agent at any time from your dashboard." },
-  { q: "How quickly will I see results?", a: "Most sellers see their first improvements within 48 hours. Significant growth typically happens within the first 2 weeks." },
-  { q: "Which platforms are supported?", a: "Shopify is fully supported today. You can also launch a native Selora storefront directly — no third-party platform required." },
-];
-
-const ACTIVITY = [
-  { text:"Repriced Floral Wrap Dress — peak season", time:"2am" },
-  { text:"Rewrote Woolen Sweater listing — CTR up",    time:"3am" },
-  { text:"Paused 2 low-performing ads · saved $18",  time:"4am" },
-  { text:"Restock alert: Cargo Pants — 3 units left", time:"6am" },
 ];
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
@@ -338,66 +210,101 @@ function Reveal({ children, delay = 0, duration = 600, offset = 16, style = {} }
   );
 }
 
-// ─── Navbar ───────────────────────────────────────────────────────────────────
-
+// Reactive media-query hook — used for the compact-card breakpoint and the
+// prefers-reduced-motion guard so no hidden component ever runs timers.
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const onChange = (e) => setMatches(e.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, [query]);
+  return matches;
+}
 
 // ─── Three-stage AI Card (Hero right column) ──────────────────────────────────
 const CHECKLIST = ["Material & Fabric", "Style & Silhouette", "Fit & Sizing", "Occasion & Styling", "SEO Keywords"];
 
-function AIRewriteCard({ exampleIdx, onCycle }) {
-  const [stage, setStage] = useState(0); // 0=before, 1=analyzing, 2=after
-  const [progress, setProgress] = useState(0);
-  const [checkedItems, setCheckedItems] = useState([]);
-  const stageRef = useRef(0);
-  const timerRef = useRef(null);
+// All demo-card timing lives here. The card is the hero's MASTER CLOCK: every
+// timed change on the hero — including the background layer — is driven by
+// onAdvance from this one timeline. Durations are explicit and additive; no
+// derived arithmetic to drift out of sync with the intervals it describes.
+const CARD_TIMING = {
+  beforeHold: 2400,   // dwell on "Original listing"
+  analyzeMs: 2000,    // "AI is analyzing" progress sweep
+  analyzeTick: 40,    // progress repaint interval
+  resultDelay: 200,   // beat between 100% and the result stage
+  streamChar: 18,     // ms per streamed character of the optimized copy
+  resultHold: 3200,   // dwell after the copy finishes streaming
+};
 
-  const example = SHOWCASE_EXAMPLES[exampleIdx];
+// Remounts the cycle per product (and per motion preference) via key, so every
+// cycle starts from clean initial state — no setState-in-effect resets.
+function AIRewriteCard({ productIdx, onAdvance, reducedMotion }) {
+  return (
+    <AIRewriteCardCycle
+      key={`${productIdx}-${reducedMotion}`}
+      productIdx={productIdx}
+      onAdvance={onAdvance}
+      reducedMotion={reducedMotion}
+    />
+  );
+}
 
-  const runCycle = () => {
-    stageRef.current = 0;
-    setStage(0);
-    setProgress(0);
-    setCheckedItems([]);
+function AIRewriteCardCycle({ productIdx, onAdvance, reducedMotion }) {
+  const example = SHOWCASE_EXAMPLES[productIdx];
+  // Reduced motion rests on the finished state from the first render on.
+  const [stage, setStage] = useState(reducedMotion ? "result" : "before"); // before | analyzing | result
+  const [progress, setProgress] = useState(reducedMotion ? 100 : 0);
+  const [streamed, setStreamed] = useState(reducedMotion ? example.after.length : 0);
 
-    // Show "before" for 2.2s, then analyze
-    timerRef.current = setTimeout(() => {
-      stageRef.current = 1;
-      setStage(1);
-      let p = 0;
-      let itemIdx = 0;
-      const interval = setInterval(() => {
-        p += 2;
-        setProgress(p);
-        if (p === 20 || p === 40 || p === 58 || p === 76 || p === 90) {
-          setCheckedItems(prev => {
-            const next = [...prev, CHECKLIST[itemIdx]];
-            itemIdx++;
-            return next;
-          });
-        }
-        if (p >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            stageRef.current = 2;
-            setStage(2);
-          }, 180);
-        }
-      }, 40);
-
-      // After showing result for 2.8s, cycle to next example
-      timerRef.current = setTimeout(() => {
-        onCycle((exampleIdx + 1) % SHOWCASE_EXAMPLES.length);
-      }, 2200 + 40 * 55 + 2800);
-    }, 2200);
-  };
+  // Checklist state derives from progress — one clock, no parallel thresholds.
+  const checkedCount = Math.floor((progress / 100) * CHECKLIST.length);
+  const streamDone = streamed >= example.after.length;
 
   useEffect(() => {
-    runCycle();
-    return () => clearTimeout(timerRef.current);
-  }, [exampleIdx]);
+    // Reduced motion: no timers, no cycling.
+    if (reducedMotion) return;
+
+    const T = CARD_TIMING;
+    const timers = [];
+    const intervals = [];
+    const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+    const clearAllIntervals = () => { intervals.forEach(clearInterval); intervals.length = 0; };
+
+    const streamStart = T.beforeHold + T.analyzeMs + T.resultDelay;
+    const streamMs = example.after.length * T.streamChar;
+
+    // Progress and streaming derive from wall-clock elapsed time, not tick
+    // counts — dropped/coalesced timer ticks self-correct instead of leaving
+    // the bar or the copy frozen short of complete.
+    at(T.beforeHold, () => {
+      setStage("analyzing");
+      const start = Date.now();
+      intervals.push(setInterval(() => {
+        setProgress(() => Math.min(Math.round(((Date.now() - start) / T.analyzeMs) * 100), 100));
+      }, T.analyzeTick));
+    });
+    at(streamStart, () => {
+      clearAllIntervals();
+      setStage("result");
+      const start = Date.now();
+      intervals.push(setInterval(() => {
+        setStreamed(() => Math.min(Math.floor((Date.now() - start) / T.streamChar), example.after.length));
+      }, T.streamChar));
+    });
+    at(streamStart + streamMs + 400, clearAllIntervals);
+    at(streamStart + streamMs + T.resultHold, () => {
+      onAdvance((productIdx + 1) % SHOWCASE_EXAMPLES.length);
+    });
+
+    return () => { timers.forEach(clearTimeout); clearAllIntervals(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productIdx, reducedMotion]);
 
   return (
-    <div className="float" style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)",fontFamily:"Inter,sans-serif",minHeight:320}}>
+    <div style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)",fontFamily:"Inter,sans-serif"}}>
       {/* Header bar */}
       <div style={{background:"var(--bg2,#F1F5F1)",borderBottom:"1px solid var(--border)",padding:".75rem 1.1rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <div style={{display:"flex",alignItems:"center",gap:".45rem"}}>
@@ -405,7 +312,7 @@ function AIRewriteCard({ exampleIdx, onCycle }) {
           <span style={{marginLeft:".7rem",fontSize:".72rem",color:"var(--muted)",fontWeight:600}}>Selora · Listing Intelligence</span>
         </div>
         <div style={{display:"inline-flex",alignItems:"center",background:"var(--gpale,#EDF3EE)",border:"1px solid var(--border)",color:"var(--g)",padding:".28rem .8rem",borderRadius:999,fontSize:".68rem",fontWeight:600,letterSpacing:".04em",fontFamily:"Inter,sans-serif"}}>
-          Live demo
+          Watch it work
         </div>
       </div>
 
@@ -413,144 +320,187 @@ function AIRewriteCard({ exampleIdx, onCycle }) {
       <div style={{padding:"1.3rem"}}>
         {/* Stage label */}
         <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:"1rem"}}>
-          <div style={{width:7,height:7,borderRadius:"50%",background:stage===0?"var(--muted)":stage===1?"#f59e0b":"var(--g)",transition:"background .3s"}}/>
-          <span style={{fontSize:".68rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:stage===0?"var(--muted)":stage===1?"#f59e0b":"var(--g)",transition:"color .3s"}}>
-            {stage===0?"Original listing":stage===1?"AI is analyzing...":"AI-optimized result"}
+          <div style={{width:7,height:7,borderRadius:"50%",background:stage==="before"?"var(--muted)":stage==="analyzing"?"#f59e0b":"var(--g)",transition:"background .3s"}}/>
+          <span style={{fontSize:".68rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:stage==="before"?"var(--muted)":stage==="analyzing"?"#f59e0b":"var(--g)",transition:"color .3s"}}>
+            {stage==="before"?"Original listing":stage==="analyzing"?"AI is analyzing...":"AI-optimized result"}
           </span>
         </div>
 
-        {/* Before */}
-        {stage === 0 && (
-          <div style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border)",minHeight:72,transition:"opacity .3s"}}>
-            <p style={{fontSize:".85rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{example.before}</p>
-          </div>
-        )}
+        {/* Fixed-height stage area so the card doesn't jump between stages */}
+        <div style={{minHeight:232}}>
+          {/* Before */}
+          {stage === "before" && (
+            <div className="hero-stage" style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border)",minHeight:72}}>
+              <p style={{fontSize:".85rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{example.before}</p>
+            </div>
+          )}
 
-        {/* Analyzing */}
-        {stage === 1 && (
-          <div>
-            <div style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border)",marginBottom:"1rem"}}>
-              <p style={{fontSize:".85rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300,opacity:.5}}>{example.before}</p>
+          {/* Analyzing */}
+          {stage === "analyzing" && (
+            <div className="hero-stage">
+              <div style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border)",marginBottom:"1rem"}}>
+                <p style={{fontSize:".85rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300,opacity:.5}}>{example.before}</p>
+              </div>
+              {/* Progress bar */}
+              <div style={{height:3,background:"var(--border)",borderRadius:999,marginBottom:"1rem",overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${progress}%`,background:"linear-gradient(90deg,var(--g),var(--g2))",borderRadius:999,transition:"width .12s linear"}}/>
+              </div>
+              {/* Checklist */}
+              <div style={{display:"flex",flexDirection:"column",gap:".4rem"}}>
+                {CHECKLIST.map((item, i) => {
+                  const done = i < checkedCount;
+                  return (
+                    <div key={item} style={{display:"flex",alignItems:"center",gap:".55rem",fontSize:".75rem",color:done?"var(--g)":"var(--muted)",fontWeight:done?600:300,transition:"color .2s"}}>
+                      <span style={{width:14,height:14,borderRadius:3,border:`1px solid ${done?"var(--g)":"var(--border)"}`,background:done?"var(--g)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s"}}>
+                        {done && <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </span>
+                      {item}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            {/* Progress bar */}
-            <div style={{height:3,background:"var(--border)",borderRadius:999,marginBottom:"1rem",overflow:"hidden"}}>
-              <div style={{height:"100%",width:`${progress}%`,background:"linear-gradient(90deg,var(--g),var(--g2))",borderRadius:999,transition:"width .04s linear"}}/>
-            </div>
-            {/* Checklist */}
-            <div style={{display:"flex",flexDirection:"column",gap:".4rem"}}>
-              {CHECKLIST.map(item => {
-                const done = checkedItems.includes(item);
-                return (
-                  <div key={item} style={{display:"flex",alignItems:"center",gap:".55rem",fontSize:".75rem",color:done?"var(--g)":"var(--muted)",fontWeight:done?600:300,transition:"color .2s"}}>
-                    <span style={{width:14,height:14,borderRadius:3,border:`1px solid ${done?"var(--g)":"var(--border)"}`,background:done?"var(--g)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s"}}>
-                      {done && <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><polyline points="1,4 3,6 7,2" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                    </span>
-                    {item}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* After */}
-        {stage === 2 && (
-          <div style={{background:"var(--gpale,#EDF3EE)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border-strong,#C7DACB)",animation:"fadeUp .35s ease both",minHeight:72}}>
-            <p style={{fontSize:".88rem",color:"var(--g)",lineHeight:1.7,fontWeight:500}}>{example.after}</p>
-            <div style={{marginTop:".7rem",display:"flex",alignItems:"center",gap:".35rem",fontSize:".65rem",color:"var(--g)",fontWeight:600,opacity:.8}}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Optimized — ready to publish
+          {/* Result — the optimized copy streams in character by character */}
+          {stage === "result" && (
+            <div className="hero-stage" style={{background:"var(--gpale,#EDF3EE)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border-strong,#C7DACB)",minHeight:72}}>
+              <p style={{fontSize:".88rem",color:"var(--g)",lineHeight:1.7,fontWeight:500}}>
+                {example.after.slice(0, streamed)}
+                {!streamDone && <span aria-hidden="true" style={{opacity:.6}}>▍</span>}
+              </p>
+              {streamDone && (
+                <div className="hero-stage" style={{marginTop:".7rem",display:"flex",alignItems:"center",gap:".35rem",fontSize:".65rem",color:"var(--g)",fontWeight:600,opacity:.8}}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Optimized — ready to publish
+                </div>
+              )}
             </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Mobile hero card: one static before→after pair. No timers, no hidden clock —
+// on compact layouts this replaces AIRewriteCard entirely.
+function CompactRewriteCard() {
+  const example = SHOWCASE_EXAMPLES[0];
+  return (
+    <div style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:16,overflow:"hidden",boxShadow:"0 14px 44px rgba(90,138,103,.11)",fontFamily:"Inter,sans-serif",width:"100%",maxWidth:440,margin:"0 auto"}}>
+      <div style={{background:"var(--bg2,#F1F5F1)",borderBottom:"1px solid var(--border)",padding:".7rem 1rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <span style={{fontSize:".72rem",color:"var(--muted)",fontWeight:600}}>Selora · Listing Intelligence</span>
+        <span style={{display:"inline-flex",alignItems:"center",background:"var(--gpale,#EDF3EE)",border:"1px solid var(--border)",color:"var(--g)",padding:".24rem .7rem",borderRadius:999,fontSize:".66rem",fontWeight:600,letterSpacing:".04em"}}>
+          Watch it work
+        </span>
+      </div>
+      <div style={{padding:"1.1rem"}}>
+        <p style={{fontSize:".64rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"var(--muted)",marginBottom:".45rem"}}>Original listing</p>
+        <div style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:".8rem .9rem",border:"1px solid var(--border)"}}>
+          <p style={{fontSize:".82rem",color:"var(--muted)",lineHeight:1.6,fontWeight:300}}>{example.before}</p>
+        </div>
+        <div style={{display:"flex",justifyContent:"center",padding:".55rem 0",color:"var(--g)"}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+        </div>
+        <p style={{fontSize:".64rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"var(--g)",marginBottom:".45rem"}}>AI-optimized</p>
+        <div style={{background:"var(--gpale,#EDF3EE)",borderRadius:10,padding:".8rem .9rem",border:"1px solid var(--border-strong,#C7DACB)"}}>
+          <p style={{fontSize:".85rem",color:"var(--g)",lineHeight:1.6,fontWeight:500}}>{example.after}</p>
+          <div style={{marginTop:".55rem",display:"flex",alignItems:"center",gap:".35rem",fontSize:".64rem",color:"var(--g)",fontWeight:600,opacity:.8}}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Optimized — ready to publish
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
-function Hero({ darkMode }) {
-  const { user, openAuthModal } = useAppContext();
-  const [exampleIdx, setExampleIdx] = useState(0);
+// Three trust items only — each one verifiable in the product (fashion-only
+// positioning, the FAQ's under-5-minute setup, one-click pause/cancel).
+const TRUST_ITEMS = [
+  { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M12 7a2 2 0 1 0-2-2m2 2l8 5c.6.4.7 1.2.3 1.8-.2.3-.5.5-.8.5H4c-.7 0-1.2-.5-1.2-1.2 0-.3.1-.7.4-.9l8.8-5.2z"/></svg>, text: "Built for fashion" },
+  { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 13"/></svg>, text: "Ready in 5 minutes" },
+  { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>, text: "Cancel anytime" },
+];
 
-  const TRUST_ITEMS = [
-    { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M12 7a2 2 0 1 0-2-2m2 2l8 5c.6.4.7 1.2.3 1.8-.2.3-.5.5-.8.5H4c-.7 0-1.2-.5-1.2-1.2 0-.3.1-.7.4-.9l8.8-5.2z"/></svg>, text: "Built for fashion" },
-    { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 13"/></svg>, text: "Ready in 5 minutes" },
-    { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>, text: "Bank-level security" },
-    { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, text: "Human support" },
-    { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>, text: "Cancel anytime" },
-  ];
+function Hero() {
+  const { user, openAuthModal } = useAppContext();
+  // Master-clock state: AIRewriteCard advances it; the background layer and
+  // the card both read it. Nothing else on the hero owns a timer.
+  const [productIdx, setProductIdx] = useState(0);
+  const isCompact = useMediaQuery("(max-width: 900px)");
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   return (
-    <div style={{position:"relative",overflow:"hidden",paddingTop:"8rem",paddingBottom:"6rem"}}>
+    <section style={{position:"relative",overflow:"hidden",paddingTop:"var(--nav-h, 68px)"}}>
 
-      {/* Per-product background images — cross-fade with card cycle */}
-      {SHOWCASE_EXAMPLES.map((ex, i) => (
-        <img
-          key={ex.bgImage}
-          src={ex.bgImage}
-          alt=""
-          aria-hidden="true"
-          style={{
-            position:"absolute", inset:0,
-            width:"100%", height:"100%",
-            objectFit:"cover", objectPosition: ex.bgPos,
-            display:"block",
-            opacity: i === exampleIdx ? "var(--hero-img-opacity)" : 0,
-            transition:"opacity 0.45s ease",
-            zIndex: 0,
-          }}
-        />
-      ))}
+      {/* Swappable background layer (photos today; shader/video later) */}
+      <HeroBackground products={SHOWCASE_EXAMPLES} activeIndex={productIdx} reducedMotion={reducedMotion} />
 
-      {/* Overlay to dim backdrop images and ensure text readability */}
+      {/* Scrim — owned by the hero, not the background variant */}
       <div style={{
         position:"absolute", inset:0, zIndex:1, pointerEvents:"none",
         background:"linear-gradient(170deg, var(--bg2,#EEF4EF) 0%, var(--bg,#F8FAF8) 100%)",
         opacity: 0.76,
       }}/>
 
-      <div className="hero-grid" style={{position:"relative",zIndex:2,maxWidth:1400,margin:"0 auto",padding:"0 2rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6rem",alignItems:"center"}}>
+      {/* Exit — fade the hero into ConnectSection's background, no hard band */}
+      <div style={{
+        position:"absolute", left:0, right:0, bottom:0, height:140, zIndex:1, pointerEvents:"none",
+        background:"linear-gradient(to bottom, transparent, var(--bg-1, #fff))",
+      }}/>
 
-        {/* Left: single static headline */}
-        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",justifyContent:"center"}}>
-          {/* Eyebrow badge */}
-          <div className="au" style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"var(--bg-1,#fff)",border:"1px solid var(--border)",color:"var(--g)",padding:".35rem 1rem",borderRadius:999,fontSize:".72rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",marginBottom:"1.5rem",boxShadow:"0 2px 10px rgba(90,138,103,.08)",fontFamily:"Inter,sans-serif"}}>
-            <span style={{display:"inline-block",width:6,height:6,borderRadius:"50%",background:"var(--g)"}}/>
-            AI Growth Agent for Fashion
+      {/* Fills the first viewport: --nav-h padding above + this min-height */}
+      <div className="hero-viewport">
+        <div className="hero-grid" style={{width:"100%",maxWidth:1400,margin:"0 auto",padding:"0 2rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6rem",alignItems:"center"}}>
+
+          {/* Left: single static headline */}
+          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",justifyContent:"center"}}>
+            {/* Eyebrow badge */}
+            <div className="au" style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"var(--bg-1,#fff)",border:"1px solid var(--border)",color:"var(--g)",padding:".35rem 1rem",borderRadius:999,fontSize:".72rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",marginBottom:"1.5rem",boxShadow:"0 2px 10px rgba(90,138,103,.08)",fontFamily:"Inter,sans-serif"}}>
+              <span style={{display:"inline-block",width:6,height:6,borderRadius:"50%",background:"var(--g)"}}/>
+              AI Growth Agent for Fashion
+            </div>
+            {/* Headline */}
+            <h1 className="au1" style={{fontFamily:"Fraunces,serif",fontSize:"clamp(1.6rem,5vw,3.5rem)",fontWeight:500,lineHeight:1.1,letterSpacing:"-.5px",maxWidth:560,marginBottom:"1.1rem",color:"var(--dark)"}}>
+              Your Fashion Store Grows<br/><em style={{fontStyle:"italic",color:"var(--g)"}}>While You Sleep</em>
+            </h1>
+            {/* Sub */}
+            <p className="au2" style={{fontSize:"1rem",color:"var(--muted)",maxWidth:440,lineHeight:1.8,marginBottom:"1.8rem",fontWeight:300}}>
+              Selora is built exclusively for fashion sellers. It handles pricing, listings, ads, and inventory — automatically, every night.
+            </p>
+            {/* CTAs */}
+            <div className="au3" style={{display:"flex",gap:".9rem",flexWrap:"wrap",marginBottom:"1.5rem"}}>
+              {user
+                ? <Link to="/dashboard" style={{textDecoration:"none"}}><BtnP>Go to Dashboard →</BtnP></Link>
+                : <BtnP onClick={() => openAuthModal('signup')}>Start Growing for Free →</BtnP>
+              }
+              <Link to="/how-it-works" style={{textDecoration:"none"}}><BtnS>See How It Works</BtnS></Link>
+            </div>
+            {/* Trust strip */}
+            <div className="au4" style={{display:"flex",alignItems:"center",gap:"1.2rem",flexWrap:"wrap"}}>
+              {TRUST_ITEMS.map(({icon,text}) => (
+                <div key={text} style={{display:"flex",alignItems:"center",gap:".35rem",fontSize:".73rem",color:"var(--trust-color,var(--muted))",fontWeight:400}}>
+                  {icon}{text}
+                </div>
+              ))}
+            </div>
           </div>
-          {/* Headline */}
-          <h1 className="au1" style={{fontFamily:"Cormorant Garamond,serif",fontSize:"clamp(1.6rem,5vw,3.5rem)",fontWeight:500,lineHeight:1.1,letterSpacing:"-.5px",maxWidth:560,marginBottom:"1.1rem",color:"var(--dark)"}}>
-            Your Fashion Store Grows<br/><em style={{fontStyle:"italic",color:"var(--g)"}}>While You Sleep</em>
-          </h1>
-          {/* Sub */}
-          <p className="au2" style={{fontSize:"1rem",color:"var(--muted)",maxWidth:440,lineHeight:1.8,marginBottom:"1.8rem",fontWeight:300}}>
-            Selora is built exclusively for fashion sellers. It handles pricing, listings, ads, and inventory — automatically, every night.
-          </p>
-          {/* CTAs */}
-          <div className="au3" style={{display:"flex",gap:".9rem",flexWrap:"wrap",marginBottom:"1.5rem"}}>
-            {user
-              ? <Link to="/dashboard" style={{textDecoration:"none"}}><BtnP>Go to Dashboard →</BtnP></Link>
-              : <BtnP onClick={() => openAuthModal('signup')}>Start Growing for Free →</BtnP>
-            }
-            <Link to="/how-it-works" style={{textDecoration:"none"}}><BtnS>See How It Works</BtnS></Link>
-          </div>
-          {/* Trust strip */}
-          <div className="au4" style={{display:"flex",alignItems:"center",gap:"1.2rem",flexWrap:"wrap"}}>
-            {TRUST_ITEMS.map(({icon,text}) => (
-              <div key={text} style={{display:"flex",alignItems:"center",gap:".35rem",fontSize:".73rem",color:"var(--trust-color,var(--muted))",fontWeight:400}}>
-                {icon}{text}
+
+          {/* Right: full demo card on desktop; static compact card on mobile.
+              Conditional render (not CSS hiding) so no unmounted-looking
+              component keeps timers alive. */}
+          {isCompact
+            ? <div className="au4"><CompactRewriteCard /></div>
+            : <div className="hero-visual" style={{width:"100%",maxWidth:440,margin:"0 auto"}}>
+                <AIRewriteCard productIdx={productIdx} onAdvance={setProductIdx} reducedMotion={reducedMotion} />
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right: AI Rewrite Card */}
-        <div className="hero-visual" style={{width:"100%",maxWidth:440,margin:"0 auto"}}>
-          <AIRewriteCard exampleIdx={exampleIdx} onCycle={setExampleIdx} />
+          }
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -864,7 +814,7 @@ const TESTIMONIALS = [
   },
 ];
 
-function Testimonial({ darkMode }) {
+function Testimonial() {
   const [current, setCurrent] = useState(0);
   const [fading, setFading]   = useState(false);
   const timerRef = useRef(null);
@@ -1024,7 +974,7 @@ function EtsyLogo() {
 }
 
 function ConnectSection() {
-  const { user } = useAppContext();
+  const { user, openAuthModal } = useAppContext();
   const [stores, setStores] = useState(12491);
   const [revenue, setRevenue] = useState(2148591248);
   const [growth, setGrowth] = useState(3.8271);
@@ -1051,7 +1001,7 @@ function ConnectSection() {
 
     // 4. Uptime: fluctuates between 99.9990% and 99.9999% every 6 seconds
     const uptimeInterval = setInterval(() => {
-      setUptime(u => {
+      setUptime(() => {
         const target = 99.999 + Math.random() * 0.0009;
         return Math.round(target * 10000) / 10000;
       });
@@ -1104,7 +1054,8 @@ function ConnectSection() {
   ];
 
   return (
-    <div style={{ background: "var(--bg-1,#fff)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
+    // No top border — the hero's exit gradient fades into this background
+    <div style={{ background: "var(--bg-1,#fff)", borderBottom: "1px solid var(--border)" }}>
       <div className="mob-pad" style={{ maxWidth: 1400, margin: "0 auto", padding: "4rem 2rem" }}>
         
         {/* Centered Heading */}
@@ -1276,25 +1227,16 @@ function CTA() {
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function Selora() {
-  const [scrolled, setScrolled] = useState(false);
-  const [darkMode, toggleTheme] = useDarkMode();
-
-  useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", fn);
-    return () => window.removeEventListener("scroll", fn);
-  }, []);
-
   return (
     <div className="landing-page">
       <GlobalStyles/>
       <Navbar />
-      <Hero darkMode={darkMode}/>
+      <Hero/>
       <ConnectSection/>
       <Features/>
       <HowItWorks/>
       <Pricing/>
-      <Testimonial darkMode={darkMode}/>
+      <Testimonial/>
       <CTA/>
       <Footer/>
     </div>
