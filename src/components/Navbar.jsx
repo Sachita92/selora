@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { useAppContext } from '../lib/AppContext'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useAuth } from '../lib/useAuth'
@@ -14,24 +14,42 @@ export default function Navbar() {
   const isCheckingSession = !user && (!ready || loading || authenticated)
   const [darkMode, toggleTheme] = useDarkMode()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
+  // Transparent while the landing hero is under the nav, solid once it isn't.
+  // Optimistic default — the landing loads at the top of the hero.
+  const [overHero, setOverHero] = useState(true)
+  // The 300ms transition switches on only after the initial state has been
+  // painted, so a mid-page reload snaps to the right look instead of fading
+  // into it. Routes without a hero never set it: they are solid throughout,
+  // nothing ever changes, so no transition is needed.
+  const [settled, setSettled] = useState(false)
   const location = useLocation()
 
-  // Track scroll state — passive + rAF-throttled so the handler never blocks scrolling
-  useEffect(() => {
-    let ticking = false
-    const onScroll = () => {
-      if (ticking) return
-      ticking = true
-      requestAnimationFrame(() => {
-        setScrolled(window.scrollY > 40)
-        ticking = false
-      })
-    }
-    onScroll() // initialize correctly on mid-page reloads
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+  // No scroll listener. The hero renders a [data-nav-sentinel] strip spanning
+  // its full height minus the nav height; the nav is transparent while any of
+  // that strip is in the viewport and solid once its bottom edge (hero bottom
+  // minus nav height) clears the top. Because the strip starts at the top of
+  // the page there is no third "below the fold" state, so a single frame of
+  // fast scrolling can't jump past it without a callback. Resizes re-evaluate
+  // automatically — the observer tracks geometry, not scroll events.
+  // useLayoutEffect: the observer's first callback lands after the first
+  // paint, so the initial state is measured synchronously to get that paint
+  // right.
+  useLayoutEffect(() => {
+    const sentinel = document.querySelector('[data-nav-sentinel]')
+    // Measure-then-set is the documented useLayoutEffect pattern; it is the
+    // one thing that makes the first paint correct, so the compiler-era lint
+    // heuristic is waived for this single line.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOverHero(!!sentinel && sentinel.getBoundingClientRect().bottom > 0)
+    if (!sentinel) return
+    const observer = new IntersectionObserver((entries) => {
+      // Entries from several frames can arrive batched; the last one is current.
+      setOverHero(entries[entries.length - 1].isIntersecting)
+      setSettled(true)
+    }, { threshold: 0 })
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [location.pathname])
 
   // Auto-close menu on route changes
   useEffect(() => {
@@ -47,13 +65,13 @@ export default function Navbar() {
 
   const isLinkActive = (path) => location.pathname === path
 
-  // Transparent over the hero at page top; solid once scrolled past 40px.
-  // The open mobile drawer forces solid so it never hangs off a glass bar.
-  const solid = scrolled || isMenuOpen
+  // Solid whenever the hero isn't under the nav. The open mobile drawer forces
+  // solid so it never hangs off a glass bar.
+  const solid = !overHero || isMenuOpen
 
   return (
     <nav
-      className={`site-nav${solid ? ' is-solid' : ''}`}
+      className={`site-nav${solid ? ' is-solid' : ''}${settled ? ' is-settled' : ''}`}
       style={{
         position: 'fixed',
         top: 0,
@@ -68,6 +86,8 @@ export default function Navbar() {
           background-color: transparent;
           border-bottom: 1px solid transparent;
           box-shadow: none;
+        }
+        .site-nav.is-settled {
           transition:
             background-color .3s cubic-bezier(0.16, 1, 0.3, 1),
             border-color .3s cubic-bezier(0.16, 1, 0.3, 1),
@@ -81,7 +101,7 @@ export default function Navbar() {
           -webkit-backdrop-filter: blur(14px);
         }
         @media (prefers-reduced-motion: reduce) {
-          .site-nav { transition: none; }
+          .site-nav.is-settled { transition: none; }
         }
         .skeleton-shimmer {
           background: linear-gradient(90deg, var(--bg-2, #f3f4f6) 25%, var(--border, #e5e7eb) 50%, var(--bg-2, #f3f4f6) 75%);

@@ -174,6 +174,13 @@ const SHOWCASE_EXAMPLES = [
   { before: "Leather boots. Black. Size 6-10. rubber sole. round toe.",     after: "Handcrafted black leather boots — weather-resistant, all-day cushioned walk.", bgImage: "/hero-boots.webp",  bgPos: "center 45%" },
 ];
 
+// The one product compact layouts show. Nothing drives the master clock there
+// (the compact card is static), so the background is deliberately a single
+// still — and the compact card shows the same listing, keeping the
+// card↔background pairing. The dress: subject centred on a light ground, so it
+// survives both the portrait crop and the scrim.
+const MOBILE_PRODUCT_INDEX = 0;
+
 const PLANS = [
   { name:"Free",   price:"0",     slug:"free",   desc:"Get started at no cost. Perfect for exploring what Selora can do.",                   features:["1 Store","Up to 50 Products","3 Optimizations / mo","Basic Reports","Community Support"],                                    feat:false, cta:"Get Started Free" },
   { name:"Growth", price:"4.99",  slug:"growth", desc:"For fashion sellers ready to accelerate with AI-powered growth.",                     features:["1 Store","Unlimited Products","30 Optimizations / mo","Full Growth Agent","Auto Pricing","Listing Rewriter","Email Support"], feat:true,  cta:"Upgrade to Growth" },
@@ -386,7 +393,7 @@ function AIRewriteCardCycle({ productIdx, onAdvance, reducedMotion }) {
 // Mobile hero card: one static before→after pair. No timers, no hidden clock —
 // on compact layouts this replaces AIRewriteCard entirely.
 function CompactRewriteCard() {
-  const example = SHOWCASE_EXAMPLES[0];
+  const example = SHOWCASE_EXAMPLES[MOBILE_PRODUCT_INDEX];
   return (
     <div style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:16,overflow:"hidden",boxShadow:"0 14px 44px rgba(90,138,103,.11)",fontFamily:"Inter,sans-serif",width:"100%",maxWidth:440,margin:"0 auto"}}>
       <div style={{background:"var(--bg2,#F1F5F1)",borderBottom:"1px solid var(--border)",padding:".7rem 1rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -432,12 +439,16 @@ function Hero() {
   const [productIdx, setProductIdx] = useState(0);
   const isCompact = useMediaQuery("(max-width: 900px)");
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  // Compact: frozen on one product — a single <img>, so the other two never
+  // download. Desktop: the full set, cross-faded by the clock.
+  const bgProducts = isCompact ? [SHOWCASE_EXAMPLES[MOBILE_PRODUCT_INDEX]] : SHOWCASE_EXAMPLES;
+  const bgIndex = isCompact ? 0 : productIdx;
 
   return (
     <section style={{position:"relative",overflow:"hidden",paddingTop:"var(--nav-h, 68px)"}}>
 
       {/* Swappable background layer (photos today; shader/video later) */}
-      <HeroBackground products={SHOWCASE_EXAMPLES} activeIndex={productIdx} reducedMotion={reducedMotion} />
+      <HeroBackground products={bgProducts} activeIndex={bgIndex} reducedMotion={reducedMotion} />
 
       {/* Scrim — owned by the hero, not the background variant */}
       <div style={{
@@ -451,6 +462,11 @@ function Hero() {
         position:"absolute", left:0, right:0, bottom:0, height:140, zIndex:1, pointerEvents:"none",
         background:"linear-gradient(to bottom, transparent, var(--bg-1, #fff))",
       }}/>
+
+      {/* Nav sentinel — Navbar observes this. It spans the hero minus the nav
+          height, so its bottom edge leaves the viewport exactly when the hero's
+          bottom edge passes under the nav: that is the transparent→solid flip. */}
+      <div data-nav-sentinel="" aria-hidden="true" style={{position:"absolute",top:0,left:0,width:1,bottom:"var(--nav-h, 68px)",pointerEvents:"none"}}/>
 
       {/* Fills the first viewport: --nav-h padding above + this min-height */}
       <div className="hero-viewport">
