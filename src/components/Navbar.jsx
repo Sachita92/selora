@@ -17,13 +17,20 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const location = useLocation()
 
-  // Track scroll state self-contained
+  // Track scroll state — passive + rAF-throttled so the handler never blocks scrolling
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20)
+    let ticking = false
+    const onScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 40)
+        ticking = false
+      })
     }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    onScroll() // initialize correctly on mid-page reloads
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   // Auto-close menu on route changes
@@ -40,20 +47,42 @@ export default function Navbar() {
 
   const isLinkActive = (path) => location.pathname === path
 
+  // Transparent over the hero at page top; solid once scrolled past 40px.
+  // The open mobile drawer forces solid so it never hangs off a glass bar.
+  const solid = scrolled || isMenuOpen
+
   return (
-    <nav style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 100,
-      background: scrolled ? 'var(--nav-bg-scrolled, rgba(248, 250, 248, 0.97))' : 'var(--nav-bg, rgba(248, 250, 248, 0.88))',
-      backdropFilter: 'blur(14px)',
-      borderBottom: '1px solid var(--border)',
-      transition: 'background 0.3s, border-color 0.3s',
-      fontFamily: 'Inter, sans-serif'
-    }}>
+    <nav
+      className={`site-nav${solid ? ' is-solid' : ''}`}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 100,
+        fontFamily: 'Inter, sans-serif'
+      }}
+    >
       <style>{`
+        .site-nav {
+          background-color: transparent;
+          border-bottom: 1px solid transparent;
+          box-shadow: none;
+          transition:
+            background-color .3s cubic-bezier(0.16, 1, 0.3, 1),
+            border-color .3s cubic-bezier(0.16, 1, 0.3, 1),
+            box-shadow .3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .site-nav.is-solid {
+          background-color: var(--nav-bg-scrolled, rgba(248, 250, 248, 0.97));
+          border-bottom-color: var(--nav-border, var(--border));
+          box-shadow: 0 6px 24px rgba(0, 0, 0, 0.05);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .site-nav { transition: none; }
+        }
         .skeleton-shimmer {
           background: linear-gradient(90deg, var(--bg-2, #f3f4f6) 25%, var(--border, #e5e7eb) 50%, var(--bg-2, #f3f4f6) 75%);
           background-size: 200% 100%;
@@ -241,7 +270,7 @@ export default function Navbar() {
                   style={{
                     background: 'transparent',
                     color: 'var(--muted)',
-                    border: '1.5px solid var(--border)',
+                    border: '1.5px solid var(--border-strong)',
                     padding: '.5rem 1.2rem',
                     borderRadius: 7,
                     fontSize: '.82rem',
@@ -270,7 +299,7 @@ export default function Navbar() {
                   style={{
                     background: 'transparent',
                     color: 'var(--dark)',
-                    border: '1.5px solid var(--border)',
+                    border: '1.5px solid var(--border-strong)',
                     padding: '.5rem 1.2rem',
                     borderRadius: 7,
                     fontSize: '.82rem',
@@ -287,7 +316,7 @@ export default function Navbar() {
                     e.currentTarget.style.background = 'var(--bg-2)'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border)'
+                    e.currentTarget.style.borderColor = 'var(--border-strong)'
                     e.currentTarget.style.background = 'transparent'
                   }}
                 >
@@ -381,7 +410,7 @@ export default function Navbar() {
                 style={{
                   background: 'transparent',
                   color: 'var(--muted)',
-                  border: '1.5px solid var(--border)',
+                  border: '1.5px solid var(--border-strong)',
                   padding: '.6rem 1rem',
                   borderRadius: 7,
                   fontSize: '.85rem',
@@ -408,7 +437,7 @@ export default function Navbar() {
                 style={{
                   background: 'transparent',
                   color: 'var(--dark)',
-                  border: '1.5px solid var(--border)',
+                  border: '1.5px solid var(--border-strong)',
                   padding: '.6rem 1rem',
                   borderRadius: 7,
                   fontSize: '.85rem',

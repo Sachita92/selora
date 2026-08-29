@@ -464,7 +464,9 @@ function Hero() {
               AI Growth Agent for Fashion
             </div>
             {/* Headline */}
-            <h1 className="au1" style={{fontFamily:"Fraunces,serif",fontSize:"clamp(1.6rem,5vw,3.5rem)",fontWeight:500,lineHeight:1.1,letterSpacing:"-.5px",maxWidth:560,marginBottom:"1.1rem",color:"var(--dark)"}}>
+            {/* Cormorant 400 by design — the display H1 runs lighter than the
+                Fraunces the rest of the page uses; both faces are loaded. */}
+            <h1 className="au1" style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"clamp(1.8rem,5.4vw,4rem)",fontWeight:400,lineHeight:1.08,letterSpacing:"-.5px",maxWidth:600,marginBottom:"1.1rem",color:"var(--dark)"}}>
               Your Fashion Store Grows<br/><em style={{fontStyle:"italic",color:"var(--g)"}}>While You Sleep</em>
             </h1>
             {/* Sub */}
