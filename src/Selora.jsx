@@ -4,6 +4,7 @@ import { useAppContext } from "./lib/AppContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HeroBackground from "./components/HeroBackground";
+import HeroBackgroundShader from "./components/HeroBackgroundShader";
 
 // ─── SVG Icons ───────────────────────────────────────────────────────────────
 function TagIcon({ size = 20, color = 'currentColor' }) {
@@ -169,16 +170,16 @@ const STEPS = [
 ];
 
 const SHOWCASE_EXAMPLES = [
-  { before: "Floral wrap dress. 100% rayon. S, M, L. Machine washable.",   after: "Effortless floral wrap dress — flowy, flattering, brunch-to-backyard.",         bgImage: "/hero-dress.webp",  bgPos: "center 30%" },
-  { before: "Woolen sweater. Sage green. Oversized fit. Hand wash.",         after: "Cozy sage green woolen sweater — warm, oversized, fireside-ready.",         bgImage: "/hero-blazer.webp", bgPos: "center 40%" },
+  { before: "Dark floral wrap dress. 100% rayon. S, M, L. Machine washable.", after: "Moody floral wrap dress — fluid drape, effortless from dusk to dinner.",     bgImage: "/hero-dress-dark.webp", bgPos: "center 30%" },
+  { before: "Cable knit sweater. Grey. Oversized fit. Hand wash.",              after: "Cloud-grey cable knit — heavyweight wool, made for slow mornings.",         bgImage: "/hero-knit-dark.webp",  bgPos: "center 40%" },
   { before: "Leather boots. Black. Size 6-10. rubber sole. round toe.",     after: "Handcrafted black leather boots — weather-resistant, all-day cushioned walk.", bgImage: "/hero-boots.webp",  bgPos: "center 45%" },
 ];
 
 // The one product compact layouts show. Nothing drives the master clock there
 // (the compact card is static), so the background is deliberately a single
 // still — and the compact card shows the same listing, keeping the
-// card↔background pairing. The dress: subject centred on a light ground, so it
-// survives both the portrait crop and the scrim.
+// card↔background pairing. The dress: subject centred where the light pools,
+// so it survives both the portrait crop and the scrim.
 const MOBILE_PRODUCT_INDEX = 0;
 
 const PLANS = [
@@ -233,6 +234,9 @@ function useMediaQuery(query) {
 // ─── Three-stage AI Card (Hero right column) ──────────────────────────────────
 const CHECKLIST = ["Material & Fabric", "Style & Silhouette", "Fit & Sizing", "Occasion & Styling", "SEO Keywords"];
 
+// Result-stage footer, stamped in one item at a time on the master clock.
+const FOOTER_STAMPS = ["Optimized", "Published to store", "2 more queued"];
+
 // All demo-card timing lives here. The card is the hero's MASTER CLOCK: every
 // timed change on the hero — including the background layer — is driven by
 // onAdvance from this one timeline. Durations are explicit and additive; no
@@ -243,7 +247,10 @@ const CARD_TIMING = {
   analyzeTick: 40,    // progress repaint interval
   resultDelay: 200,   // beat between 100% and the result stage
   streamChar: 18,     // ms per streamed character of the optimized copy
-  resultHold: 3200,   // dwell after the copy finishes streaming
+  resultHold: 4000,   // dwell after streaming (+800ms so the footer stamps
+                      // land and still get a beat of rest before advancing)
+  stampDelay: 350,    // beat after the stream before the first footer stamp
+  stampStep: 260,     // spacing between successive footer stamps
 };
 
 // Remounts the cycle per product (and per motion preference) via key, so every
@@ -265,6 +272,7 @@ function AIRewriteCardCycle({ productIdx, onAdvance, reducedMotion }) {
   const [stage, setStage] = useState(reducedMotion ? "result" : "before"); // before | analyzing | result
   const [progress, setProgress] = useState(reducedMotion ? 100 : 0);
   const [streamed, setStreamed] = useState(reducedMotion ? example.after.length : 0);
+  const [stampCount, setStampCount] = useState(reducedMotion ? FOOTER_STAMPS.length : 0);
 
   // Checklist state derives from progress — one clock, no parallel thresholds.
   const checkedCount = Math.floor((progress / 100) * CHECKLIST.length);
@@ -302,6 +310,10 @@ function AIRewriteCardCycle({ productIdx, onAdvance, reducedMotion }) {
       }, T.streamChar));
     });
     at(streamStart + streamMs + 400, clearAllIntervals);
+    // Footer stamps in after streaming — same clock, no derived state.
+    FOOTER_STAMPS.forEach((_, i) => {
+      at(streamStart + streamMs + T.stampDelay + i * T.stampStep, () => setStampCount(i + 1));
+    });
     at(streamStart + streamMs + T.resultHold, () => {
       onAdvance((productIdx + 1) % SHOWCASE_EXAMPLES.length);
     });
@@ -333,8 +345,10 @@ function AIRewriteCardCycle({ productIdx, onAdvance, reducedMotion }) {
           </span>
         </div>
 
-        {/* Fixed-height stage area so the card doesn't jump between stages */}
-        <div style={{minHeight:232}}>
+        {/* Stage area held at the result stage's natural height (189px measured
+            at the card's 500px width); the other stages are tuned to sit just
+            inside it, so the result leaves no void and stages don't jump. */}
+        <div style={{minHeight:189}}>
           {/* Before */}
           {stage === "before" && (
             <div className="hero-stage" style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border)",minHeight:72}}>
@@ -345,15 +359,15 @@ function AIRewriteCardCycle({ productIdx, onAdvance, reducedMotion }) {
           {/* Analyzing */}
           {stage === "analyzing" && (
             <div className="hero-stage">
-              <div style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border)",marginBottom:"1rem"}}>
+              <div style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border)",marginBottom:".7rem"}}>
                 <p style={{fontSize:".85rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300,opacity:.5}}>{example.before}</p>
               </div>
               {/* Progress bar */}
-              <div style={{height:3,background:"var(--border)",borderRadius:999,marginBottom:"1rem",overflow:"hidden"}}>
+              <div style={{height:3,background:"var(--border)",borderRadius:999,marginBottom:".7rem",overflow:"hidden"}}>
                 <div style={{height:"100%",width:`${progress}%`,background:"linear-gradient(90deg,var(--g),var(--g2))",borderRadius:999,transition:"width .12s linear"}}/>
               </div>
               {/* Checklist */}
-              <div style={{display:"flex",flexDirection:"column",gap:".4rem"}}>
+              <div style={{display:"flex",flexDirection:"column",gap:".25rem"}}>
                 {CHECKLIST.map((item, i) => {
                   const done = i < checkedCount;
                   return (
@@ -369,19 +383,36 @@ function AIRewriteCardCycle({ productIdx, onAdvance, reducedMotion }) {
             </div>
           )}
 
-          {/* Result — the optimized copy streams in character by character */}
+          {/* Result — original dimmed and struck up top, the optimized copy
+              streaming in the centre, the footer stamping in on the master
+              clock once the stream lands */}
           {stage === "result" && (
-            <div className="hero-stage" style={{background:"var(--gpale,#EDF3EE)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border-strong,#C7DACB)",minHeight:72}}>
-              <p style={{fontSize:".88rem",color:"var(--g)",lineHeight:1.7,fontWeight:500}}>
-                {example.after.slice(0, streamed)}
-                {!streamDone && <span aria-hidden="true" style={{opacity:.6}}>▍</span>}
-              </p>
-              {streamDone && (
-                <div className="hero-stage" style={{marginTop:".7rem",display:"flex",alignItems:"center",gap:".35rem",fontSize:".65rem",color:"var(--g)",fontWeight:600,opacity:.8}}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  Optimized — ready to publish
-                </div>
-              )}
+            <div className="hero-stage">
+              <div style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border)",marginBottom:"1rem"}}>
+                <p style={{fontSize:".85rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300,opacity:.5,textDecoration:"line-through"}}>{example.before}</p>
+              </div>
+              <div style={{background:"var(--gpale,#EDF3EE)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border-strong,#C7DACB)",minHeight:72}}>
+                <p style={{fontSize:".88rem",color:"var(--g)",lineHeight:1.7,fontWeight:500}}>
+                  {example.after.slice(0, streamed)}
+                  {!streamDone && <span aria-hidden="true" style={{opacity:.6}}>▍</span>}
+                </p>
+              </div>
+              <div style={{marginTop:"1rem",display:"flex",alignItems:"center",flexWrap:"wrap",columnGap:".5rem",rowGap:".3rem",fontSize:".68rem",fontWeight:600,minHeight:18}}>
+                {FOOTER_STAMPS.map((text, i) => (
+                  <span key={text} style={{
+                    display:"inline-flex",alignItems:"center",gap:".32rem",
+                    color: i === 0 ? "var(--g)" : "var(--muted)",
+                    opacity: stampCount > i ? (i === 0 ? 1 : .85) : 0,
+                    transform: stampCount > i ? "none" : "scale(1.15)",
+                    transition:"opacity .3s ease, transform .3s cubic-bezier(0.16, 1, 0.3, 1)",
+                  }}>
+                    {i === 0
+                      ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      : <span aria-hidden="true" style={{opacity:.55}}>·</span>}
+                    {text}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -432,6 +463,10 @@ const TRUST_ITEMS = [
   { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>, text: "Cancel anytime" },
 ];
 
+// Hero background bake-off registry. Every variant takes the same props;
+// unknown or absent ?bg= falls back to the photo layer.
+const BG_VARIANTS = { photos: HeroBackground, shader: HeroBackgroundShader };
+
 function Hero() {
   const { user, openAuthModal } = useAppContext();
   // Master-clock state: AIRewriteCard advances it; the background layer and
@@ -443,18 +478,23 @@ function Hero() {
   // download. Desktop: the full set, cross-faded by the clock.
   const bgProducts = isCompact ? [SHOWCASE_EXAMPLES[MOBILE_PRODUCT_INDEX]] : SHOWCASE_EXAMPLES;
   const bgIndex = isCompact ? 0 : productIdx;
+  // Bake-off knob: ?bg= picks the background variant per page load. Read
+  // straight off the URL — dev-time comparison state, not routed state.
+  const BgLayer = BG_VARIANTS[new URLSearchParams(window.location.search).get("bg")] || HeroBackground;
 
   return (
     <section style={{position:"relative",overflow:"hidden",paddingTop:"var(--nav-h, 68px)"}}>
 
-      {/* Swappable background layer (photos today; shader/video later) */}
-      <HeroBackground products={bgProducts} activeIndex={bgIndex} reducedMotion={reducedMotion} />
+      {/* Swappable background layer — pick with ?bg= (photos default | shader) */}
+      <BgLayer products={bgProducts} activeIndex={bgIndex} reducedMotion={reducedMotion} />
 
-      {/* Scrim — owned by the hero, not the background variant */}
+      {/* Scrim — owned by the hero, not the background variant. Gently
+          directional: densest over the text column, opening toward the card so
+          the product reads as mood and texture on that side. Average density
+          stays ≈ the old uniform 0.76 — direction is the change, not darkness. */}
       <div style={{
         position:"absolute", inset:0, zIndex:1, pointerEvents:"none",
-        background:"linear-gradient(170deg, var(--bg2,#EEF4EF) 0%, var(--bg,#F8FAF8) 100%)",
-        opacity: 0.76,
+        background:"linear-gradient(97deg, color-mix(in srgb, var(--bg2,#EEF4EF) 84%, transparent) 0%, color-mix(in srgb, var(--bg,#F8FAF8) 76%, transparent) 48%, color-mix(in srgb, var(--bg,#F8FAF8) 64%, transparent) 100%)",
       }}/>
 
       {/* Exit — fade the hero into ConnectSection's background, no hard band */}
@@ -470,7 +510,7 @@ function Hero() {
 
       {/* Fills the first viewport: --nav-h padding above + this min-height */}
       <div className="hero-viewport">
-        <div className="hero-grid" style={{width:"100%",maxWidth:1400,margin:"0 auto",padding:"0 2rem",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6rem",alignItems:"center"}}>
+        <div className="hero-grid" style={{width:"100%",maxWidth:1400,margin:"0 auto",padding:"0 2rem",display:"grid",gridTemplateColumns:"1.15fr 1fr",gap:"6rem",alignItems:"center"}}>
 
           {/* Left: single static headline */}
           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",justifyContent:"center"}}>
@@ -482,7 +522,7 @@ function Hero() {
             {/* Headline */}
             {/* Cormorant 400 by design — the display H1 runs lighter than the
                 Fraunces the rest of the page uses; both faces are loaded. */}
-            <h1 className="au1" style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"clamp(1.8rem,5.4vw,4rem)",fontWeight:400,lineHeight:1.08,letterSpacing:"-.5px",maxWidth:600,marginBottom:"1.1rem",color:"var(--dark)"}}>
+            <h1 className="au1" style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"clamp(1.8rem,4.6vw,3.75rem)",fontWeight:400,lineHeight:1.08,letterSpacing:"-.5px",maxWidth:700,marginBottom:"1.1rem",color:"var(--dark)"}}>
               Your Fashion Store Grows<br/><em style={{fontStyle:"italic",color:"var(--g)"}}>While You Sleep</em>
             </h1>
             {/* Sub */}
@@ -512,7 +552,7 @@ function Hero() {
               component keeps timers alive. */}
           {isCompact
             ? <div className="au4"><CompactRewriteCard /></div>
-            : <div className="hero-visual" style={{width:"100%",maxWidth:440,margin:"0 auto"}}>
+            : <div className="hero-visual" style={{width:"100%",maxWidth:500,margin:"0 auto"}}>
                 <AIRewriteCard productIdx={productIdx} onAdvance={setProductIdx} reducedMotion={reducedMotion} />
               </div>
           }

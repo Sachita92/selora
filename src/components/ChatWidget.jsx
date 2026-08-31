@@ -44,13 +44,17 @@ export default function ChatWidget({ storeId, isGuest = false }) {
   const navigate = useNavigate()
   const { stores, activeStore, setActiveStore } = useAppContext()
 
+  // Welcome bubble: no pop on page-land. It waits for intent — the visitor
+  // scrolling past the hero — or 20s of the page just sitting there.
   useEffect(() => {
-    if (isGuest && !open && window.location.pathname === '/') {
-      const timer = setTimeout(() => {
-        setShowWelcomeBubble(true)
-      }, 1500)
-      return () => clearTimeout(timer)
-    }
+    if (!(isGuest && !open && window.location.pathname === '/')) return
+    const show = () => { cleanup(); setShowWelcomeBubble(true) }
+    const onScroll = () => { if (window.scrollY > window.innerHeight * 0.85) show() }
+    const timer = setTimeout(show, 20000)
+    const cleanup = () => { clearTimeout(timer); window.removeEventListener('scroll', onScroll) }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll() // a reload already mid-page counts as past-hero
+    return cleanup
   }, [isGuest, open])
 
   // Load chat history when the widget mounts or when storeId changes
