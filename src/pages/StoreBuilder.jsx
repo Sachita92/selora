@@ -201,25 +201,25 @@ function getCroppedImg(imageSrc, pixelCrop) {
 }
 
 const S = {
-  page:     { minHeight: '100vh', background: 'var(--bg-0)', fontFamily: 'Inter, sans-serif', color: 'var(--text-secondary)', transition: 'background-color 0.3s, color 0.3s' },
+  page:     { minHeight: '100vh', background: 'var(--bg-0)', fontFamily: 'var(--font-body)', color: 'var(--text-secondary)', transition: 'background-color 0.3s, color 0.3s' },
   inner:    { maxWidth: 1400, margin: '0 auto', padding: '2rem 1.5rem' },
-  pageTitle:{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.03em' },
+  pageTitle:{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 500, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.03em' },
   pageSub:  { fontSize: '.875rem', color: 'var(--text-muted)', marginTop: '.35rem', marginBottom: '2rem' },
   tabs:     { display: 'flex', gap: 0, marginBottom: '2rem', borderBottom: '2px solid var(--border)' },
-  tab:      (a) => ({ padding: '.6rem 1.25rem', fontSize: '.875rem', fontWeight: 600, cursor: 'pointer', border: 'none', background: 'none', color: a ? 'var(--g)' : 'var(--text-muted)', borderBottom: a ? '2px solid var(--g)' : '2px solid transparent', marginBottom: -2, transition: 'all .15s', fontFamily: 'Inter, sans-serif' }),
+  tab:      (a) => ({ padding: '.6rem 1.25rem', fontSize: '.875rem', fontWeight: 600, cursor: 'pointer', border: 'none', background: 'none', color: a ? 'var(--g)' : 'var(--text-muted)', borderBottom: a ? '2px solid var(--g)' : '2px solid transparent', marginBottom: -2, transition: 'all .15s', fontFamily: 'var(--font-body)' }),
   card:     { background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '2rem', marginBottom: '1.5rem', boxShadow: 'var(--card-shadow)' },
-  cardTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 500, color: 'var(--text-primary)', marginTop: 0, marginBottom: '1.25rem' },
+  cardTitle:{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 500, color: 'var(--text-primary)', marginTop: 0, marginBottom: '1.25rem' },
   label:    { display: 'block', fontSize: '.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '.35rem', letterSpacing: '.04em', textTransform: 'uppercase' },
-  input:    { width: '100%', padding: '.7rem .9rem', border: '1px solid var(--border)', borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--bg-0)', boxSizing: 'border-box', transition: 'all 0.15s' },
-  textarea: { width: '100%', padding: '.7rem .9rem', border: '1px solid var(--border)', borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--bg-0)', boxSizing: 'border-box', resize: 'vertical', minHeight: 90, transition: 'all 0.15s' },
-  select:   { width: '100%', padding: '.7rem .9rem', border: '1px solid var(--border)', borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--bg-0)', boxSizing: 'border-box', transition: 'all 0.15s' },
+  input:    { width: '100%', padding: '.7rem .9rem', border: '1px solid var(--border)', borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', outline: 'none', background: 'var(--bg-0)', boxSizing: 'border-box', transition: 'all 0.15s' },
+  textarea: { width: '100%', padding: '.7rem .9rem', border: '1px solid var(--border)', borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', outline: 'none', background: 'var(--bg-0)', boxSizing: 'border-box', resize: 'vertical', minHeight: 90, transition: 'all 0.15s' },
+  select:   { width: '100%', padding: '.7rem .9rem', border: '1px solid var(--border)', borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', outline: 'none', background: 'var(--bg-0)', boxSizing: 'border-box', transition: 'all 0.15s' },
   hint:     { fontSize: '.75rem', color: 'var(--text-muted)', marginTop: '.3rem', marginBottom: 0 },
   field:    { marginBottom: '1.2rem' },
   row2:     { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' },
-  btn:      { padding: '.72rem 1.5rem', background: 'var(--g)', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.875rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .2s' },
-  btnGhost: { padding: '.72rem 1.5rem', background: 'transparent', color: 'var(--g)', border: '1.5px solid var(--g)', borderRadius: 8, fontSize: '.875rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .2s' },
-  btnSm:    { padding: '.4rem .8rem', fontSize: '.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', borderRadius: 7, border: '1.5px solid var(--g)', background: 'transparent', color: 'var(--g)', transition: 'all .2s' },
-  btnDanger:{ padding: '.4rem .8rem', background: 'transparent', color: 'var(--danger)', border: '1.5px solid var(--mr-undo-border)', borderRadius: 7, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .2s' },
+  btn:      { padding: '.72rem 1.5rem', background: 'var(--g)', color: '#fff', border: 'none', borderRadius: 8, fontSize: '.875rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all .2s' },
+  btnGhost: { padding: '.72rem 1.5rem', background: 'transparent', color: 'var(--g)', border: '1.5px solid var(--g)', borderRadius: 8, fontSize: '.875rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all .2s' },
+  btnSm:    { padding: '.4rem .8rem', fontSize: '.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', borderRadius: 7, border: '1.5px solid var(--g)', background: 'transparent', color: 'var(--g)', transition: 'all .2s' },
+  btnDanger:{ padding: '.4rem .8rem', background: 'transparent', color: 'var(--danger)', border: '1.5px solid var(--mr-undo-border)', borderRadius: 7, fontSize: '.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all .2s' },
   toggle:   { display: 'flex', alignItems: 'center', gap: '.75rem', marginTop: '.3rem' },
   handlePrev:{ fontSize: '.82rem', color: 'var(--g)', marginTop: '.3rem', fontWeight: 500 },
   grid:     { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '1rem' },
@@ -232,7 +232,7 @@ const S = {
   prodActs: { display: 'flex', gap: '.5rem', marginTop: '.75rem' },
   overlay:  { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
   modal:    { background: 'var(--bg-1)', borderRadius: 16, width: '100%', maxWidth: 580, maxHeight: '90vh', overflowY: 'auto', padding: '2rem', border: '1px solid var(--border)', boxShadow: 'var(--card-shadow)' },
-  modalTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-primary)', marginTop: 0, marginBottom: '1.5rem' },
+  modalTitle:{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-primary)', marginTop: 0, marginBottom: '1.5rem' },
   dropzone: (drag) => ({ border: `2px dashed ${drag ? 'var(--g)' : 'var(--border)'}`, borderRadius: 10, padding: '2rem', textAlign: 'center', cursor: 'pointer', background: drag ? 'var(--bg-2)' : 'var(--bg-0)', transition: 'all .15s' }),
   thumbRow: { display: 'flex', flexWrap: 'wrap', gap: '.5rem', marginTop: '.75rem' },
   thumb:    { width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' },
@@ -782,7 +782,7 @@ export default function StoreBuilder() {
                     <span style={{ fontSize: '0.72rem', background: 'var(--g)', color: '#ffffff', padding: '0.2rem 0.6rem', borderRadius: 20, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                       ESSENTIALS
                     </span>
-                    <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>
                       Store Essentials
                     </h3>
                   </div>
@@ -992,7 +992,7 @@ export default function StoreBuilder() {
                       <span style={{ fontSize: '0.72rem', background: 'var(--bg-2)', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '0.2rem 0.6rem', borderRadius: 20, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                         OPTIONAL REFINEMENTS
                       </span>
-                      <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>
                         Store Details & Customization
                       </h3>
                     </div>
@@ -1510,7 +1510,7 @@ export default function StoreBuilder() {
                   <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>
                 </svg>
               </div>
-              <h3 style={{ ...S.modalTitle, margin: 0, fontSize: '1.2rem', fontFamily: 'Fraunces, serif' }}>Delete Product?</h3>
+              <h3 style={{ ...S.modalTitle, margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-display)' }}>Delete Product?</h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 0.25rem', lineHeight: 1.5 }}>
                 Are you sure you want to permanently delete this product? This action cannot be undone.
               </p>
@@ -1527,7 +1527,7 @@ export default function StoreBuilder() {
                     fontSize: '0.85rem',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     transition: 'opacity 0.15s'
                   }}
                   onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
@@ -1549,7 +1549,7 @@ export default function StoreBuilder() {
                     fontSize: '0.85rem',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif'
+                    fontFamily: 'var(--font-body)'
                   }}
                 >
                   Cancel

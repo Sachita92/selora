@@ -12,7 +12,7 @@ const S = {
     minHeight: '100vh',
     background: 'var(--bg-0)',
     color: 'var(--text-primary)',
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: 'var(--font-body)',
   },
   hero: {
     maxWidth: 900,
@@ -43,7 +43,7 @@ const S = {
     display: 'inline-block',
   },
   h1: {
-    fontFamily: "'Fraunces', serif",
+    fontFamily: 'var(--font-display)',
     fontSize: 'clamp(1.25rem, 2.8vw, 1.85rem)',
     fontWeight: 500,
     lineHeight: 1.2,
@@ -110,9 +110,9 @@ const S = {
   },
   balanceValue: {
     fontSize: '1.05rem',
-    fontWeight: 700,
+    fontWeight: 500,
     color: 'var(--g)',
-    fontFamily: "'Fraunces', serif",
+    fontFamily: 'var(--font-display)',
   },
   balanceSub: {
     fontSize: '0.68rem',
@@ -128,7 +128,7 @@ const S = {
     fontSize: '0.95rem',
     fontWeight: 700,
     cursor: 'pointer',
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: 'var(--font-body)',
     transition: 'all 0.2s',
     display: 'flex',
     alignItems: 'center',
@@ -513,7 +513,7 @@ export default function X402Demo() {
   return (
     <div style={S.page}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
         @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
         @keyframes shimmer { 0%{transform:translateX(-100%) skewX(-15deg)} 100%{transform:translateX(280%) skewX(-15deg)} }
@@ -789,7 +789,7 @@ export default function X402Demo() {
               boxShadow: '0 8px 48px rgba(0,0,0,0.12)',
             }}>
               <h2 style={{
-                fontFamily: "'Fraunces', serif",
+                fontFamily: 'var(--font-display)',
                 fontSize: '1.25rem',
                 fontWeight: 500,
                 color: 'var(--text-primary)',

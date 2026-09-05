@@ -104,7 +104,7 @@ export default function ConnectStoreModal({ isOpen, onClose }) {
           background: "var(--modal-bg, var(--bg-1, #fff))",
           border: "1px solid var(--border, #E4EBE5)",
           boxShadow: "0 24px 64px rgba(0,0,0,.18)",
-          fontFamily: "Inter, sans-serif",
+          fontFamily: 'var(--font-body)',
           animation: "csm-in 0.22s cubic-bezier(.22,.68,0,1.15) both",
         }}
       >
@@ -129,7 +129,7 @@ export default function ConnectStoreModal({ isOpen, onClose }) {
             background: var(--g, #5A8A67); color: #fff;
             border: none; border-radius: 9px;
             font-size: .85rem; font-weight: 600;
-            cursor: pointer; font-family: Inter, sans-serif;
+            cursor: pointer; font-family: var(--font-body);
             display: inline-flex; align-items: center; justify-content: center;
             gap: .4rem; transition: opacity 0.15s;
           }
@@ -142,7 +142,7 @@ export default function ConnectStoreModal({ isOpen, onClose }) {
             border: 1px solid var(--border, #E4EBE5);
             border-radius: 9px;
             font-size: .85rem; font-weight: 600;
-            cursor: pointer; font-family: Inter, sans-serif;
+            cursor: pointer; font-family: var(--font-body);
             display: inline-flex; align-items: center; justify-content: center;
             gap: .4rem; transition: background 0.15s, border-color 0.15s;
           }
@@ -153,7 +153,7 @@ export default function ConnectStoreModal({ isOpen, onClose }) {
             border-radius: 8px;
             background: var(--bg-0, #F8FAF8);
             color: var(--text-primary, #1A2B1C);
-            font-family: Inter, sans-serif; font-size: .83rem;
+            font-family: var(--font-body); font-size: .83rem;
             outline: none; box-sizing: border-box;
             transition: border-color 0.15s;
           }
@@ -178,7 +178,7 @@ export default function ConnectStoreModal({ isOpen, onClose }) {
             <p style={{ margin: 0, fontSize: ".65rem", fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--g, #5A8A67)" }}>
               Onboarding
             </p>
-            <h2 style={{ margin: ".15rem 0 0", fontFamily: "Fraunces, serif", fontSize: "1.1rem", fontWeight: 500, color: "var(--text-primary, #1A2B1C)", letterSpacing: "-.02em" }}>
+            <h2 style={{ margin: ".15rem 0 0", fontFamily: 'var(--font-display)', fontSize: "1.1rem", fontWeight: 500, color: "var(--text-primary, #1A2B1C)", letterSpacing: "-.02em" }}>
               Set up your store
             </h2>
           </div>

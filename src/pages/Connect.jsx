@@ -110,7 +110,7 @@ export default function Connect() {
     ready ? { animation:`${name} ${dur}ms cubic-bezier(.22,.68,0,1.1) ${delay}ms both` } : { opacity:0 }
 
   return (
-    <div style={{ minHeight:'100vh', background:'var(--canvas-bg)', fontFamily:'Inter, sans-serif', display:'flex', flexDirection:'column', position:'relative', transition:'background 0.35s ease' }}>
+    <div style={{ minHeight:'100vh', background:'var(--canvas-bg)', fontFamily:'var(--font-body)', display:'flex', flexDirection:'column', position:'relative', transition:'background 0.35s ease' }}>
       
       {/* ── HEADER ─────────────────────────────────────────────── */}
       <nav style={{
@@ -122,7 +122,7 @@ export default function Connect() {
         transition:"background .3s, border-color .3s",
         ...anim('fadeIn', 0, 300)
       }}>
-        <Link to="/" style={{ fontFamily:"Inter,sans-serif", fontSize:"1.2rem", fontWeight:700, letterSpacing:"-.3px", color:'var(--logo-text)', textDecoration:"none", transition:'color 0.3s' }}>
+        <Link to="/" style={{ fontFamily:'var(--font-body)', fontSize:"1.2rem", fontWeight:700, letterSpacing:"-.3px", color:'var(--logo-text)', textDecoration:"none", transition:'color 0.3s' }}>
           Se<span style={{ color:"#5A8A67" }}>lo</span>ra
         </Link>
         <div className="nav-links" style={{ display:"flex", alignItems:"center" }}>
@@ -165,13 +165,13 @@ export default function Connect() {
           </button>
 
           {user ? (
-            <Link to="/dashboard" className="cn-shopify-btn" style={{ padding:".5rem 1.3rem", borderRadius:7, fontSize:".82rem", fontWeight:600, textDecoration:"none", fontFamily:"Inter,sans-serif", display:'inline-flex', alignItems:'center' }}>
+            <Link to="/dashboard" className="cn-shopify-btn" style={{ padding:".5rem 1.3rem", borderRadius:7, fontSize:".82rem", fontWeight:600, textDecoration:"none", fontFamily:'var(--font-body)', display:'inline-flex', alignItems:'center' }}>
               Dashboard
             </Link>
           ) : (
             <>
-              <button onClick={() => openAuthModal('login')} className="cn-nav-link" style={{ fontSize:".82rem", fontWeight:500, background:'none', border:'none', cursor:'pointer', fontFamily:'Inter,sans-serif', transition:'color 0.3s' }}>Sign In</button>
-              <button onClick={() => openAuthModal('signup')} className="cn-shopify-btn" style={{ padding:".5rem 1.3rem", borderRadius:7, fontSize:".82rem", fontWeight:600, border:'none', cursor:'pointer', fontFamily:"Inter,sans-serif", display:'inline-flex', alignItems:'center' }}>
+              <button onClick={() => openAuthModal('login')} className="cn-nav-link" style={{ fontSize:".82rem", fontWeight:500, background:'none', border:'none', cursor:'pointer', fontFamily:'var(--font-body)', transition:'color 0.3s' }}>Sign In</button>
+              <button onClick={() => openAuthModal('signup')} className="cn-shopify-btn" style={{ padding:".5rem 1.3rem", borderRadius:7, fontSize:".82rem", fontWeight:600, border:'none', cursor:'pointer', fontFamily:'var(--font-body)', display:'inline-flex', alignItems:'center' }}>
                 Get Started Free
               </button>
             </>
@@ -187,7 +187,7 @@ export default function Connect() {
           <p style={{ fontSize: '.7rem', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--g)', marginBottom: '.3rem' }}>
             Onboarding
           </p>
-          <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 500, color: 'var(--title-text)', margin: '0 0 .5rem', letterSpacing: '-.025em' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 500, color: 'var(--title-text)', margin: '0 0 .5rem', letterSpacing: '-.025em' }}>
             Choose how to get started
           </h1>
           <p style={{ fontSize: '.85rem', color: 'var(--muted-text)', margin: 0, fontWeight: 300 }}>
@@ -250,7 +250,7 @@ export default function Connect() {
                     </div>
                     <div>
                       <p style={{ fontSize:'.65rem', fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--existing-store-badge)', marginBottom:'.2rem', marginTop:0 }}>Existing store</p>
-                      <h2 style={{ fontFamily:'Fraunces, serif', fontSize:'1.25rem', fontWeight:500, color:'var(--title-text)', margin:0, letterSpacing:'-.025em', transition:'color 0.3s' }}>Connect Shopify</h2>
+                      <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.25rem', fontWeight:500, color:'var(--title-text)', margin:0, letterSpacing:'-.025em', transition:'color 0.3s' }}>Connect Shopify</h2>
                     </div>
                   </div>
                   <p style={{ fontSize:'.8rem', color:'var(--body-text)', margin:'.75rem 0 0', fontWeight:300, lineHeight:1.5, transition:'color 0.3s' }}>
@@ -292,7 +292,7 @@ export default function Connect() {
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '.3rem',
-                        fontFamily: 'Inter, sans-serif'
+                        fontFamily: 'var(--font-body)'
                       }}
                     >
                       {showHowItWorks ? 'Hide steps ▴' : 'See how this works ▾'}
@@ -342,7 +342,7 @@ export default function Connect() {
                           value={shop}
                           onChange={e => setShop(e.target.value)}
                           required
-                          style={{ flex:1, padding:'.65rem .75rem', border:'none', fontSize:'.85rem', color:'var(--input-text)', fontFamily:'Inter, sans-serif', background:'var(--input-bg)', minWidth:0, transition:'background-color 0.3s, color 0.3s' }}
+                          style={{ flex:1, padding:'.65rem .75rem', border:'none', fontSize:'.85rem', color:'var(--input-text)', fontFamily:'var(--font-body)', background:'var(--input-bg)', minWidth:0, transition:'background-color 0.3s, color 0.3s' }}
                         />
                         <span style={{ padding:'.65rem .75rem', background:'var(--input-prefix-bg)', fontSize:'.75rem', color:'var(--input-prefix-text)', whiteSpace:'nowrap', display:'flex', alignItems:'center', borderLeft:'1px solid var(--input-border)', transition:'background-color 0.3s, border-color 0.3s, color 0.3s' }}>.myshopify.com</span>
                       </div>
@@ -354,7 +354,7 @@ export default function Connect() {
                       style={{ 
                         flex:'0 0 auto', padding:'.65rem 1.3rem', height:42, 
                         borderRadius:9, fontSize:'.85rem', fontWeight:600, 
-                        cursor:loading?'not-allowed':'pointer', fontFamily:'Inter, sans-serif', 
+                        cursor:loading?'not-allowed':'pointer', fontFamily:'var(--font-body)', 
                         opacity:loading?.7:1, letterSpacing:'.01em', minWidth:120,
                       }}
                     >
@@ -392,7 +392,7 @@ export default function Connect() {
                     </div>
                     <div>
                       <p style={{ fontSize:'.65rem', fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--existing-store-badge)', marginBottom:'.2rem', marginTop:0 }}>No store yet</p>
-                      <h2 style={{ fontFamily:'Fraunces, serif', fontSize:'1.25rem', fontWeight:500, color:'var(--title-text)', margin:0, letterSpacing:'-.025em', transition:'color 0.3s' }}>Create Store</h2>
+                      <h2 style={{ fontFamily:'var(--font-display)', fontSize:'1.25rem', fontWeight:500, color:'var(--title-text)', margin:0, letterSpacing:'-.025em', transition:'color 0.3s' }}>Create Store</h2>
                     </div>
                   </div>
                   <p style={{ fontSize:'.8rem', color:'var(--body-text)', margin:'.75rem 0 0', fontWeight:300, lineHeight:1.5, transition:'color 0.3s' }}>
@@ -434,7 +434,7 @@ export default function Connect() {
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '.3rem',
-                        fontFamily: 'Inter, sans-serif'
+                        fontFamily: 'var(--font-body)'
                       }}
                     >
                       {showCreateSteps ? 'Hide steps ▴' : 'See creation steps ▾'}
@@ -469,7 +469,7 @@ export default function Connect() {
                   style={{ 
                     width:'100%', height:42, 
                     borderRadius:9, fontSize:'.85rem', fontWeight:600, cursor:'pointer', 
-                    fontFamily:'Inter, sans-serif', letterSpacing:'.01em', textAlign:'center',
+                    fontFamily:'var(--font-body)', letterSpacing:'.01em', textAlign:'center',
                     display:'inline-flex', alignItems:'center', justifyContent:'center'
                   }}
                 >
@@ -500,7 +500,7 @@ export default function Connect() {
         ...anim('fadeIn', 400, 350)
       }}>
         <Link to="/" style={{ textDecoration: 'none' }}>
-          <div style={{ fontFamily:"Inter,sans-serif", fontSize:".95rem", fontWeight:700, color:'var(--logo-text)', transition:'color 0.3s' }}>
+          <div style={{ fontFamily:'var(--font-body)', fontSize:".95rem", fontWeight:700, color:'var(--logo-text)', transition:'color 0.3s' }}>
             Se<span style={{ color:"#5A8A67" }}>lo</span>ra
           </div>
         </Link>

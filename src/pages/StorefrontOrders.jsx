@@ -179,7 +179,7 @@ export default function StorefrontOrders() {
 
   if (errorStore || !store) {
     return (
-      <div style={{ padding: '4rem 2rem', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ padding: '4rem 2rem', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
         <h1 style={{ color: '#DC2626', marginBottom: '1rem' }}>Error</h1>
         <p>{errorStore || 'Store not found.'}</p>
         <Link to="/" style={{ color: '#5A8A67', textDecoration: 'none', fontWeight: 600 }}>Back to Selora Home</Link>
@@ -188,7 +188,7 @@ export default function StorefrontOrders() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--sf-bg)', fontFamily: 'Inter, sans-serif' }} className={theme === 'dark' ? 'dark' : ''} data-theme={theme}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--sf-bg)', fontFamily: 'var(--font-body)' }} className={theme === 'dark' ? 'dark' : ''} data-theme={theme}>
       <style>{`
         :root, [data-theme='light'] {
           --sf-bg: #F6F1E8;
@@ -265,7 +265,7 @@ export default function StorefrontOrders() {
       <nav style={{ position: 'sticky', top: 0, zIndex: 100, background: 'var(--sf-nav-bg)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--sf-border)', padding: '0 2rem' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', height: 70, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <Link to={`/store/${handle}`} style={{ fontFamily: 'Fraunces, serif', fontSize: '1.3rem', fontWeight: 700, color: 'var(--sf-text-primary)', textDecoration: 'none' }}>
+            <Link to={`/store/${handle}`} style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 500, color: 'var(--sf-text-primary)', textDecoration: 'none' }}>
               {store.name}
             </Link>
           </div>
@@ -285,7 +285,7 @@ export default function StorefrontOrders() {
       <main style={{ flex: 1, maxWidth: 1200, width: '100%', margin: '0 auto', padding: '3rem 1.5rem' }}>
         
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-          <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: 'var(--sf-text-primary)', margin: '0 0 .5rem' }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 500, color: 'var(--sf-text-primary)', margin: '0 0 .5rem' }}>
             My Orders
           </h1>
           <p style={{ color: 'var(--sf-text-muted)', fontSize: '1rem', margin: 0 }}>

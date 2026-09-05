@@ -448,8 +448,8 @@ export default function StorefrontCheckout() {
 
   if (storeError || !store) {
     return (
-      <div style={{ minHeight: '100vh', background: DEFAULT_PALETTE.background, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '2rem', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>
-        <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', color: DEFAULT_PALETTE.text, margin: 0 }}>Store not found</h1>
+      <div style={{ minHeight: '100vh', background: DEFAULT_PALETTE.background, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-body)' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: DEFAULT_PALETTE.text, margin: 0 }}>Store not found</h1>
         <p style={{ color: DEFAULT_PALETTE.secondaryText, fontSize: '.95rem' }}>{storeError}</p>
         <Link to="/" style={{ color: DEFAULT_PALETTE.accent, fontWeight: 600, textDecoration: 'none', fontSize: '.9rem' }}>&larr; Back to Selora</Link>
       </div>
@@ -471,7 +471,7 @@ export default function StorefrontCheckout() {
   const primaryBtn = {
     width: '100%', padding: '1rem', background: palette.accent, color: '#fff', border: 'none',
     borderRadius: 10, fontSize: '.95rem', fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.5rem',
+    fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.5rem',
     minHeight: 48,
   }
   const quietBtn = {
@@ -489,7 +489,7 @@ export default function StorefrontCheckout() {
   ))
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: palette.background, fontFamily: 'Inter, sans-serif', color: palette.text }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: palette.background, fontFamily: 'var(--font-body)', color: palette.text }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
         .sfc-main { max-width: 560px; width: 100%; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
@@ -503,7 +503,7 @@ export default function StorefrontCheckout() {
           <Link
             to={`/store/${handle}`}
             onClick={(e) => { if (!confirmLeave()) e.preventDefault() }}
-            style={{ fontFamily: 'Fraunces, serif', fontSize: '1.15rem', fontWeight: 600, color: palette.text, textDecoration: 'none', letterSpacing: '-0.02em' }}
+            style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 500, color: palette.text, textDecoration: 'none', letterSpacing: '-0.02em' }}
           >
             {store.name}
           </Link>
@@ -529,13 +529,13 @@ export default function StorefrontCheckout() {
           /* ══ Page 1: bag review + payment method ══ */
           cart.length === 0 ? (
             <div style={{ ...card, padding: '3rem 1.5rem', textAlign: 'center' }}>
-              <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 500, margin: '0 0 .5rem', letterSpacing: '-0.03em' }}>Your bag is empty</h1>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 500, margin: '0 0 .5rem', letterSpacing: '-0.03em' }}>Your bag is empty</h1>
               <p style={{ fontSize: '.85rem', color: palette.secondaryText, margin: '0 0 1.5rem' }}>Add something you love, then come back to check out.</p>
               <Link to={`/store/${handle}`} style={{ color: palette.accent, fontWeight: 600, textDecoration: 'none', fontSize: '.9rem' }}>&larr; Browse the collection</Link>
             </div>
           ) : (
             <>
-              <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.7rem', fontWeight: 500, margin: '0 0 1.25rem', letterSpacing: '-0.03em' }}>Review your order</h1>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.7rem', fontWeight: 500, margin: '0 0 1.25rem', letterSpacing: '-0.03em' }}>Review your order</h1>
 
               <div style={{ ...card, padding: '1.25rem 1.25rem 1rem', marginBottom: '1.25rem' }}>
                 {itemRows(cart.map(i => ({ title: i.product.title, price: i.product.price, quantity: i.quantity })))}
@@ -579,7 +579,7 @@ export default function StorefrontCheckout() {
               <div style={{ color: palette.accent, display: 'flex', justifyContent: 'center', marginBottom: '.75rem' }}>
                 <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
               </div>
-              <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.6rem', fontWeight: 500, margin: '0 0 .25rem', letterSpacing: '-0.03em' }}>Payment received</h1>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 500, margin: '0 0 .25rem', letterSpacing: '-0.03em' }}>Payment received</h1>
               <p style={{ fontSize: '.85rem', color: palette.secondaryText, margin: 0 }}>Thanks for your order at {store.name}.</p>
             </div>
 
@@ -643,7 +643,7 @@ export default function StorefrontCheckout() {
                     placeholder="you@example.com"
                     autoComplete="email"
                     disabled={emailState === 'sending'}
-                    style={{ flex: '1 1 180px', minWidth: 0, padding: '.7rem .8rem', border: `1px solid ${palette.border}`, borderRadius: 8, fontSize: '.85rem', fontFamily: 'Inter, sans-serif', color: palette.text, background: '#fff', minHeight: 44 }}
+                    style={{ flex: '1 1 180px', minWidth: 0, padding: '.7rem .8rem', border: `1px solid ${palette.border}`, borderRadius: 8, fontSize: '.85rem', fontFamily: 'var(--font-body)', color: palette.text, background: '#fff', minHeight: 44 }}
                   />
                   <button
                     className="sfc-btn"
@@ -675,7 +675,7 @@ export default function StorefrontCheckout() {
         ) : phase === 'expired' ? (
           /* ══ Order not found ══ */
           <div style={{ ...card, padding: '2.5rem 1.5rem', textAlign: 'center' }}>
-            <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 500, margin: '0 0 .5rem', letterSpacing: '-0.03em' }}>This checkout link has expired</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 500, margin: '0 0 .5rem', letterSpacing: '-0.03em' }}>This checkout link has expired</h1>
             <p style={{ fontSize: '.85rem', color: palette.secondaryText, margin: '0 0 1.5rem', lineHeight: 1.5 }}>
               Unpaid checkouts expire after 15 minutes, or this order may no longer exist. Nothing was charged, and your bag is still saved — start the checkout again.
             </p>
@@ -684,7 +684,7 @@ export default function StorefrontCheckout() {
         ) : phase === 'failed' ? (
           /* ══ Failed ══ */
           <div style={{ ...card, padding: '2.5rem 1.5rem', textAlign: 'center' }}>
-            <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 500, margin: '0 0 .5rem', letterSpacing: '-0.03em', color: '#DC2626' }}>Payment didn't go through</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 500, margin: '0 0 .5rem', letterSpacing: '-0.03em', color: '#DC2626' }}>Payment didn't go through</h1>
             <p style={{ fontSize: '.85rem', color: palette.secondaryText, margin: '0 0 1.5rem', lineHeight: 1.5 }}>
               No funds were captured for this order. You can start the checkout again — your bag is still saved.
             </p>
@@ -693,7 +693,7 @@ export default function StorefrontCheckout() {
         ) : (
           /* ══ Awaiting payment / confirmation / stalled ══ */
           <div style={{ ...card, padding: '1.5rem', textAlign: 'center' }}>
-            <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 500, margin: '0 0 .35rem', letterSpacing: '-0.03em' }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 500, margin: '0 0 .35rem', letterSpacing: '-0.03em' }}>
               {phase === 'confirming' ? 'Confirming your payment' : 'Complete your payment'}
             </h1>
             <p style={{ fontSize: '.85rem', color: palette.secondaryText, margin: '0 0 1.25rem' }}>

@@ -78,7 +78,7 @@ export default function Navbar() {
         left: 0,
         right: 0,
         zIndex: 100,
-        fontFamily: 'Inter, sans-serif'
+        fontFamily: 'var(--font-body)'
       }}
     >
       <style>{`
@@ -208,7 +208,7 @@ export default function Navbar() {
       <div className="site-nav-container">
         {/* Logo */}
         <Link to="/" style={{ textDecoration: 'none' }}>
-          <div style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-.3px', color: 'var(--dark)', fontFamily: 'Inter, sans-serif' }}>
+          <div style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-.3px', color: 'var(--dark)', fontFamily: 'var(--font-body)' }}>
             Se<span style={{ color: 'var(--g)' }}>lo</span>ra
           </div>
         </Link>
@@ -296,7 +296,7 @@ export default function Navbar() {
                     fontSize: '.82rem',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--dark)' }}
@@ -325,7 +325,7 @@ export default function Navbar() {
                     fontSize: '.82rem',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     transition: 'all 0.2s',
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -354,7 +354,7 @@ export default function Navbar() {
                     fontWeight: 600,
                     border: 'none',
                     cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     transition: 'opacity 0.2s'
                   }}
                 >
@@ -436,7 +436,7 @@ export default function Navbar() {
                   fontSize: '.85rem',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-body)',
                   textAlign: 'center'
                 }}
               >
@@ -463,7 +463,7 @@ export default function Navbar() {
                   fontSize: '.85rem',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-body)',
                   textAlign: 'center'
                 }}
               >
@@ -480,7 +480,7 @@ export default function Navbar() {
                   fontWeight: 600,
                   border: 'none',
                   cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-body)',
                   textAlign: 'center'
                 }}
               >

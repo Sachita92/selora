@@ -11,10 +11,10 @@ const c = {
 }
 
 const s = {
-  page:    { minHeight: '100vh', background: 'var(--bg-0)', fontFamily: 'Inter, sans-serif' },
-  h1:      { fontFamily: 'Fraunces, serif', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px' },
+  page:    { minHeight: '100vh', background: 'var(--bg-0)', fontFamily: 'var(--font-body)' },
+  h1:      { fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px' },
   card:    { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, padding: '1.6rem', marginBottom: '1.5rem' },
-  cardTit: { fontFamily: 'Fraunces, serif', fontSize: '1rem', fontWeight: 500, color: c.dark, marginBottom: '1rem' },
+  cardTit: { fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 500, color: c.dark, marginBottom: '1rem' },
   logItem: { display: 'flex', alignItems: 'center', gap: '.6rem', padding: '.6rem .8rem', background: 'var(--bg-0)', borderRadius: 8, fontSize: '.78rem', border: `1px solid ${c.border}`, marginBottom: '.4rem' },
   time:    { color: c.muted, fontSize: '.68rem', marginLeft: 'auto', whiteSpace: 'nowrap', paddingLeft: '.6rem' },
 }
@@ -141,7 +141,7 @@ function ScoreRing({ score }) {
         position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
       }}>
-        <span style={{ fontSize: '1.6rem', fontWeight: 800, color, lineHeight: 1, fontFamily: 'Inter, sans-serif' }}>
+        <span style={{ fontSize: '1.6rem', fontWeight: 800, color, lineHeight: 1, fontFamily: 'var(--font-body)' }}>
           {score}
         </span>
         <span style={{ fontSize: '.62rem', fontWeight: 700, color: c.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>
@@ -266,7 +266,7 @@ function HealthReport({ report, onRerun, running }) {
                 background: 'var(--g)', color: '#fff', border: 'none',
                 padding: '.55rem 1.1rem', borderRadius: 9, fontSize: '.8rem',
                 fontWeight: 600, cursor: running ? 'not-allowed' : 'pointer',
-                fontFamily: 'Inter,sans-serif', opacity: running ? 0.7 : 1,
+                fontFamily: 'var(--font-body)', opacity: running ? 0.7 : 1,
                 display: 'flex', alignItems: 'center', gap: '.4rem', transition: 'opacity .15s',
               }}
             >
@@ -482,7 +482,7 @@ export default function Reports() {
     background: active ? 'var(--bg-2)' : 'transparent',
     color: active ? c.dark : c.muted,
     fontWeight: active ? 600 : 500, fontSize: '.84rem',
-    cursor: 'pointer', fontFamily: 'Inter,sans-serif',
+    cursor: 'pointer', fontFamily: 'var(--font-body)',
     transition: 'all .15s',
   })
 
@@ -650,7 +650,7 @@ export default function Reports() {
                   style={{
                     background: 'var(--g)', color: '#fff', border: 'none',
                     padding: '.55rem 1.2rem', borderRadius: 8, fontSize: '.82rem',
-                    fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif',
+                    fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)',
                   }}
                 >
                   Try Again
@@ -672,7 +672,7 @@ export default function Reports() {
                   style={{
                     background: 'var(--g)', color: '#fff', border: 'none',
                     padding: '.65rem 1.5rem', borderRadius: 9, fontSize: '.85rem',
-                    fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif',
+                    fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)',
                   }}
                 >
                   Run Health Check

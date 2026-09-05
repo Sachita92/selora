@@ -10,17 +10,17 @@ const c = {
 }
 
 const s = {
-  page:    { minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif' },
+  page:    { minHeight: '100vh', background: c.bg, fontFamily: 'var(--font-body)' },
   body:    { maxWidth: 760, margin: '0 auto', padding: '2.5rem 2rem 5rem' },
-  h1:      { fontFamily: 'Fraunces, serif', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px', margin: 0 },
+  h1:      { fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px', margin: 0 },
   card:    { background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: '2rem', marginBottom: '1.25rem' },
   label:   { display: 'block', fontSize: '.7rem', fontWeight: 700, color: c.muted, textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '.4rem' },
-  input:   { width: '100%', padding: '.7rem 1rem', border: `1px solid ${c.border}`, borderRadius: 10, fontSize: '.9rem', fontFamily: 'Inter, sans-serif', outline: 'none', background: c.bg, color: c.dark, boxSizing: 'border-box', transition: 'border-color .15s' },
-  btnP:    { background: c.green, color: '#fff', border: 'none', padding: '.7rem 1.6rem', borderRadius: 10, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .2s' },
-  btnG:    { background: 'transparent', color: c.dark, border: `1px solid ${c.border}`, padding: '.7rem 1.6rem', borderRadius: 10, fontSize: '.85rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .2s' },
+  input:   { width: '100%', padding: '.7rem 1rem', border: `1px solid ${c.border}`, borderRadius: 10, fontSize: '.9rem', fontFamily: 'var(--font-body)', outline: 'none', background: c.bg, color: c.dark, boxSizing: 'border-box', transition: 'border-color .15s' },
+  btnP:    { background: c.green, color: '#fff', border: 'none', padding: '.7rem 1.6rem', borderRadius: 10, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all .2s' },
+  btnG:    { background: 'transparent', color: c.dark, border: `1px solid ${c.border}`, padding: '.7rem 1.6rem', borderRadius: 10, fontSize: '.85rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all .2s' },
   row:     { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' },
   divider: { border: 'none', borderTop: `1px solid ${c.border}`, margin: '1.5rem 0' },
-  sTitle:  { fontFamily: 'Fraunces, serif', fontSize: '1.05rem', fontWeight: 500, color: c.dark, margin: '0 0 .3rem 0' },
+  sTitle:  { fontFamily: 'var(--font-display)', fontSize: '1.05rem', fontWeight: 500, color: c.dark, margin: '0 0 .3rem 0' },
   sSub:    { fontSize: '.8rem', color: c.muted, fontWeight: 300, margin: 0 },
 }
 
@@ -62,7 +62,7 @@ function CopyButton({ value }) {
         border: `1px solid ${copied ? 'var(--g)' : c.border}`,
         color: copied ? 'var(--g)' : c.muted,
         padding: '.28rem .7rem', borderRadius: 7, fontSize: '.72rem',
-        fontWeight: 500, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+        fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)',
         display: 'inline-flex', alignItems: 'center', gap: '.3rem', transition: 'all .15s',
       }}
     >
@@ -368,7 +368,7 @@ export default function Profile() {
             style={{
               background: 'transparent', border: '1px solid rgba(220,38,38,.25)',
               color: '#DC2626', padding: '.65rem 1.4rem', borderRadius: 10,
-              fontSize: '.84rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+              fontSize: '.84rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)',
               display: 'flex', alignItems: 'center', gap: '.5rem', transition: 'all .15s',
             }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(220,38,38,.07)'; e.currentTarget.style.borderColor = '#DC2626' }}

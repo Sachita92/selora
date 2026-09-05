@@ -87,7 +87,7 @@ export default function NameCollectionModal() {
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 200,
-      fontFamily: 'Inter, sans-serif'
+      fontFamily: 'var(--font-body)'
     }}>
       <div style={{
         background: 'var(--bg-1, #ffffff)',
@@ -102,7 +102,7 @@ export default function NameCollectionModal() {
       }}>
         <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>👋</div>
         <h2 style={{
-          fontFamily: 'Fraunces, serif',
+          fontFamily: 'var(--font-display)',
           fontSize: '1.6rem',
           fontWeight: 500,
           color: 'var(--text-primary, #1A271C)',
@@ -142,7 +142,7 @@ export default function NameCollectionModal() {
                 outline: 'none',
                 background: 'var(--bg-2, #FAFAF8)',
                 color: 'var(--text-primary, #1A271C)',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-body)',
                 boxSizing: 'border-box',
                 transition: 'border 0.2s, background 0.2s'
               }}
@@ -178,7 +178,7 @@ export default function NameCollectionModal() {
               fontSize: '0.9rem',
               fontWeight: 600,
               cursor: loading ? 'not-allowed' : 'pointer',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-body)',
               transition: 'opacity 0.2s',
               opacity: loading ? 0.7 : 1
             }}

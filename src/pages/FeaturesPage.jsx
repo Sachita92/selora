@@ -148,7 +148,7 @@ export default function FeaturesPage() {
   }
 
   return (
-    <div className="landing-page" style={{fontFamily:'Inter, sans-serif', background:c.bg, minHeight:'100vh'}}>
+    <div className="landing-page" style={{fontFamily:'var(--font-body)', background:c.bg, minHeight:'100vh'}}>
       <style>{`
         .interactive-feat-card {
           background: var(--card-bg);
@@ -211,7 +211,7 @@ export default function FeaturesPage() {
             {/* HERO TEXT */}
             <div style={{textAlign:'center', marginBottom:'1.8rem'}}>
               <div style={{maxWidth: '640px', width: '100%', margin: '0 auto'}}>
-                <h1 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.5rem,3.2vw,2.5rem)',fontWeight:500,lineHeight:1.15,letterSpacing:'-.3px',color:c.dark,margin:'0 0 .8rem'}}>
+                <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.5rem,3.2vw,2.5rem)',fontWeight:500,lineHeight:1.15,letterSpacing:'-.3px',color:c.dark,margin:'0 0 .8rem'}}>
                   Everything your fashion store needs to <em style={{fontStyle:'italic',color:c.g}}>grow automatically</em>
                 </h1>
                 <p style={{fontSize:'.88rem',color:c.muted,lineHeight:1.8,fontWeight:300,margin:0}}>
@@ -259,7 +259,7 @@ export default function FeaturesPage() {
                 <div style={{direction:'ltr'}}>
                   <div style={{display:'flex',alignItems:'center',gap:'.6rem',marginBottom:'1.2rem'}}>
                     <div style={{width:44,height:44,background:c.gpale,borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center'}}>{iconMapLarge[f.icon]}</div>
-                    <h2 className="detail-heading" style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.3rem, 4vw, 1.6rem)',fontWeight:500,color:c.dark,letterSpacing:'-.3px'}}>{f.title}</h2>
+                    <h2 className="detail-heading" style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.3rem, 4vw, 1.6rem)',fontWeight:500,color:c.dark,letterSpacing:'-.3px'}}>{f.title}</h2>
                   </div>
                   <p style={{fontSize:'.88rem',color:c.muted,lineHeight:1.8,fontWeight:300,marginBottom:'1.5rem'}}>{f.detail}</p>
                   <ul style={{listStyle:'none',display:'flex',flexDirection:'column',gap:'.6rem'}}>
@@ -278,7 +278,7 @@ export default function FeaturesPage() {
                       <div style={{width:8,height:8,borderRadius:'50%',background:c.g}} />
                       <span style={{fontSize:'.72rem',fontWeight:600,color:c.muted,textTransform:'uppercase',letterSpacing:'.08em'}}>{f.title} · Live</span>
                     </div>
-                    <div style={{fontSize:'2rem',fontWeight:600,fontFamily:'Fraunces,serif',color:c.dark,marginBottom:'.3rem',letterSpacing:'-.3px'}}>
+                    <div style={{fontSize:'2rem',fontWeight:500,fontFamily:'var(--font-display)',color:c.dark,marginBottom:'.3rem',letterSpacing:'-.3px'}}>
                       {i === 0 ? '+18%' : i === 1 ? '2.4x' : i === 2 ? '-34%' : i === 3 ? '12' : i === 4 ? '0' : '47'}
                     </div>
                     <div style={{fontSize:'.7rem',color:c.muted,textTransform:'uppercase',letterSpacing:'.06em'}}>
@@ -296,7 +296,7 @@ export default function FeaturesPage() {
           <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 70% 60% at 50% 50%,rgba(90,138,103,.12),transparent)',pointerEvents:'none'}} />
           <div style={{position:'relative'}}>
             <p style={{fontSize:'.68rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'.14em',color:'#86EFAC',marginBottom:'.7rem'}}>Ready to grow?</p>
-            <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.5rem,3.5vw,2.8rem)',fontWeight:500,color:'#fff',marginBottom:'1rem',lineHeight:1.15,letterSpacing:'-.3px'}}>
+            <h2 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.5rem,3.5vw,2.8rem)',fontWeight:500,color:'#fff',marginBottom:'1rem',lineHeight:1.15,letterSpacing:'-.3px'}}>
               Start using all six features <em style={{color:'#86EFAC',fontStyle:'italic'}}>for free</em>
             </h2>
             <p style={{color:'rgba(255,255,255,.4)',fontSize:'.9rem',marginBottom:'2.2rem',fontWeight:300,lineHeight:1.7}}>
@@ -304,10 +304,10 @@ export default function FeaturesPage() {
             </p>
             <div style={{display:'flex',gap:'1rem',justifyContent:'center',flexWrap:'wrap'}}>
               {user
-                ? <Link to="/dashboard" style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>Go to Dashboard →</Link>
-                : <button onClick={() => openAuthModal('signup')} style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,border:'none',cursor:'pointer',fontFamily:'Inter,sans-serif'}}>Get Started Free →</button>
+                ? <Link to="/dashboard" style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,textDecoration:'none',fontFamily:'var(--font-body)'}}>Go to Dashboard →</Link>
+                : <button onClick={() => openAuthModal('signup')} style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,border:'none',cursor:'pointer',fontFamily:'var(--font-body)'}}>Get Started Free →</button>
               }
-              <Link to="/demo" style={{background:'transparent',color:'rgba(255,255,255,.6)',border:'1px solid rgba(255,255,255,.18)',padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:500,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
+              <Link to="/demo" style={{background:'transparent',color:'rgba(255,255,255,.6)',border:'1px solid rgba(255,255,255,.18)',padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:500,textDecoration:'none',fontFamily:'var(--font-body)'}}>
                 Book a Demo
               </Link>
             </div>

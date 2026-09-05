@@ -206,7 +206,7 @@ export default function BookDemo() {
   }
 
   return (
-    <div className="landing-page" style={{ minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif', color: c.text }}>
+    <div className="landing-page" style={{ minHeight: '100vh', background: c.bg, fontFamily: 'var(--font-body)', color: c.text }}>
       <style>{`
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(8px); }
@@ -273,7 +273,7 @@ export default function BookDemo() {
         <div style={{ maxWidth: 600, margin: '0 auto', padding: '6rem 2rem', textAlign: 'center', animation: 'fadeUp 0.4s ease both' }}>
           <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>🎉</div>
           <p style={{ fontSize: '.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: c.green, marginBottom: '.6rem' }}>You're all set</p>
-          <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.4rem', fontWeight: 500, color: c.dark, marginBottom: '1rem', letterSpacing: '-.3px' }}>Demo booked!</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.4rem', fontWeight: 500, color: c.dark, marginBottom: '1rem', letterSpacing: '-.3px' }}>Demo booked!</h1>
           <p style={{ fontSize: '.95rem', color: c.muted, lineHeight: 1.8, fontWeight: 300, marginBottom: '2.5rem' }}>
             We've sent a calendar invite to <strong style={{ color: c.dark }}>{formData.email}</strong>.<br/>
             Your 30-minute demo is confirmed for:
@@ -321,7 +321,7 @@ export default function BookDemo() {
                       <p style={{ fontSize: '.78rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', color: c.green, marginBottom: '.5rem' }}>
                         {step === 1 ? 'Free, 30-Minute Session' : 'Pick a Slot'}
                       </p>
-                      <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(1.3rem, 2.8vw, 2.1rem)', fontWeight: 500, color: c.dark, letterSpacing: '-.3px', marginBottom: '0.8rem', lineHeight: 1.1 }}>
+                      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.3rem, 2.8vw, 2.1rem)', fontWeight: 500, color: c.dark, letterSpacing: '-.3px', marginBottom: '0.8rem', lineHeight: 1.1 }}>
                         {step === 1 ? 'See Selora grow your fashion store — live' : 'Choose your demo slot'}
                       </h1>
                       <div style={{ fontSize: '.95rem', color: c.muted, fontWeight: 300, lineHeight: 1.65 }}>
@@ -399,7 +399,7 @@ export default function BookDemo() {
                 <div style={{ background: c.card, border: `1px solid ${c.border}`, borderTop: '4px solid var(--g)', borderRadius: 16, padding: '3.2rem', boxShadow: '0 20px 48px rgba(90, 138, 103, 0.05)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '1.8rem' }}>
                     <span style={{ width: '6px', height: '18px', background: 'var(--g)', borderRadius: '3px', display: 'inline-block' }}></span>
-                    <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.45rem', fontWeight: 500, color: c.dark, margin: 0, textAlign: 'left' }}>Tell us about your store</h2>
+                    <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.45rem', fontWeight: 500, color: c.dark, margin: 0, textAlign: 'left' }}>Tell us about your store</h2>
                   </div>
                   <form onSubmit={handleStep1}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem', marginBottom: '1.2rem' }}>
@@ -443,7 +443,7 @@ export default function BookDemo() {
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
                                 outline: 'none',
-                                fontFamily: 'Inter,sans-serif',
+                                fontFamily: 'var(--font-body)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center'
@@ -506,7 +506,7 @@ export default function BookDemo() {
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
                                 outline: 'none',
-                                fontFamily: 'Inter,sans-serif'
+                                fontFamily: 'var(--font-body)'
                               }}
                               className="cn-demo-btn"
                             >
@@ -523,7 +523,7 @@ export default function BookDemo() {
                              value={otherText}
                              onChange={handleOtherTextChange}
                              placeholder="e.g. My products aren't selling well despite high traffic..."
-                             style={{ ...inputStyle, height: 90, resize: 'vertical', fontFamily: 'Inter, sans-serif' }}
+                             style={{ ...inputStyle, height: 90, resize: 'vertical', fontFamily: 'var(--font-body)' }}
                              className="cn-demo-input"
                           />
                         </div>
@@ -550,7 +550,7 @@ export default function BookDemo() {
                       </div>
                     </div>
 
-                    <button type="submit" style={{ width: '100%', padding: '1.05rem', background: c.green, color: '#fff', border: 'none', borderRadius: 8, fontSize: '.95rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif', letterSpacing: '.02em', boxShadow: '0 4px 18px rgba(90,138,103,.2)' }} className="cn-demo-btn">
+                    <button type="submit" style={{ width: '100%', padding: '1.05rem', background: c.green, color: '#fff', border: 'none', borderRadius: 8, fontSize: '.95rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)', letterSpacing: '.02em', boxShadow: '0 4px 18px rgba(90,138,103,.2)' }} className="cn-demo-btn">
                       Choose My Demo Time →
                     </button>
                   </form>
@@ -558,7 +558,7 @@ export default function BookDemo() {
 
                 {/* RIGHT: WHAT YOU GET (Sticky Sidebar) */}
                 <div style={{ position: 'sticky', top: '6.5rem' }}>
-                  <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.45rem', fontWeight: 500, color: c.dark, marginBottom: '1.8rem', textAlign: 'left' }}>What you'll get in 30 minutes</h2>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.45rem', fontWeight: 500, color: c.dark, marginBottom: '1.8rem', textAlign: 'left' }}>What you'll get in 30 minutes</h2>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginBottom: '1.2rem' }}>
                     {WHAT_YOU_GET.map((item, i) => {
@@ -583,7 +583,7 @@ export default function BookDemo() {
                              <div style={{ 
                                background: 'var(--bg2)', border: `1px solid ${c.border}`, borderRadius: 8,
                                padding: '.8rem 1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.8rem',
-                               fontSize: '.72rem', fontFamily: 'Inter,sans-serif', textAlign: 'left',
+                               fontSize: '.72rem', fontFamily: 'var(--font-body)', textAlign: 'left',
                                animation: 'fadeUp 0.4s ease both', color: 'var(--dark)'
                              }}>
                                <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -652,13 +652,13 @@ export default function BookDemo() {
               <div className="cn-scheduler-grid" style={{ animation: 'fadeUp 0.35s ease both' }}>
                 {/* Date Picker */}
                 <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: '2.5rem' }}>
-                  <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', fontWeight: 500, color: c.dark, marginBottom: '1.5rem', textAlign: 'left' }}>Select a date</h3>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 500, color: c.dark, marginBottom: '1.5rem', textAlign: 'left' }}>Select a date</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.8rem' }}>
                     {getDates().map((date, i) => {
                       const isSelected = selectedDate?.toDateString() === date.toDateString()
                       return (
                         <button key={i} onClick={() => { setSelectedDate(date); setSelectedTime(null) }}
-                          style={{ padding: '1rem 1.4rem', background: isSelected ? c.green : c.bg2, color: isSelected ? '#fff' : c.dark, border: `1px solid ${isSelected ? c.green : c.border}`, borderRadius: 10, fontSize: '.92rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', textAlign: 'left', fontWeight: isSelected ? 600 : 400, transition: 'all .2s' }}
+                          style={{ padding: '1rem 1.4rem', background: isSelected ? c.green : c.bg2, color: isSelected ? '#fff' : c.dark, border: `1px solid ${isSelected ? c.green : c.border}`, borderRadius: 10, fontSize: '.92rem', cursor: 'pointer', fontFamily: 'var(--font-body)', textAlign: 'left', fontWeight: isSelected ? 600 : 400, transition: 'all .2s' }}
                           className="cn-demo-btn"
                         >
                           {formatDate(date)}
@@ -672,7 +672,7 @@ export default function BookDemo() {
                 <div>
                   {/* Time Picker */}
                   <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: '2.5rem', marginBottom: '1.8rem' }}>
-                    <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', fontWeight: 500, color: c.dark, marginBottom: '1.5rem', textAlign: 'left' }}>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 500, color: c.dark, marginBottom: '1.5rem', textAlign: 'left' }}>
                       {selectedDate ? `Times for ${formatDate(selectedDate)}` : 'Select a date first'}
                     </h3>
                     {selectedDate ? (
@@ -681,7 +681,7 @@ export default function BookDemo() {
                           const isSelected = selectedTime === time
                           return (
                             <button key={time} onClick={() => setSelectedTime(time)}
-                              style={{ padding: '.8rem 1.1rem', background: isSelected ? c.green : c.bg2, color: isSelected ? '#fff' : c.dark, border: `1px solid ${isSelected ? c.green : c.border}`, borderRadius: 8, fontSize: '.88rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: isSelected ? 600 : 400, transition: 'all .2s' }}
+                              style={{ padding: '.8rem 1.1rem', background: isSelected ? c.green : c.bg2, color: isSelected ? '#fff' : c.dark, border: `1px solid ${isSelected ? c.green : c.border}`, borderRadius: 8, fontSize: '.88rem', cursor: 'pointer', fontFamily: 'var(--font-body)', fontWeight: isSelected ? 600 : 400, transition: 'all .2s' }}
                               className="cn-demo-btn"
                             >
                               {time}
@@ -696,7 +696,7 @@ export default function BookDemo() {
 
                   {/* Summary box */}
                   <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: '2.2rem' }}>
-                    <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.15rem', fontWeight: 500, color: c.dark, marginBottom: '1.2rem', textAlign: 'left' }}>Your booking summary</h3>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 500, color: c.dark, marginBottom: '1.2rem', textAlign: 'left' }}>Your booking summary</h3>
                     {[
                       ['Name', `${formData.firstName} ${formData.lastName}`.trim() || '—'],
                       ['Email', formData.email || '—'],
@@ -712,7 +712,7 @@ export default function BookDemo() {
                     ))}
 
                     <button onClick={handleConfirm} disabled={!selectedDate || !selectedTime || loading}
-                      style={{ width: '100%', marginTop: '1rem', padding: '1.05rem', background: selectedDate && selectedTime ? c.green : c.border, color: selectedDate && selectedTime ? '#fff' : c.muted, border: 'none', borderRadius: 8, fontSize: '.95rem', fontWeight: 700, cursor: selectedDate && selectedTime ? 'pointer' : 'not-allowed', fontFamily: 'Inter, sans-serif', transition: 'all .2s' }}
+                      style={{ width: '100%', marginTop: '1rem', padding: '1.05rem', background: selectedDate && selectedTime ? c.green : c.border, color: selectedDate && selectedTime ? '#fff' : c.muted, border: 'none', borderRadius: 8, fontSize: '.95rem', fontWeight: 700, cursor: selectedDate && selectedTime ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-body)', transition: 'all .2s' }}
                       className="cn-demo-btn"
                     >
                       {loading ? (
@@ -736,7 +736,7 @@ export default function BookDemo() {
                         fontSize: '.82rem', 
                         fontWeight: 500, 
                         cursor: 'pointer', 
-                        fontFamily: 'Inter, sans-serif',
+                        fontFamily: 'var(--font-body)',
                         transition: 'all 0.2s'
                       }}
                       className="cn-secondary-btn"
@@ -767,7 +767,7 @@ const labelStyle = {
 const inputStyle = {
   width: '100%', padding: '.9rem 1.1rem', border: '1px solid var(--border)',
   borderRadius: 8, fontSize: '.92rem', color: 'var(--text-primary)',
-  fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--input-bg)',
+  fontFamily: 'var(--font-body)', outline: 'none', background: 'var(--input-bg)',
   boxSizing: 'border-box', transition: 'border .2s',
 }
 

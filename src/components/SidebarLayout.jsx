@@ -363,7 +363,7 @@ export default function SidebarLayout() {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: c.bg, fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: c.bg, fontFamily: 'var(--font-body)' }}>
       <style>{`
         @media (max-width: 768px) {
           .sf-dashboard-header {
@@ -442,11 +442,11 @@ export default function SidebarLayout() {
           boxSizing: 'border-box'
         }}>
           {isCollapsed && !isMobile ? (
-            <Link to="/" style={{ fontFamily: 'Fraunces, serif', fontSize: '1.3rem', fontWeight: 700, color: c.green, textDecoration: 'none' }}>
+            <Link to="/" style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 500, color: c.green, textDecoration: 'none' }}>
               Se
             </Link>
           ) : (
-            <Link to="/" style={{ fontFamily: 'Fraunces, serif', fontSize: '1.2rem', fontWeight: 600, color: c.dark, textDecoration: 'none' }}>
+            <Link to="/" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', fontWeight: 500, color: c.dark, textDecoration: 'none' }}>
               Se<span style={{ color: c.green }}>lo</span>ra
             </Link>
           )}
@@ -659,7 +659,7 @@ export default function SidebarLayout() {
               fontSize: '.88rem',
               transition: 'all 0.2s ease',
               width: '100%',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-body)',
               textAlign: 'left'
             }}
             title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
@@ -1143,7 +1143,7 @@ export default function SidebarLayout() {
                   <div style={{ borderTop: `1px solid ${c.border}`, margin: '.3rem 0' }} />
                   <button
                     onClick={handleSignOut}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '.6rem', padding: '.5rem .7rem', borderRadius: 8, border: 'none', background: 'transparent', color: '#DC2626', fontSize: '.8rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '.6rem', padding: '.5rem .7rem', borderRadius: 8, border: 'none', background: 'transparent', color: '#DC2626', fontSize: '.8rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.06)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
@@ -1473,7 +1473,7 @@ export default function SidebarLayout() {
                                         background: 'none', border: 'none', cursor: 'pointer',
                                         color: c.dark, fontSize: '.72rem', padding: '.4rem .8rem',
                                         textAlign: 'left', display: 'flex', alignItems: 'center', gap: '.4rem',
-                                        fontFamily: 'Inter, sans-serif'
+                                        fontFamily: 'var(--font-body)'
                                       }}
                                       onMouseEnter={e => e.currentTarget.style.background = c.bg2}
                                       onMouseLeave={e => e.currentTarget.style.background = 'none'}
@@ -1490,7 +1490,7 @@ export default function SidebarLayout() {
                                         background: 'none', border: 'none', cursor: 'pointer',
                                         color: c.dark, fontSize: '.72rem', padding: '.4rem .8rem',
                                         textAlign: 'left', display: 'flex', alignItems: 'center', gap: '.4rem',
-                                        fontFamily: 'Inter, sans-serif'
+                                        fontFamily: 'var(--font-body)'
                                       }}
                                       onMouseEnter={e => e.currentTarget.style.background = c.bg2}
                                       onMouseLeave={e => e.currentTarget.style.background = 'none'}
@@ -1506,7 +1506,7 @@ export default function SidebarLayout() {
                                         background: 'none', border: 'none', cursor: 'pointer',
                                         color: '#EF4444', fontSize: '.72rem', padding: '.4rem .8rem',
                                         textAlign: 'left', display: 'flex', alignItems: 'center', gap: '.4rem',
-                                        fontWeight: 500, fontFamily: 'Inter, sans-serif'
+                                        fontWeight: 500, fontFamily: 'var(--font-body)'
                                       }}
                                       onMouseEnter={e => e.currentTarget.style.background = c.bg2}
                                       onMouseLeave={e => e.currentTarget.style.background = 'none'}
@@ -1636,7 +1636,7 @@ export default function SidebarLayout() {
                     borderRadius: 8,
                     border: `1px solid ${c.border}`,
                     fontSize: '.82rem',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     outline: 'none',
                     background: 'var(--bg-0)',
                     color: c.dark,

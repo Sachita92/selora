@@ -93,7 +93,7 @@ function FloatInput({ label, type = 'text', value, onChange, valid, suffix, auto
           borderRadius: 8,
           fontSize: '.9rem',
           color: T.inputText,
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-body)',
           outline: 'none',
           transition: 'border .2s, box-shadow .2s, background .2s',
           background: focus ? T.inputBgFocus : T.inputBg,
@@ -183,7 +183,7 @@ function SwitchBtn({ onClick, children, color }) {
     <button type="button" onClick={onClick} style={{
       color, fontWeight: 600, background: 'none', border: 'none',
       cursor: 'pointer', fontSize: '.82rem', padding: 0,
-      fontFamily: 'Inter, sans-serif',
+      fontFamily: 'var(--font-body)',
     }}>{children}</button>
   )
 }
@@ -221,7 +221,7 @@ function LoginForm({ plan, onSuccess, onSwitch, dark }) {
 
   return (
     <div className={shake ? 'am-shake' : ''}>
-      <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 500, color: T.title, marginBottom: '.3rem', letterSpacing: '-.3px' }}>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 500, color: T.title, marginBottom: '.3rem', letterSpacing: '-.3px' }}>
         Welcome back
       </h2>
       <p style={{ fontSize: '.83rem', color: T.sub, marginBottom: '1.6rem', fontWeight: 300, lineHeight: 1.6 }}>
@@ -262,7 +262,7 @@ function LoginForm({ plan, onSuccess, onSwitch, dark }) {
         width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.6rem',
         padding: '.72rem 1rem', border: `1px solid ${T.googleBorder}`, borderRadius: 8,
         background: T.googleBg, color: T.googleText, fontSize: '.88rem', fontWeight: 500,
-        cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .2s',
+        cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all .2s',
       }}
         onMouseEnter={e => { e.currentTarget.style.borderColor = T.googleBorderHover; e.currentTarget.style.background = T.googleBgHover }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = T.googleBorder; e.currentTarget.style.background = T.googleBg }}
@@ -343,7 +343,7 @@ function SignupForm({ plan, onSuccess, onSwitch, dark }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
           </svg>
         </div>
-        <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.4rem', fontWeight: 500, color: T.title, marginBottom: '.5rem' }}>You already have an account</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 500, color: T.title, marginBottom: '.5rem' }}>You already have an account</h2>
         <p style={{ fontSize: '.85rem', color: T.sub, lineHeight: 1.7, marginBottom: '1.6rem', fontWeight: 300 }}>
           <strong style={{ color: T.title }}>{email}</strong> is already registered with Selora.<br />
           Sign in to continue.
@@ -372,7 +372,7 @@ function SignupForm({ plan, onSuccess, onSwitch, dark }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
           </svg>
         </div>
-        <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.4rem', fontWeight: 500, color: T.title, marginBottom: '.6rem' }}>Check your email</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 500, color: T.title, marginBottom: '.6rem' }}>Check your email</h2>
         <p style={{ fontSize: '.85rem', color: T.sub, lineHeight: 1.7, marginBottom: '1.5rem', fontWeight: 300 }}>
           We sent a confirmation link to <strong style={{ color: T.title }}>{email}</strong>.<br />
           Click it to activate your account.
@@ -384,7 +384,7 @@ function SignupForm({ plan, onSuccess, onSwitch, dark }) {
 
   return (
     <div className={shake ? 'am-shake' : ''}>
-      <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 500, color: T.title, marginBottom: '.3rem', letterSpacing: '-.3px' }}>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 500, color: T.title, marginBottom: '.3rem', letterSpacing: '-.3px' }}>
         Start growing for free
       </h2>
       <p style={{ fontSize: '.83rem', color: T.sub, marginBottom: '1.6rem', fontWeight: 300, lineHeight: 1.6 }}>
@@ -439,7 +439,7 @@ function SignupForm({ plan, onSuccess, onSwitch, dark }) {
         width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.6rem',
         padding: '.72rem 1rem', border: `1px solid ${T.googleBorder}`, borderRadius: 8,
         background: T.googleBg, color: T.googleText, fontSize: '.88rem', fontWeight: 500,
-        cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .2s',
+        cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all .2s',
       }}
         onMouseEnter={e => { e.currentTarget.style.borderColor = T.googleBorderHover; e.currentTarget.style.background = T.googleBgHover }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = T.googleBorder; e.currentTarget.style.background = T.googleBg }}
@@ -544,7 +544,7 @@ export default function AuthModal() {
           font-size: .9rem;
           font-weight: 600;
           cursor: pointer;
-          font-family: Inter, sans-serif;
+          font-family: var(--font-body);
           transition: filter .2s;
           display: inline-flex;
           align-items: center;
@@ -619,7 +619,7 @@ export default function AuthModal() {
             animation: 'amCardIn .3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
             maxHeight: '90vh',
             overflowY: 'auto',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-body)',
             transition: 'background .25s, border-color .25s',
           }}
         >
@@ -639,7 +639,7 @@ export default function AuthModal() {
 
           {/* Logo */}
           <div style={{ textAlign: 'center', marginBottom: '1.4rem' }}>
-            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-.3px', color: T.logoBrand }}>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-.3px', color: T.logoBrand }}>
               Se<span style={{ color: T.green }}>lo</span>ra
             </span>
           </div>

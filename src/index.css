@@ -21,6 +21,14 @@
 
   /* Fixed navbar height — the hero sizes itself against this */
   --nav-h: 68px;
+
+  /* Type system — the only two families in the app. Cormorant Garamond
+     (display) is loaded at 400 and 500 plus italics: headings run 400 and
+     earn their presence from size, numerals take 500. Geist (body) covers
+     UI, labels, and copy. Nothing on the display token may ask for 600+ —
+     no such face is loaded and the browser would fake it. */
+  --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --font-body: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   /* Hero trust-strip text (dark-mode override lives in the .dark block) */
   --trust-color: var(--text-secondary);
 
@@ -117,6 +125,10 @@
   --inventory-empty-text: #DC2626;
   --inventory-low-bg: #FFFBEB;
   --inventory-low-text: #D97706;
+}
+
+body {
+  font-family: var(--font-body);
 }
 
 

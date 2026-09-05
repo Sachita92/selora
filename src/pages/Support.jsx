@@ -10,22 +10,22 @@ const c = {
 }
 
 const s = {
-  page:    { minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif', color: 'var(--text)' },
+  page:    { minHeight: '100vh', background: c.bg, fontFamily: 'var(--font-body)', color: 'var(--text)' },
   nav:     { background: 'var(--nav-bg)', borderBottom: `1px solid var(--border)`, padding: '1rem 3.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(14px)' },
-  logo:    { fontSize: '1.2rem', fontWeight: 700, color: 'var(--dark)', textDecoration: 'none', fontFamily: 'Inter, sans-serif' },
+  logo:    { fontSize: '1.2rem', fontWeight: 700, color: 'var(--dark)', textDecoration: 'none', fontFamily: 'var(--font-body)' },
   container: { width: '100%', maxWidth: 1280, margin: '0 auto', padding: '4rem 1.5rem 6rem', boxSizing: 'border-box' },
   header:  { textAlign: 'center', marginBottom: '4rem' },
   tag:     { fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', color: c.green, marginBottom: '.6rem' },
-  title:   { fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: 'var(--dark)', letterSpacing: '-.4px', marginBottom: '1rem' },
+  title:   { fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 500, color: 'var(--dark)', letterSpacing: '-.4px', marginBottom: '1rem' },
   sub:     { fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 300, maxWidth: 540, margin: '0 auto', lineHeight: 1.6 },
   grid:    { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem', alignItems: 'start' },
   card:    { background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: '2.5rem', boxShadow: 'none' },
-  cardTitle: { fontFamily: 'Fraunces, serif', fontSize: '1.4rem', fontWeight: 500, color: 'var(--dark)', marginBottom: '1.5rem' },
+  cardTitle: { fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 500, color: 'var(--dark)', marginBottom: '1.5rem' },
   formGroup: { marginBottom: '1.2rem' },
   label:   { display: 'block', fontSize: '.75rem', fontWeight: 600, color: 'var(--text)', marginBottom: '.4rem', letterSpacing: '.04em', textTransform: 'uppercase' },
-  input:   { width: '100%', padding: '.8rem 1rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--input-bg)', boxSizing: 'border-box', transition: 'all .2s' },
-  textarea: { width: '100%', padding: '.8rem 1rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'Inter, sans-serif', outline: 'none', background: 'var(--input-bg)', boxSizing: 'border-box', height: 120, resize: 'vertical', transition: 'all .2s' },
-  btn:     { width: '100%', padding: '.85rem', background: c.green, color: '#fff', border: 'none', borderRadius: 8, fontSize: '.9rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'all .2s', marginTop: '.5rem' },
+  input:   { width: '100%', padding: '.8rem 1rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', outline: 'none', background: 'var(--input-bg)', boxSizing: 'border-box', transition: 'all .2s' },
+  textarea: { width: '100%', padding: '.8rem 1rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.9rem', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', outline: 'none', background: 'var(--input-bg)', boxSizing: 'border-box', height: 120, resize: 'vertical', transition: 'all .2s' },
+  btn:     { width: '100%', padding: '.85rem', background: c.green, color: '#fff', border: 'none', borderRadius: 8, fontSize: '.9rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all .2s', marginTop: '.5rem' },
   channels: { display: 'flex', flexDirection: 'column', gap: '1.2rem', marginBottom: '2.5rem' },
   channelItem: { display: 'flex', gap: '1rem', background: c.bg2, border: `1px solid ${c.border}`, borderRadius: 12, padding: '1.2rem' },
   channelIcon: { fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' },
@@ -189,7 +189,7 @@ export default function Support() {
             {isSubmitted ? (
               <div style={s.successBox}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🎉</div>
-                <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.4rem', fontWeight: 500, marginBottom: '.5rem', color: '#166534' }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 500, marginBottom: '.5rem', color: '#166534' }}>
                   Support Ticket Received
                 </h2>
                 <p style={{ fontSize: '.88rem', lineHeight: 1.6, fontWeight: 300, color: '#166534', marginBottom: '1.5rem' }}>

@@ -27,18 +27,18 @@ const c = {
 }
 
 const s = {
-  page:    { minHeight: '100vh', background: 'radial-gradient(circle at top right,rgba(95,141,118,.04),transparent 45%),radial-gradient(circle at bottom left,rgba(95,141,118,.02),transparent 45%),var(--bg-0)', fontFamily: 'Inter,sans-serif' },
-  h1:      { fontFamily: 'Fraunces,serif', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px' },
-  btnP:    { background: c.green, color: '#fff', border: 'none', padding: '.65rem 1.4rem', borderRadius: 8, fontSize: '.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '.4rem' },
+  page:    { minHeight: '100vh', background: 'radial-gradient(circle at top right,rgba(95,141,118,.04),transparent 45%),radial-gradient(circle at bottom left,rgba(95,141,118,.02),transparent 45%),var(--bg-0)', fontFamily: 'var(--font-body)' },
+  h1:      { fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px' },
+  btnP:    { background: c.green, color: '#fff', border: 'none', padding: '.65rem 1.4rem', borderRadius: 8, fontSize: '.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '.4rem' },
   card:    { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, padding: '1.6rem', position: 'relative' },
-  cardTit: { fontFamily: 'Fraunces,serif', fontSize: '1rem', fontWeight: 500, color: c.dark, marginBottom: '1rem' },
+  cardTit: { fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 500, color: c.dark, marginBottom: '1rem' },
   mCard:   { background: 'var(--bg-1)', border: `1px solid ${c.border}`, borderRadius: 12, padding: '1.2rem', display: 'flex', flexDirection: 'column', transition: 'all .25s ease' },
-  mVal:    { fontFamily: 'Fraunces,serif', fontSize: '1.8rem', fontWeight: 400, color: c.dark, margin: '.3rem 0' },
+  mVal:    { fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 400, color: c.dark, margin: '.3rem 0' },
   mLbl:    { fontSize: '.68rem', color: c.muted, textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600 },
   empty:   { textAlign: 'center', padding: '3rem 1rem', color: c.muted, fontSize: '.88rem', fontWeight: 300, lineHeight: 1.7 },
   overlay:  { position: 'fixed', inset: 0, background: 'rgba(26,39,28,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
   modal:    { background: 'var(--bg-1)', borderRadius: 16, width: '100%', maxWidth: 580, maxHeight: '90vh', overflowY: 'auto', padding: '2rem', border: '1px solid var(--border)', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.4)' },
-  modalTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-primary)', marginTop: 0, marginBottom: '1.5rem' },
+  modalTitle:{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-primary)', marginTop: 0, marginBottom: '1.5rem' },
   spinner:  { display: 'inline-block', width: 20, height: 20, border: '2px solid var(--border)', borderTop: '2px solid var(--g)', borderRadius: '50%', animation: 'spin .7s linear infinite' },
 }
 
@@ -132,7 +132,7 @@ const GlobalStyles = () => (
       padding: .85rem 1.1rem;
       background: var(--bg-1); border: 1px solid var(--border); border-radius: 10px;
       cursor: pointer; text-decoration: none; color: var(--text-primary);
-      font-size: .82rem; font-weight: 500; font-family: Inter,sans-serif;
+      font-size: .82rem; font-weight: 500; font-family: var(--font-body);
       transition: all .2s ease; flex: 1; min-width: 140px;
     }
     .qa-card:hover { border-color: var(--g); background: var(--bg-2); }
@@ -569,7 +569,7 @@ export default function Dashboard() {
         {stores.length === 0 && (
           <div style={{ ...s.card, ...s.empty }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌱</div>
-            <h2 style={{ fontFamily: 'Fraunces,serif', fontSize: '1.3rem', fontWeight: 500, color: c.dark, marginBottom: '.5rem' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 500, color: c.dark, marginBottom: '.5rem' }}>
               No store set up yet
             </h2>
             <p style={{ marginBottom: '1.5rem', fontWeight: 300 }}>
@@ -582,7 +582,7 @@ export default function Dashboard() {
         {/* ── SELECT STORE ──────────────────────────────────────────────────── */}
         {stores.length > 0 && !activeStore && (
           <div style={{ ...s.card, textAlign: 'center', padding: '3rem' }}>
-            <h2 style={{ fontFamily: 'Fraunces,serif', fontSize: '1.3rem', fontWeight: 500, color: c.dark, marginBottom: '.5rem' }}>Select a Store</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 500, color: c.dark, marginBottom: '.5rem' }}>Select a Store</h2>
             <p style={{ color: c.muted, marginBottom: '1.5rem', fontWeight: 300 }}>
               Choose a store to view its growth analytics.
             </p>
@@ -787,7 +787,7 @@ export default function Dashboard() {
                 <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'center' }} className="sf-pulse-container">
 
                   <div>
-                    <div style={{ fontFamily: 'Fraunces,serif', fontSize: '1.4rem', fontWeight: 400, color: c.dark, lineHeight: 1 }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 400, color: c.dark, lineHeight: 1 }}>
                       {totalProducts}
                     </div>
                     <div style={{ fontSize: '.68rem', color: c.muted, marginTop: '.2rem' }}>Active Products</div>
@@ -797,7 +797,7 @@ export default function Dashboard() {
                     <>
                       <div style={{ width: 1, height: 32, background: c.border }} className="sf-pulse-divider" />
                       <div>
-                        <div style={{ fontFamily: 'Fraunces,serif', fontSize: '1.4rem', fontWeight: 400, color: c.dark, lineHeight: 1 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 400, color: c.dark, lineHeight: 1 }}>
                           {totalInventory.toLocaleString()}
                         </div>
                         <div style={{ fontSize: '.68rem', color: c.muted, marginTop: '.2rem' }}>Total Units</div>
@@ -809,7 +809,7 @@ export default function Dashboard() {
                     <>
                       <div style={{ width: 1, height: 32, background: c.border }} className="sf-pulse-divider" />
                       <div>
-                        <div style={{ fontFamily: 'Fraunces,serif', fontSize: '1.4rem', fontWeight: 400, color: 'var(--inventory-empty-text, #DC2626)', lineHeight: 1 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 400, color: 'var(--inventory-empty-text, #DC2626)', lineHeight: 1 }}>
                           {outOfStock}
                         </div>
                         <div style={{ fontSize: '.68rem', color: 'var(--inventory-empty-text, #DC2626)', marginTop: '.2rem', fontWeight: 500 }}>Out of Stock</div>
@@ -821,7 +821,7 @@ export default function Dashboard() {
                     <>
                       <div style={{ width: 1, height: 32, background: c.border }} className="sf-pulse-divider" />
                       <div>
-                        <div style={{ fontFamily: 'Fraunces,serif', fontSize: '1.4rem', fontWeight: 400, color: 'var(--inventory-low-text)', lineHeight: 1 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 400, color: 'var(--inventory-low-text)', lineHeight: 1 }}>
                           {lowStockCount}
                         </div>
                         <div style={{ fontSize: '.68rem', color: 'var(--inventory-low-text)', marginTop: '.2rem', fontWeight: 500 }}>Low Stock</div>

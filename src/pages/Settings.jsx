@@ -11,21 +11,21 @@ const c = {
 }
 
 const s = {
-  page:    { minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif' },
+  page:    { minHeight: '100vh', background: c.bg, fontFamily: 'var(--font-body)' },
   nav:     { background: c.card, borderBottom: `1px solid ${c.border}`, padding: '.9rem 2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  logo:    { fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 600, color: c.dark, textDecoration: 'none' },
+  logo:    { fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 500, color: c.dark, textDecoration: 'none' },
   body:    { maxWidth: 860, margin: '0 auto', padding: '2.5rem 2rem 5rem' },
-  h1:      { fontFamily: 'Fraunces, serif', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px' },
+  h1:      { fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px' },
   section: { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, padding: '2rem', marginBottom: '1.5rem' },
-  sTitle:  { fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 500, color: c.dark, marginBottom: '.4rem' },
+  sTitle:  { fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 500, color: c.dark, marginBottom: '.4rem' },
   sSub:    { fontSize: '.8rem', color: c.muted, fontWeight: 300, marginBottom: '1.5rem', lineHeight: 1.6 },
   row:     { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 0', borderBottom: `1px solid ${c.border}` },
   label:   { fontSize: '.88rem', fontWeight: 500, color: c.dark },
   hint:    { fontSize: '.75rem', color: c.muted, fontWeight: 300, marginTop: '.2rem' },
-  input:   { padding: '.55rem .9rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.88rem', fontFamily: 'Inter, sans-serif', outline: 'none', background: c.bg, color: c.dark, width: 110, textAlign: 'right' },
-  select:  { padding: '.55rem .9rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.85rem', fontFamily: 'Inter, sans-serif', outline: 'none', background: c.bg, color: c.dark, cursor: 'pointer' },
-  btnP:    { background: c.green, color: '#fff', border: 'none', padding: '.75rem 1.8rem', borderRadius: 8, fontSize: '.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif' },
-  btnS:    { background: 'transparent', color: c.muted, border: `1px solid ${c.border}`, padding: '.75rem 1.8rem', borderRadius: 8, fontSize: '.88rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif' },
+  input:   { padding: '.55rem .9rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.88rem', fontFamily: 'var(--font-body)', outline: 'none', background: c.bg, color: c.dark, width: 110, textAlign: 'right' },
+  select:  { padding: '.55rem .9rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.85rem', fontFamily: 'var(--font-body)', outline: 'none', background: c.bg, color: c.dark, cursor: 'pointer' },
+  btnP:    { background: c.green, color: '#fff', border: 'none', padding: '.75rem 1.8rem', borderRadius: 8, fontSize: '.88rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' },
+  btnS:    { background: 'transparent', color: c.muted, border: `1px solid ${c.border}`, padding: '.75rem 1.8rem', borderRadius: 8, fontSize: '.88rem', cursor: 'pointer', fontFamily: 'var(--font-body)' },
   success: { background: 'rgba(22, 101, 52, 0.06)', border: '1px solid rgba(22, 101, 52, 0.15)', borderRadius: 8, padding: '.75rem 1rem', fontSize: '.82rem', color: '#166534', marginBottom: '1rem' },
   danger:  { background: 'rgba(220, 38, 38, 0.06)', border: '1px solid rgba(220, 38, 38, 0.15)', borderRadius: 8, padding: '.75rem 1rem', fontSize: '.82rem', color: '#DC2626', marginBottom: '1rem' },
 }
@@ -440,7 +440,7 @@ export default function Settings() {
   const loading = !activeStore || (activeTab === 'agent' && !settings)
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-0)', fontFamily: 'Inter, sans-serif', color: 'var(--text-primary)', transition: 'background-color .35s, color .35s' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-0)', fontFamily: 'var(--font-body)', color: 'var(--text-primary)', transition: 'background-color .35s, color .35s' }}>
       <style>{`
         /* Glassmorphism sections */
         .settings-section {
@@ -494,7 +494,7 @@ export default function Settings() {
           font-size: 1.3rem;
         }
         .goal-title {
-          font-family: 'Fraunces', serif;
+          font-family: var(--font-display);
           font-size: 0.95rem;
           font-weight: 500;
           color: var(--text-primary);
@@ -552,7 +552,7 @@ export default function Settings() {
         .settings-tab-btn {
           background: transparent;
           border: none;
-          font-family: 'Inter', sans-serif;
+          font-family: var(--font-body);
           font-size: 0.92rem;
           padding: 0.6rem 1.2rem;
           cursor: pointer;

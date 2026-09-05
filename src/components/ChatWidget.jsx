@@ -17,6 +17,27 @@ const SUGGESTIONS = [
   "Give me a quick store health check",
 ]
 
+// The one chat glyph the widget shows — a plain speech bubble, stroke-styled
+// like the rest of the site's icons.
+const ChatGlyph = ({ size = 22, stroke = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+  </svg>
+)
+
+// Under 600px the FAB shrinks and tucks into the corner so it sits below the
+// compact hero card's hit area instead of on top of it.
+function useIsNarrow() {
+  const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 600px)').matches)
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 600px)')
+    const onChange = (e) => setNarrow(e.matches)
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [])
+  return narrow
+}
+
 export default function ChatWidget({ storeId, isGuest = false }) {
   const {
     messages,
@@ -36,7 +57,10 @@ export default function ChatWidget({ storeId, isGuest = false }) {
 
   const [input, setInput] = useState('')
   const [showWelcomeBubble, setShowWelcomeBubble] = useState(false)
-  const [bottomOffset] = useState(28)
+  const isNarrow = useIsNarrow()
+  const fabSize = isNarrow ? 46 : 56
+  const bottomOffset = isNarrow ? 12 : 28
+  const rightOffset = isNarrow ? 12 : 28
   const messagesEndRef = useRef(null)
   const lastMessageRef = useRef(null)
   const inputRef = useRef(null)
@@ -167,11 +191,11 @@ export default function ChatWidget({ storeId, isGuest = false }) {
         <div 
           className="cn-chat-widget landing-scoped"
           style={{
-            position: 'fixed', bottom: bottomOffset + 70, right: 28, zIndex: 1000,
+            position: 'fixed', bottom: bottomOffset + fabSize + 12, right: rightOffset, zIndex: 1000,
             background: c.card, border: `1px solid ${c.border}`,
             borderRadius: 16, padding: '12px 18px', width: 260,
             boxShadow: '0 10px 30px rgba(0,0,0,0.12)',
-            fontFamily: 'Inter, sans-serif', fontSize: '.84rem',
+            fontFamily: 'var(--font-body)', fontSize: '.84rem',
             lineHeight: 1.4, color: c.dark,
             animation: 'chatBubbleFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both',
             cursor: 'pointer',
@@ -200,24 +224,28 @@ export default function ChatWidget({ storeId, isGuest = false }) {
         </div>
       )}
 
-      {/* Floating button */}
+      {/* Floating button — charcoal + sage, hardcoded like the CTA band.
+          Do NOT swap #1A271C for var(--dark): that alias flips to near-white
+          in dark mode. */}
       {!open && (
         <button
           onClick={() => { setOpen(true); setHasNewMessage(false); setShowWelcomeBubble(false); }}
+          aria-label="Chat with the Selora agent"
           style={{
-            position: 'fixed', bottom: bottomOffset, right: 28, zIndex: 1000,
-            width: 58, height: 58, borderRadius: '50%',
-            background: `linear-gradient(135deg, ${c.green} 0%, ${c.green2} 100%)`,
-            color: '#fff', border: 'none', cursor: 'pointer',
-            boxShadow: '0 6px 28px rgba(90,138,103,.35)',
+            position: 'fixed', bottom: bottomOffset, right: rightOffset, zIndex: 1000,
+            width: fabSize, height: fabSize, borderRadius: '50%',
+            background: '#1A271C',
+            color: '#8FD4A8',
+            border: '1px solid rgba(255,255,255,.09)', cursor: 'pointer',
+            boxShadow: '0 6px 22px rgba(0,0,0,.22)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.5rem', transition: 'transform .2s, box-shadow .2s',
+            transition: 'background .2s, border-color .2s, box-shadow .2s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.boxShadow = '0 8px 36px rgba(90,138,103,.45)' }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 6px 28px rgba(90,138,103,.35)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#233329'; e.currentTarget.style.borderColor = 'rgba(143,212,168,.4)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,.3)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#1A271C'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.09)'; e.currentTarget.style.boxShadow = '0 6px 22px rgba(0,0,0,.22)' }}
           id="chat-fab"
         >
-          🤖
+          <ChatGlyph size={isNarrow ? 19 : 22} />
           {hasNewMessage && (
             <span style={{
               position: 'absolute', top: -2, right: -2,
@@ -237,7 +265,7 @@ export default function ChatWidget({ storeId, isGuest = false }) {
           boxShadow: '0 20px 60px rgba(0,0,0,.12), 0 4px 20px rgba(0,0,0,.06)',
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-body)',
           animation: 'chatSlideUp .3s ease-out',
         }}>
 
@@ -253,9 +281,8 @@ export default function ChatWidget({ storeId, isGuest = false }) {
                 width: 34, height: 34, borderRadius: '50%',
                 background: 'rgba(255,255,255,.2)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.1rem',
               }}>
-                🤖
+                <ChatGlyph size={17} stroke="#fff" />
               </div>
               <div>
                 <div style={{ fontSize: '.9rem', fontWeight: 600, color: '#fff' }}>Selora Agent</div>
@@ -274,7 +301,7 @@ export default function ChatWidget({ storeId, isGuest = false }) {
                     border: '1px solid rgba(255,255,255,.2)',
                     color: '#fff', cursor: 'pointer',
                     padding: '.35rem .6rem', borderRadius: 8,
-                    fontSize: '.72rem', fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                    fontSize: '.72rem', fontWeight: 600, fontFamily: 'var(--font-body)',
                   }}
                 >
                   + New
@@ -287,7 +314,7 @@ export default function ChatWidget({ storeId, isGuest = false }) {
                   border: 'none', color: '#fff', cursor: 'pointer',
                   width: 30, height: 30, borderRadius: 8,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '1rem', fontFamily: 'Inter, sans-serif',
+                  fontSize: '1rem', fontFamily: 'var(--font-body)',
                 }}
               >
                 ✕
@@ -361,7 +388,7 @@ export default function ChatWidget({ storeId, isGuest = false }) {
                             cursor: 'pointer',
                             fontSize: '.76rem',
                             fontWeight: 600,
-                            fontFamily: 'Inter, sans-serif',
+                            fontFamily: 'var(--font-body)',
                             boxShadow: '0 2px 6px rgba(90, 138, 103, 0.15)',
                           }}
                         >
@@ -415,7 +442,7 @@ export default function ChatWidget({ storeId, isGuest = false }) {
                     color: 'var(--text-secondary)',
                     fontSize: '.7rem',
                     cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     fontWeight: 500,
                     whiteSpace: 'nowrap',
                     transition: 'all .15s',
@@ -492,7 +519,7 @@ export default function ChatWidget({ storeId, isGuest = false }) {
                 border: `1px solid ${c.border}`,
                 borderRadius: 10,
                 fontSize: '.84rem',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-body)',
                 outline: 'none',
                 resize: 'none',
                 background: c.bg,

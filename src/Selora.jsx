@@ -4,7 +4,6 @@ import { useAppContext } from "./lib/AppContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HeroBackground from "./components/HeroBackground";
-import HeroBackgroundShader from "./components/HeroBackgroundShader";
 
 // ─── SVG Icons ───────────────────────────────────────────────────────────────
 function TagIcon({ size = 20, color = 'currentColor' }) {
@@ -78,11 +77,12 @@ const iconMap = {
 const GlobalStyles = () => (
   <style>{`
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow-x: hidden; font-size: 15px; }
-    h1, h2, h3 { font-family: 'Fraunces', serif; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); overflow-x: hidden; font-size: 15px; }
+    h1, h2, h3 { font-family: var(--font-display); }
 
     @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
     @keyframes float  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+    @keyframes heroDrift { from { transform: scale(1); } to { transform: scale(1.05); } }
 
     .au  { animation: fadeUp .65s cubic-bezier(0.16, 1, 0.3, 1) both; }
     .au1 { animation: fadeUp .65s .08s cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -100,6 +100,42 @@ const GlobalStyles = () => (
     }
     .hero-stage { animation: fadeUp .4s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
+    .scroll-cue {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      bottom: 22px; z-index: 2; pointer-events: none;
+      display: flex; flex-direction: column; align-items: center; gap: .5rem;
+      transition: opacity .5s ease;
+    }
+    .scroll-cue-label {
+      font-family: var(--font-body); font-size: .6rem; font-weight: 500;
+      letter-spacing: .22em; text-transform: uppercase; color: var(--muted);
+    }
+    .scroll-cue-line {
+      width: 1px; height: 42px; position: relative; overflow: hidden;
+      background: color-mix(in srgb, var(--muted) 28%, transparent);
+    }
+    .scroll-cue-line::after {
+      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 16px;
+      background: var(--muted);
+      animation: cueDrop 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+    }
+    @keyframes cueDrop {
+      0%   { transform: translateY(-16px); opacity: 0; }
+      25%  { opacity: 1; }
+      100% { transform: translateY(42px); opacity: 0; }
+    }
+
+    .replay-btn {
+      display: inline-flex; align-items: center; gap: .35rem;
+      background: var(--gpale, #EDF3EE); border: 1px solid var(--border);
+      color: var(--g); padding: .28rem .8rem; border-radius: 999px;
+      font-size: .68rem; font-weight: 600; letter-spacing: .04em;
+      font-family: var(--font-body); cursor: pointer;
+      transition: background .2s ease, border-color .2s ease;
+    }
+    .replay-btn:hover { border-color: var(--g); background: color-mix(in srgb, var(--g) 14%, var(--bg-1, #fff)); }
+    .replay-btn:active { transform: translateY(1px); }
+
     .feat-card { background:var(--bg-1,#fff); border:1px solid var(--border); border-radius:14px; padding:2.6rem 2.2rem; transition:border-color 0.2s ease, transform 0.2s ease; position:relative; overflow:hidden; }
     .feat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--g),var(--g2)); opacity:0; transition:opacity .3s; }
     .feat-card:hover { border-color:var(--border-strong); transform:translateY(-2px); }
@@ -111,7 +147,7 @@ const GlobalStyles = () => (
     .price-card { background:var(--bg-1,#fff); border:1px solid var(--border); border-radius:16px; padding:2rem; position:relative; transition:border-color 0.2s ease, transform 0.2s ease; }
     .price-card:hover { border-color:var(--border-strong); transform:translateY(-2px); }
     .price-card.feat { border-color:var(--g); background:linear-gradient(140deg,var(--bg-1,#fff),#F3F8F4); }
-    .price-card.feat::before { content:'Most popular'; position:absolute; top:-11px; left:50%; transform:translateX(-50%); background:var(--g); color:#fff; font-size:.6rem; font-weight:700; letter-spacing:.08em; padding:.28rem .9rem; border-radius:999px; text-transform:uppercase; font-family:'Inter',sans-serif; }
+    .price-card.feat::before { content:'Most popular'; position:absolute; top:-11px; left:50%; transform:translateX(-50%); background:var(--g); color:#fff; font-size:.6rem; font-weight:700; letter-spacing:.08em; padding:.28rem .9rem; border-radius:999px; text-transform:uppercase; font-family:var(--font-body); }
 
     .testi-card { background:var(--bg-1,#fff); border:1px solid var(--border); border-radius:13px; padding:1.6rem; transition:border-color 0.2s ease, transform 0.2s ease; }
     .testi-card:hover { border-color:var(--border-strong); transform:translateY(-2px); }
@@ -148,7 +184,7 @@ const GlobalStyles = () => (
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .au, .au1, .au2, .au3, .au4, .hero-stage, .float, .marquee-track { animation: none; }
+      .au, .au1, .au2, .au3, .au4, .hero-stage, .float, .marquee-track, .scroll-cue-line::after { animation: none; }
     }
   `}</style>
 );
@@ -189,11 +225,11 @@ const PLANS = [
 ];
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
-const Tag   = ({children, center, style}) => <p style={{fontSize:".68rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".14em",color:"var(--g)",marginBottom:".7rem",fontFamily:"Inter,sans-serif",textAlign:center?"center":undefined,...style}}>{children}</p>;
-const Title = ({children, center, style}) => <h2 style={{fontFamily:"Fraunces,serif",fontSize:"clamp(1.6rem,3vw,2.4rem)",fontWeight:500,lineHeight:1.15,letterSpacing:"-.3px",marginBottom:".7rem",color:"var(--dark)",textAlign:center?"center":undefined,...style}}>{children}</h2>;
+const Tag   = ({children, center, style}) => <p style={{fontSize:".68rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".14em",color:"var(--g)",marginBottom:".7rem",fontFamily:'var(--font-body)',textAlign:center?"center":undefined,...style}}>{children}</p>;
+const Title = ({children, center, style}) => <h2 style={{fontFamily:'var(--font-display)',fontSize:"clamp(1.8rem,3.4vw,2.75rem)",fontWeight:400,lineHeight:1.12,letterSpacing:"-.3px",marginBottom:".7rem",color:"var(--dark)",textAlign:center?"center":undefined,...style}}>{children}</h2>;
 const Sub   = ({children, center, style}) => <p style={{fontSize:".9rem",color:"var(--muted)",lineHeight:1.8,fontWeight:300,textAlign:center?"center":undefined,...style}}>{children}</p>;
-const BtnP  = ({children, style, onClick}) => <button onClick={onClick} style={{background:"var(--g)",color:"#fff",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 18px rgba(90,138,103,.28)",transition:"all .2s",...style}}>{children}</button>;
-const BtnS  = ({children, style, onClick}) => <button onClick={onClick} style={{background:"var(--bg-1,#fff)",color:"var(--dark)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,border:"1px solid var(--border)",cursor:"pointer",fontFamily:"Inter,sans-serif",transition:"all .2s",...style}}>{children}</button>;
+const BtnP  = ({children, style, onClick}) => <button onClick={onClick} style={{background:"var(--g)",color:"#fff",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,border:"none",cursor:"pointer",fontFamily:'var(--font-body)',boxShadow:"0 4px 18px rgba(90,138,103,.28)",transition:"all .2s",...style}}>{children}</button>;
+const BtnS  = ({children, style, onClick}) => <button onClick={onClick} style={{background:"var(--bg-1,#fff)",color:"var(--dark)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,border:"1px solid var(--border)",cursor:"pointer",fontFamily:'var(--font-body)',transition:"all .2s",...style}}>{children}</button>;
 
 function Reveal({ children, delay = 0, duration = 600, offset = 16, style = {} }) {
   const [isVisible, setIsVisible] = useState(false);
@@ -237,6 +273,37 @@ const CHECKLIST = ["Material & Fabric", "Style & Silhouette", "Fit & Sizing", "O
 // Result-stage footer, stamped in one item at a time on the master clock.
 const FOOTER_STAMPS = ["Optimized", "Published to store", "2 more queued"];
 
+// Result stage: optional "Before" micro-label over the struck original. The
+// strikethrough carries the read on its own; this flips in one place.
+const RESULT_BEFORE_LABEL = false;
+
+// Product thumbnail inside the card — "what's being optimized", visible in
+// the card itself. Variant-independent: it rides productIdx like everything
+// else, and the 1024px source downscaled to ~64px has no sharpness cost.
+const ProductThumb = ({ example, size = 64 }) => (
+  <img
+    src={example.bgImage}
+    alt=""
+    aria-hidden="true"
+    style={{
+      width: size, height: size, borderRadius: 10, flexShrink: 0,
+      objectFit: "cover", objectPosition: example.bgPos,
+      border: "1px solid var(--border)",
+    }}
+  />
+);
+
+// The original listing, flat on the card's own ground: thumbnail + one run of
+// muted copy, no box. Every stage renders this same row; `dim` fades the whole
+// row as one unit and `struck` adds the line-through once the result has
+// replaced it. The result box is the only boxed element left on the card.
+const OriginalRow = ({ example, dim, struck, compact }) => (
+  <div style={{display:"flex",alignItems:"center",gap:compact?".85rem":"1rem",opacity:dim?.6:1,transition:"opacity .3s"}}>
+    <ProductThumb example={example} size={compact?56:64} />
+    <p style={{fontSize:compact?".82rem":".85rem",color:"var(--muted)",lineHeight:compact?1.6:1.7,fontWeight:300,textDecoration:struck?"line-through":"none"}}>{example.before}</p>
+  </div>
+);
+
 // All demo-card timing lives here. The card is the hero's MASTER CLOCK: every
 // timed change on the hero — including the background layer — is driven by
 // onAdvance from this one timeline. Durations are explicit and additive; no
@@ -254,19 +321,23 @@ const CARD_TIMING = {
 };
 
 // Remounts the cycle per product (and per motion preference) via key, so every
-// cycle starts from clean initial state — no setState-in-effect resets.
+// cycle starts from clean initial state — no setState-in-effect resets. The
+// replay nonce rides the same key: bumping it remounts the cycle for the
+// current product, restarting the master clock from its "before" stage.
 function AIRewriteCard({ productIdx, onAdvance, reducedMotion }) {
+  const [replayNonce, setReplayNonce] = useState(0);
   return (
     <AIRewriteCardCycle
-      key={`${productIdx}-${reducedMotion}`}
+      key={`${productIdx}-${reducedMotion}-${replayNonce}`}
       productIdx={productIdx}
       onAdvance={onAdvance}
+      onReplay={() => setReplayNonce(n => n + 1)}
       reducedMotion={reducedMotion}
     />
   );
 }
 
-function AIRewriteCardCycle({ productIdx, onAdvance, reducedMotion }) {
+function AIRewriteCardCycle({ productIdx, onAdvance, onReplay, reducedMotion }) {
   const example = SHOWCASE_EXAMPLES[productIdx];
   // Reduced motion rests on the finished state from the first render on.
   const [stage, setStage] = useState(reducedMotion ? "result" : "before"); // before | analyzing | result
@@ -323,51 +394,47 @@ function AIRewriteCardCycle({ productIdx, onAdvance, reducedMotion }) {
   }, [productIdx, reducedMotion]);
 
   return (
-    <div style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)",fontFamily:"Inter,sans-serif"}}>
-      {/* Header bar */}
-      <div style={{background:"var(--bg2,#F1F5F1)",borderBottom:"1px solid var(--border)",padding:".75rem 1.1rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <div style={{display:"flex",alignItems:"center",gap:".45rem"}}>
-          {["#f87171","#fbbf24","#4ade80"].map(c => <div key={c} style={{width:9,height:9,borderRadius:"50%",background:c}}/>)}
-          <span style={{marginLeft:".7rem",fontSize:".72rem",color:"var(--muted)",fontWeight:600}}>Selora · Listing Intelligence</span>
-        </div>
-        <div style={{display:"inline-flex",alignItems:"center",background:"var(--gpale,#EDF3EE)",border:"1px solid var(--border)",color:"var(--g)",padding:".28rem .8rem",borderRadius:999,fontSize:".68rem",fontWeight:600,letterSpacing:".04em",fontFamily:"Inter,sans-serif"}}>
+    <div style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)",fontFamily:'var(--font-body)'}}>
+      {/* Header bar — no fake window chrome; the pill is a real replay control */}
+      <div style={{background:"var(--bg2,#F1F5F1)",borderBottom:"1px solid var(--border)",padding:".8rem 1.6rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <span style={{fontSize:".72rem",color:"var(--muted)",fontWeight:600}}>Selora · Listing Intelligence</span>
+        <button type="button" className="replay-btn" onClick={onReplay} aria-label="Replay the demo from this product">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
           Watch it work
-        </div>
+        </button>
       </div>
 
       {/* Stage content */}
-      <div style={{padding:"1.3rem"}}>
+      <div style={{padding:"1.5rem 1.6rem 1.4rem"}}>
         {/* Stage label */}
-        <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:"1rem"}}>
+        <div style={{display:"flex",alignItems:"center",gap:".5rem",marginBottom:"1.25rem"}}>
           <div style={{width:7,height:7,borderRadius:"50%",background:stage==="before"?"var(--muted)":stage==="analyzing"?"#f59e0b":"var(--g)",transition:"background .3s"}}/>
           <span style={{fontSize:".68rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:stage==="before"?"var(--muted)":stage==="analyzing"?"#f59e0b":"var(--g)",transition:"color .3s"}}>
             {stage==="before"?"Original listing":stage==="analyzing"?"AI is analyzing...":"AI-optimized result"}
           </span>
         </div>
 
-        {/* Stage area held at the result stage's natural height (189px measured
-            at the card's 500px width); the other stages are tuned to sit just
-            inside it, so the result leaves no void and stages don't jump. */}
-        <div style={{minHeight:189}}>
+        {/* Stage area held at the tallest stage's natural height (208px
+            measured at the card's 500px width, result stage), so stages
+            don't jump. */}
+        <div style={{minHeight:208}}>
           {/* Before */}
           {stage === "before" && (
-            <div className="hero-stage" style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border)",minHeight:72}}>
-              <p style={{fontSize:".85rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{example.before}</p>
+            <div className="hero-stage">
+              <OriginalRow example={example} />
             </div>
           )}
 
           {/* Analyzing */}
           {stage === "analyzing" && (
             <div className="hero-stage">
-              <div style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border)",marginBottom:".7rem"}}>
-                <p style={{fontSize:".85rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300,opacity:.5}}>{example.before}</p>
-              </div>
+              <OriginalRow example={example} dim />
               {/* Progress bar */}
-              <div style={{height:3,background:"var(--border)",borderRadius:999,marginBottom:".7rem",overflow:"hidden"}}>
+              <div style={{height:3,background:"var(--border)",borderRadius:999,margin:"1.1rem 0 .9rem",overflow:"hidden"}}>
                 <div style={{height:"100%",width:`${progress}%`,background:"linear-gradient(90deg,var(--g),var(--g2))",borderRadius:999,transition:"width .12s linear"}}/>
               </div>
               {/* Checklist */}
-              <div style={{display:"flex",flexDirection:"column",gap:".25rem"}}>
+              <div style={{display:"flex",flexDirection:"column",gap:".3rem"}}>
                 {CHECKLIST.map((item, i) => {
                   const done = i < checkedCount;
                   return (
@@ -383,26 +450,27 @@ function AIRewriteCardCycle({ productIdx, onAdvance, reducedMotion }) {
             </div>
           )}
 
-          {/* Result — original dimmed and struck up top, the optimized copy
-              streaming in the centre, the footer stamping in on the master
-              clock once the stream lands */}
+          {/* Result — the original struck and dimmed on the open ground, the
+              optimized copy streaming into the one boxed element, the footer
+              stamping in as a quiet status line on the master clock */}
           {stage === "result" && (
             <div className="hero-stage">
-              <div style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border)",marginBottom:"1rem"}}>
-                <p style={{fontSize:".85rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300,opacity:.5,textDecoration:"line-through"}}>{example.before}</p>
-              </div>
-              <div style={{background:"var(--gpale,#EDF3EE)",borderRadius:10,padding:"1rem 1.1rem",border:"1px solid var(--border-strong,#C7DACB)",minHeight:72}}>
-                <p style={{fontSize:".88rem",color:"var(--g)",lineHeight:1.7,fontWeight:500}}>
+              {RESULT_BEFORE_LABEL && (
+                <p style={{fontSize:".6rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".12em",color:"var(--muted)",opacity:.7,marginBottom:".55rem"}}>Before</p>
+              )}
+              <OriginalRow example={example} dim struck />
+              <div style={{marginTop:"1.4rem",background:"var(--gpale,#EDF3EE)",borderRadius:10,padding:"1.1rem 1.2rem",border:"1px solid var(--border-strong,#C7DACB)",minHeight:72}}>
+                <p style={{fontSize:".9rem",color:"var(--g)",lineHeight:1.65,fontWeight:500}}>
                   {example.after.slice(0, streamed)}
                   {!streamDone && <span aria-hidden="true" style={{opacity:.6}}>▍</span>}
                 </p>
               </div>
-              <div style={{marginTop:"1rem",display:"flex",alignItems:"center",flexWrap:"wrap",columnGap:".5rem",rowGap:".3rem",fontSize:".68rem",fontWeight:600,minHeight:18}}>
+              <div style={{marginTop:"1.15rem",display:"flex",alignItems:"center",flexWrap:"wrap",columnGap:".55rem",rowGap:".3rem",fontSize:".68rem",fontWeight:500,minHeight:18}}>
                 {FOOTER_STAMPS.map((text, i) => (
                   <span key={text} style={{
                     display:"inline-flex",alignItems:"center",gap:".32rem",
                     color: i === 0 ? "var(--g)" : "var(--muted)",
-                    opacity: stampCount > i ? (i === 0 ? 1 : .85) : 0,
+                    opacity: stampCount > i ? (i === 0 ? .9 : .7) : 0,
                     transform: stampCount > i ? "none" : "scale(1.15)",
                     transition:"opacity .3s ease, transform .3s cubic-bezier(0.16, 1, 0.3, 1)",
                   }}>
@@ -426,28 +494,26 @@ function AIRewriteCardCycle({ productIdx, onAdvance, reducedMotion }) {
 function CompactRewriteCard() {
   const example = SHOWCASE_EXAMPLES[MOBILE_PRODUCT_INDEX];
   return (
-    <div style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:16,overflow:"hidden",boxShadow:"0 14px 44px rgba(90,138,103,.11)",fontFamily:"Inter,sans-serif",width:"100%",maxWidth:440,margin:"0 auto"}}>
-      <div style={{background:"var(--bg2,#F1F5F1)",borderBottom:"1px solid var(--border)",padding:".7rem 1rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+    <div style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:16,overflow:"hidden",boxShadow:"0 14px 44px rgba(90,138,103,.11)",fontFamily:'var(--font-body)',width:"100%",maxWidth:440,margin:"0 auto"}}>
+      <div style={{background:"var(--bg2,#F1F5F1)",borderBottom:"1px solid var(--border)",padding:".7rem 1.25rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <span style={{fontSize:".72rem",color:"var(--muted)",fontWeight:600}}>Selora · Listing Intelligence</span>
         <span style={{display:"inline-flex",alignItems:"center",background:"var(--gpale,#EDF3EE)",border:"1px solid var(--border)",color:"var(--g)",padding:".24rem .7rem",borderRadius:999,fontSize:".66rem",fontWeight:600,letterSpacing:".04em"}}>
           Watch it work
         </span>
       </div>
-      <div style={{padding:"1.1rem"}}>
-        <p style={{fontSize:".64rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"var(--muted)",marginBottom:".45rem"}}>Original listing</p>
-        <div style={{background:"var(--bg2,#F1F5F1)",borderRadius:10,padding:".8rem .9rem",border:"1px solid var(--border)"}}>
-          <p style={{fontSize:".82rem",color:"var(--muted)",lineHeight:1.6,fontWeight:300}}>{example.before}</p>
-        </div>
-        <div style={{display:"flex",justifyContent:"center",padding:".55rem 0",color:"var(--g)"}}>
+      <div style={{padding:"1.25rem 1.25rem 1.15rem"}}>
+        <p style={{fontSize:".64rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"var(--muted)",marginBottom:".6rem"}}>Original listing</p>
+        <OriginalRow example={example} dim struck compact />
+        <div style={{display:"flex",justifyContent:"center",padding:".8rem 0",color:"var(--g)"}}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
         </div>
-        <p style={{fontSize:".64rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"var(--g)",marginBottom:".45rem"}}>AI-optimized</p>
-        <div style={{background:"var(--gpale,#EDF3EE)",borderRadius:10,padding:".8rem .9rem",border:"1px solid var(--border-strong,#C7DACB)"}}>
-          <p style={{fontSize:".85rem",color:"var(--g)",lineHeight:1.6,fontWeight:500}}>{example.after}</p>
-          <div style={{marginTop:".55rem",display:"flex",alignItems:"center",gap:".35rem",fontSize:".64rem",color:"var(--g)",fontWeight:600,opacity:.8}}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            Optimized — ready to publish
-          </div>
+        <p style={{fontSize:".64rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"var(--g)",marginBottom:".6rem"}}>AI-optimized</p>
+        <div style={{background:"var(--gpale,#EDF3EE)",borderRadius:10,padding:".95rem 1rem",border:"1px solid var(--border-strong,#C7DACB)"}}>
+          <p style={{fontSize:".88rem",color:"var(--g)",lineHeight:1.6,fontWeight:500}}>{example.after}</p>
+        </div>
+        <div style={{marginTop:".85rem",display:"flex",alignItems:"center",gap:".35rem",fontSize:".66rem",color:"var(--g)",fontWeight:500,opacity:.8}}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Optimized — ready to publish
         </div>
       </div>
     </div>
@@ -463,9 +529,12 @@ const TRUST_ITEMS = [
   { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>, text: "Cancel anytime" },
 ];
 
-// Hero background bake-off registry. Every variant takes the same props;
-// unknown or absent ?bg= falls back to the photo layer.
-const BG_VARIANTS = { photos: HeroBackground, shader: HeroBackgroundShader };
+// Hero background registry. Photos won the bake-off and the other variants
+// (shader, macro, none) are gone. `scrim` gates the photographic scrim and
+// `cardMax` sizes the demo card. Unknown or absent ?bg= falls back to photos.
+const BG_VARIANTS = {
+  photos: { Layer: HeroBackground, scrim: true, cardMax: 500 },
+};
 
 function Hero() {
   const { user, openAuthModal } = useAppContext();
@@ -480,22 +549,34 @@ function Hero() {
   const bgIndex = isCompact ? 0 : productIdx;
   // Bake-off knob: ?bg= picks the background variant per page load. Read
   // straight off the URL — dev-time comparison state, not routed state.
-  const BgLayer = BG_VARIANTS[new URLSearchParams(window.location.search).get("bg")] || HeroBackground;
+  const variant = BG_VARIANTS[new URLSearchParams(window.location.search).get("bg")] || BG_VARIANTS.photos;
+  const BgLayer = variant.Layer;
+  // Scroll affordance — gone once the visitor starts scrolling, back at top.
+  const [cueGone, setCueGone] = useState(window.scrollY > 24);
+  useEffect(() => {
+    const onScroll = () => setCueGone(window.scrollY > 24);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <section style={{position:"relative",overflow:"hidden",paddingTop:"var(--nav-h, 68px)"}}>
 
-      {/* Swappable background layer — pick with ?bg= (photos default | shader) */}
-      <BgLayer products={bgProducts} activeIndex={bgIndex} reducedMotion={reducedMotion} />
+      {/* Background layer, resolved from BG_VARIANTS. Drift is disabled on
+          compact layouts, which hold a single still frame. */}
+      <BgLayer products={bgProducts} activeIndex={bgIndex} reducedMotion={reducedMotion} drift={!isCompact} />
 
-      {/* Scrim — owned by the hero, not the background variant. Gently
-          directional: densest over the text column, opening toward the card so
-          the product reads as mood and texture on that side. Average density
-          stays ≈ the old uniform 0.76 — direction is the change, not darkness. */}
-      <div style={{
+      {/* Scrim — owned by the hero, not the background variant. Two moves:
+          the 97deg gradient keeps the text column dense and runs ~10% lighter
+          across the card half; the radial mask holds full density over the
+          text block, then opens the bottom third (and the far corners) so the
+          photograph owns the lower field as mood rather than empty ground. */}
+      {variant.scrim && <div style={{
         position:"absolute", inset:0, zIndex:1, pointerEvents:"none",
-        background:"linear-gradient(97deg, color-mix(in srgb, var(--bg2,#EEF4EF) 84%, transparent) 0%, color-mix(in srgb, var(--bg,#F8FAF8) 76%, transparent) 48%, color-mix(in srgb, var(--bg,#F8FAF8) 64%, transparent) 100%)",
-      }}/>
+        background:"linear-gradient(97deg, color-mix(in srgb, var(--bg2,#EEF4EF) 84%, transparent) 0%, color-mix(in srgb, var(--bg,#F8FAF8) 68%, transparent) 48%, color-mix(in srgb, var(--bg,#F8FAF8) 54%, transparent) 100%)",
+        WebkitMaskImage:"radial-gradient(90% 85% at 22% 30%, #000 0%, #000 40%, rgba(0,0,0,.5) 70%, rgba(0,0,0,.22) 100%)",
+        maskImage:"radial-gradient(90% 85% at 22% 30%, #000 0%, #000 40%, rgba(0,0,0,.5) 70%, rgba(0,0,0,.22) 100%)",
+      }}/>}
 
       {/* Exit — fade the hero into ConnectSection's background, no hard band */}
       <div style={{
@@ -510,24 +591,27 @@ function Hero() {
 
       {/* Fills the first viewport: --nav-h padding above + this min-height */}
       <div className="hero-viewport">
-        <div className="hero-grid" style={{width:"100%",maxWidth:1400,margin:"0 auto",padding:"0 2rem",display:"grid",gridTemplateColumns:"1.15fr 1fr",gap:"6rem",alignItems:"center"}}>
+        <div className="hero-grid" style={{width:"100%",maxWidth:1400,margin:"0 auto",padding:"0 2rem",display:"grid",gridTemplateColumns:"1.3fr 1fr",gap:"6rem",alignItems:"center"}}>
 
           {/* Left: single static headline */}
           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-start",justifyContent:"center"}}>
             {/* Eyebrow badge */}
-            <div className="au" style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"var(--bg-1,#fff)",border:"1px solid var(--border)",color:"var(--g)",padding:".35rem 1rem",borderRadius:999,fontSize:".72rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",marginBottom:"1.5rem",boxShadow:"0 2px 10px rgba(90,138,103,.08)",fontFamily:"Inter,sans-serif"}}>
+            <div className="au" style={{display:"inline-flex",alignItems:"center",gap:".45rem",background:"var(--bg-1,#fff)",border:"1px solid var(--border)",color:"var(--g)",padding:".35rem 1rem",borderRadius:999,fontSize:".72rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",marginBottom:"1.5rem",boxShadow:"0 2px 10px rgba(90,138,103,.08)",fontFamily:'var(--font-body)'}}>
               <span style={{display:"inline-block",width:6,height:6,borderRadius:"50%",background:"var(--g)"}}/>
               AI Growth Agent for Fashion
             </div>
             {/* Headline */}
-            {/* Cormorant 400 by design — the display H1 runs lighter than the
-                Fraunces the rest of the page uses; both faces are loaded. */}
-            <h1 className="au1" style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"clamp(1.8rem,4.6vw,3.75rem)",fontWeight:400,lineHeight:1.08,letterSpacing:"-.5px",maxWidth:700,marginBottom:"1.1rem",color:"var(--dark)"}}>
-              Your Fashion Store Grows<br/><em style={{fontStyle:"italic",color:"var(--g)"}}>While You Sleep</em>
+            {/* Cormorant 400 by design — the display face stays light and
+                gets its presence from size, not weight. The clamp's slope is
+                steep on purpose: "Your Fashion Store Grows" must hold one
+                line at every two-column width (>=901px), and the copy column
+                narrows faster than the viewport does. Cap 68px. */}
+            <h1 className="au1" style={{fontFamily:'var(--font-display)',fontSize:"clamp(1.8rem,5vw - .25rem,4.25rem)",fontWeight:400,lineHeight:1.06,letterSpacing:"-1px",maxWidth:760,marginBottom:"1.1rem",color:"var(--dark)"}}>
+              Your Fashion Store Grows<br/><em style={{fontStyle:"italic",fontWeight:400,color:"var(--g)"}}>While You Sleep</em>
             </h1>
             {/* Sub */}
             <p className="au2" style={{fontSize:"1rem",color:"var(--muted)",maxWidth:440,lineHeight:1.8,marginBottom:"1.8rem",fontWeight:300}}>
-              Selora is built exclusively for fashion sellers. It handles pricing, listings, ads, and inventory — automatically, every night.
+              Selora is built only for fashion — it understands seasonality, size grids, and drop timing, not generic retail. Pricing, listings, ads, and inventory, handled the way a merchandiser would.
             </p>
             {/* CTAs */}
             <div className="au3" style={{display:"flex",gap:".9rem",flexWrap:"wrap",marginBottom:"1.5rem"}}>
@@ -552,11 +636,19 @@ function Hero() {
               component keeps timers alive. */}
           {isCompact
             ? <div className="au4"><CompactRewriteCard /></div>
-            : <div className="hero-visual" style={{width:"100%",maxWidth:500,margin:"0 auto"}}>
+            : <div className="hero-visual" style={{width:"100%",maxWidth:variant.cardMax,margin:"0 auto"}}>
                 <AIRewriteCard productIdx={productIdx} onAdvance={setProductIdx} reducedMotion={reducedMotion} />
               </div>
           }
         </div>
+      </div>
+
+      {/* Scroll affordance — a quiet cue into the opened lower field. It sits
+          on the exit fade (var(--bg-1)), so the default palette is correct in
+          every theme. */}
+      <div className="scroll-cue" aria-hidden="true" style={{opacity: cueGone ? 0 : 1}}>
+        <span className="scroll-cue-label">Scroll</span>
+        <span className="scroll-cue-line"/>
       </div>
     </section>
   );
@@ -627,7 +719,7 @@ function Features() {
             <Reveal key={f.title} delay={idx * 70} style={{height:"100%"}}>
               <div className="feat-card" style={{height:"100%"}}>
                 <div style={{width:38,height:38,background:"var(--gpale,#EDF3EE)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:"1rem"}}>{iconMap[f.icon]}</div>
-                <h3 style={{fontSize:".9rem",fontWeight:600,marginBottom:".4rem",color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{f.title}</h3>
+                <h3 style={{fontSize:".9rem",fontWeight:600,marginBottom:".4rem",color:"var(--dark)",fontFamily:'var(--font-body)'}}>{f.title}</h3>
                 <p style={{fontSize:".79rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{f.desc}</p>
               </div>
             </Reveal>
@@ -723,7 +815,7 @@ function Dashboard() {
           {["#f87171","#fbbf24","#4ade80"].map(c => <div key={c} style={{width:9,height:9,borderRadius:"50%",background:c}}/>)}
           <span style={{marginLeft:".7rem",fontSize:".72rem",color:"var(--muted)",fontWeight:600}}>Selora · Fashion Dashboard</span>
         </div>
-        <div style={{display:"inline-flex",alignItems:"center",background:"var(--gpale)",border:"1px solid var(--border)",color:"var(--g)",padding:".35rem 1rem",borderRadius:999,fontSize:".75rem",fontWeight:600,letterSpacing:".05em",fontFamily:"Inter,sans-serif"}}>
+        <div style={{display:"inline-flex",alignItems:"center",background:"var(--gpale)",border:"1px solid var(--border)",color:"var(--g)",padding:".35rem 1rem",borderRadius:999,fontSize:".75rem",fontWeight:600,letterSpacing:".05em",fontFamily:'var(--font-body)'}}>
           Demo data
         </div>
       </div>
@@ -737,7 +829,7 @@ function Dashboard() {
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:".7rem",marginBottom:"1.1rem"}}>
             {metrics.map(({v,l,c}) => (
               <div key={l} style={{background:"var(--bg2)",borderRadius:9,padding:".85rem",border:"1px solid var(--border)"}}>
-                <div style={{fontSize:"1.25rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",letterSpacing:"-.3px"}}>{v}</div>
+                <div style={{fontSize:"1.4rem",fontWeight:500,color:"var(--dark)",fontFamily:'var(--font-display)',letterSpacing:"-.3px"}}>{v}</div>
                 <div style={{fontSize:".62rem",color:"var(--muted)",marginTop:".15rem",textTransform:"uppercase",letterSpacing:".05em"}}>{l}</div>
                 <div style={{fontSize:".65rem",color:"var(--g)",fontWeight:600,marginTop:".25rem"}}>{c}</div>
               </div>
@@ -779,7 +871,7 @@ function HowItWorks() {
                 <div className="step-line">
                   <div style={{width:30,height:30,minWidth:30,background:"var(--g)",color:"#fff",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".72rem",fontWeight:700}}>{i+1}</div>
                   <div>
-                    <h4 style={{fontSize:".88rem",fontWeight:600,marginBottom:".3rem",color:"var(--dark)",fontFamily:"Inter,sans-serif"}}>{step.title}</h4>
+                    <h4 style={{fontSize:".88rem",fontWeight:600,marginBottom:".3rem",color:"var(--dark)",fontFamily:'var(--font-body)'}}>{step.title}</h4>
                     <p style={{fontSize:".79rem",color:"var(--muted)",lineHeight:1.7,fontWeight:300}}>{step.desc}</p>
                   </div>
                 </div>
@@ -814,13 +906,13 @@ function Pricing() {
               <Reveal key={plan.name} delay={idx * 80} style={{height:"100%"}}>
                 <div className={`price-card${plan.feat?" feat":""}`} style={{height:"100%",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
                   <div>
-                    <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:plan.feat?"rgba(26,39,28,.5)":"var(--muted)",marginBottom:".8rem",fontFamily:"Inter,sans-serif"}}>{plan.name}</div>
+                    <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",color:plan.feat?"rgba(26,39,28,.5)":"var(--muted)",marginBottom:".8rem",fontFamily:'var(--font-body)'}}>{plan.name}</div>
                     {plan.price === "0" ? (
-                      <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>Free</div>
+                      <div style={{fontSize:"2.9rem",fontWeight:500,color:"var(--dark)",fontFamily:'var(--font-display)',fontVariantNumeric:"lining-nums",lineHeight:1,letterSpacing:"-.5px"}}>Free</div>
                     ) : (
-                      <div style={{fontSize:"2.5rem",fontWeight:600,color:"var(--dark)",fontFamily:"Fraunces,serif",lineHeight:1,letterSpacing:"-.5px"}}>
+                      <div style={{fontSize:"2.9rem",fontWeight:500,color:"var(--dark)",fontFamily:'var(--font-display)',fontVariantNumeric:"lining-nums",lineHeight:1,letterSpacing:"-.5px"}}>
                         <sup style={{fontSize:"1rem",verticalAlign:"super",color:"var(--g)"}}>$</sup>{plan.price}
-                        <span style={{fontSize:".8rem",color:"var(--muted)",fontWeight:400,fontFamily:"Inter,sans-serif"}}>/mo</span>
+                        <span style={{fontSize:".8rem",color:"var(--muted)",fontWeight:400,fontFamily:'var(--font-body)'}}>/mo</span>
                       </div>
                     )}
                     <p style={{fontSize:".78rem",color:"var(--muted)",margin:".65rem 0 1.2rem",fontWeight:300,lineHeight:1.6}}>{plan.desc}</p>
@@ -833,10 +925,10 @@ function Pricing() {
                     </ul>
                   </div>
                   {linkTarget
-                    ? <Link to={linkTarget} style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",textDecoration:"none",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff",border:"1px solid var(--g)"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"}),boxSizing:'border-box'}}>
+                    ? <Link to={linkTarget} style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:'var(--font-body)',textAlign:"center",textDecoration:"none",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff",border:"1px solid var(--g)"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"}),boxSizing:'border-box'}}>
                         {plan.cta}
                       </Link>
-                    : <button onClick={() => openAuthModal(plan.slug === 'free' ? 'signup' : 'signup', plan.slug === 'free' ? null : plan.slug)} style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:"Inter,sans-serif",textAlign:"center",border:"none",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"}),boxSizing:'border-box'}}>
+                    : <button onClick={() => openAuthModal(plan.slug === 'free' ? 'signup' : 'signup', plan.slug === 'free' ? null : plan.slug)} style={{display:"block",width:"100%",padding:".72rem",borderRadius:8,fontWeight:600,fontSize:".82rem",cursor:"pointer",fontFamily:'var(--font-body)',textAlign:"center",border:"none",transition:"all .2s",...(plan.feat?{background:"var(--g)",color:"#fff"}:{background:"transparent",color:"var(--dark)",border:"1px solid var(--border)"}),boxSizing:'border-box'}}>
                         {plan.cta}
                       </button>
                   }
@@ -913,8 +1005,8 @@ function Testimonial() {
         >
           <div style={{color: "var(--testimonial-stars)", fontSize: ".85rem", marginBottom: ".9rem", letterSpacing: 3}}>★★★★★</div>
           <blockquote style={{
-            fontFamily: "Fraunces,serif",
-            fontSize: "clamp(1rem,1.8vw,1.4rem)",
+            fontFamily: 'var(--font-display)',
+            fontSize: "clamp(1.15rem,2vw,1.6rem)",
             fontWeight: 400, fontStyle: "italic",
             lineHeight: 1.55, letterSpacing: "-.15px",
             color: "var(--dark)", marginBottom: "1.3rem",
@@ -922,7 +1014,7 @@ function Testimonial() {
           }}>
             "{t.quote}"
           </blockquote>
-          <div style={{fontSize: ".72rem", color: "var(--muted)", fontFamily: "Inter,sans-serif", fontWeight: 300, letterSpacing: ".04em"}}>
+          <div style={{fontSize: ".72rem", color: "var(--muted)", fontFamily: 'var(--font-body)', fontWeight: 300, letterSpacing: ".04em"}}>
             — {t.author}
           </div>
         </div>
@@ -1013,7 +1105,7 @@ function WooCommerceLogo() {
 function AmazonLogo() {
   return (
     <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', marginRight: '10px', height: '18px', justifyContent: 'center', flexShrink: 0 }}>
-      <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: '0.92rem', color: 'var(--dark)', letterSpacing: '-0.3px', lineHeight: 1 }}>
+      <span style={{ fontFamily: 'var(--font-body)', fontWeight: 900, fontSize: '0.92rem', color: 'var(--dark)', letterSpacing: '-0.3px', lineHeight: 1 }}>
         a
       </span>
       <svg width="12" height="4" viewBox="0 0 12 4" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginTop: '-2px' }}>
@@ -1025,7 +1117,7 @@ function AmazonLogo() {
 
 function EtsyLogo() {
   return (
-    <span style={{ fontFamily: '"Georgia", serif', fontSize: '1.05rem', fontWeight: 'bold', color: '#D5641C', marginRight: '10px', flexShrink: 0 }}>
+    <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', fontWeight: 'bold', color: '#D5641C', marginRight: '10px', flexShrink: 0 }}>
       E
     </span>
   );
@@ -1118,10 +1210,10 @@ function ConnectSection() {
         
         {/* Centered Heading */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <span style={{ fontSize: ".78rem", fontWeight: 700, color: "var(--g)", textTransform: "uppercase", letterSpacing: ".1em", display: "block", fontFamily: "Inter,sans-serif", marginBottom: "0.4rem" }}>
+          <span style={{ fontSize: ".78rem", fontWeight: 700, color: "var(--g)", textTransform: "uppercase", letterSpacing: ".1em", display: "block", fontFamily: 'var(--font-body)', marginBottom: "0.4rem" }}>
             SETUP & INTEGRATIONS
           </span>
-          <h2 style={{ fontFamily: "Fraunces,serif", fontSize: "clamp(1.4rem, 4vw, 2.1rem)", fontWeight: 500, color: "var(--dark)", lineHeight: 1.2, letterSpacing: "-.3px" }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: "clamp(1.6rem, 4vw, 2.4rem)", fontWeight: 400, color: "var(--dark)", lineHeight: 1.2, letterSpacing: "-.3px" }}>
             Trusted by Fashion Sellers Worldwide
           </h2>
         </div>
@@ -1143,7 +1235,7 @@ function ConnectSection() {
                 <>
                   <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
                     {card.icon}
-                    <span style={{ fontWeight: 600, fontSize: "1.05rem", color: isStandout ? "var(--g)" : "var(--dark)", fontFamily: "Inter, sans-serif" }}>
+                    <span style={{ fontWeight: 600, fontSize: "1.05rem", color: isStandout ? "var(--g)" : "var(--dark)", fontFamily: 'var(--font-body)' }}>
                       {card.title}
                     </span>
                   </div>
@@ -1207,7 +1299,7 @@ function ConnectSection() {
           flexWrap: "wrap",
           fontSize: "0.85rem",
           color: "var(--muted)",
-          fontFamily: "Inter, sans-serif",
+          fontFamily: 'var(--font-body)',
           marginTop: "2.5rem",
           borderTop: "1px solid var(--border)",
           paddingTop: "1.5rem"
@@ -1257,7 +1349,7 @@ function CTA() {
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 70% 60% at 50% 50%,rgba(90,138,103,.12),transparent)",pointerEvents:"none"}}/>
       <div style={{maxWidth:1400,margin:"0 auto",padding:"3.5rem 2rem",position:"relative",textAlign:"center"}}>
         <Tag center style={{color:"#86EFAC"}}>Start Growing Today</Tag>
-        <h2 style={{fontFamily:"Fraunces,serif",fontSize:"clamp(1.6rem,4vw,3rem)",fontWeight:500,color:"#fff",margin:".5rem 0 1rem",lineHeight:1.15,letterSpacing:"-.3px"}}>
+        <h2 style={{fontFamily:'var(--font-display)',fontSize:"clamp(1.8rem,4.5vw,3.4rem)",fontWeight:400,color:"#fff",margin:".5rem 0 1rem",lineHeight:1.15,letterSpacing:"-.3px"}}>
           Every night, Selora works.<br/>
           <em style={{color:"#86EFAC",fontStyle:"italic"}}>Every morning, your collection grows.</em>
         </h2>
@@ -1266,14 +1358,14 @@ function CTA() {
         </p>
         <div style={{display:"flex",gap:"1rem",justifyContent:"center",flexWrap:"wrap"}}>
           {user
-            ? <Link to="/dashboard" style={{background:"#86EFAC",color:"#1A271C",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,textDecoration:"none",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>
+            ? <Link to="/dashboard" style={{background:"#86EFAC",color:"#1A271C",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,textDecoration:"none",fontFamily:'var(--font-body)',boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>
                 Go to Dashboard →
               </Link>
-            : <button onClick={() => openAuthModal('signup')} style={{background:"#86EFAC",color:"#1A271C",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>
+            : <button onClick={() => openAuthModal('signup')} style={{background:"#86EFAC",color:"#1A271C",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,border:"none",cursor:"pointer",fontFamily:'var(--font-body)',boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>
                 Start Growing for Free →
               </button>
           }
-          <Link to="/demo" style={{background:"transparent",color:"rgba(255,255,255,.6)",border:"1px solid rgba(255,255,255,.18)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,textDecoration:"none",fontFamily:"Inter,sans-serif"}}>
+          <Link to="/demo" style={{background:"transparent",color:"rgba(255,255,255,.6)",border:"1px solid rgba(255,255,255,.18)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,textDecoration:"none",fontFamily:'var(--font-body)'}}>
             Book a Demo
           </Link>
         </div>

@@ -77,7 +77,7 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <Link to="/" style={{ textDecoration: "none" }}>
-              <div style={{ fontFamily: "Inter,sans-serif", fontSize: "1.1rem", fontWeight: 700, letterSpacing: "-.3px", color: "var(--dark)", marginBottom: ".7rem" }}>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: "1.1rem", fontWeight: 700, letterSpacing: "-.3px", color: "var(--dark)", marginBottom: ".7rem" }}>
                 Se<span style={{ color: "var(--g)" }}>lo</span>ra
               </div>
             </Link>
@@ -88,7 +88,7 @@ export default function Footer() {
           {/* Nav columns */}
           {FOOTER_COLS.map(col => (
             <div key={col.heading}>
-              <div style={{ fontSize: ".68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "var(--text)", marginBottom: ".9rem", fontFamily: "Inter,sans-serif" }}>{col.heading}</div>
+              <div style={{ fontSize: ".68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "var(--text)", marginBottom: ".9rem", fontFamily: 'var(--font-body)' }}>{col.heading}</div>
               <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: ".55rem", padding: 0, margin: 0 }}>
                 {col.links.map(lk => (
                   <li key={lk.label}>
@@ -103,7 +103,7 @@ export default function Footer() {
           ))}
           {/* Newsletter */}
           <div>
-            <div style={{ fontSize: ".68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "var(--text)", marginBottom: ".9rem", fontFamily: "Inter,sans-serif" }}>Stay Updated</div>
+            <div style={{ fontSize: ".68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "var(--text)", marginBottom: ".9rem", fontFamily: 'var(--font-body)' }}>Stay Updated</div>
             <p style={{ fontSize: ".75rem", color: "var(--muted)", marginBottom: ".9rem", lineHeight: 1.6, fontWeight: 300 }}>Growth tips, feature releases, and fashion seller stories.</p>
             {subState === 'success' ? (
               <div style={{ background: "var(--gpale,#EDF3EE)", border: "1px solid var(--border-strong)", borderRadius: 8, padding: ".75rem 1rem", fontSize: ".78rem", color: "var(--g)", fontWeight: 500 }}>
@@ -118,10 +118,10 @@ export default function Footer() {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   disabled={subState === 'loading'}
-                  style={{ padding: ".7rem .9rem", borderRadius: 8, border: "1px solid var(--border)", fontSize: ".8rem", fontFamily: "Inter,sans-serif", background: "var(--bg,#F8FAF8)", color: "var(--dark)", outline: "none", width: "100%", boxSizing: "border-box" }}
+                  style={{ padding: ".7rem .9rem", borderRadius: 8, border: "1px solid var(--border)", fontSize: ".8rem", fontFamily: 'var(--font-body)', background: "var(--bg,#F8FAF8)", color: "var(--dark)", outline: "none", width: "100%", boxSizing: "border-box" }}
                 />
                 <button type="submit" disabled={subState === 'loading'}
-                  style={{ padding: ".65rem", borderRadius: 8, background: "var(--g)", color: "#fff", border: "none", fontSize: ".8rem", fontWeight: 600, cursor: "pointer", fontFamily: "Inter,sans-serif", transition: "opacity .2s", opacity: subState === 'loading' ? 0.7 : 1 }}>
+                  style={{ padding: ".65rem", borderRadius: 8, background: "var(--g)", color: "#fff", border: "none", fontSize: ".8rem", fontWeight: 600, cursor: "pointer", fontFamily: 'var(--font-body)', transition: "opacity .2s", opacity: subState === 'loading' ? 0.7 : 1 }}>
                   {subState === 'loading' ? "Subscribing…" : "Subscribe"}
                 </button>
                 {subState === 'error' && <p style={{ fontSize: ".72rem", color: "#C97168", margin: 0 }}>Something went wrong — try again.</p>}

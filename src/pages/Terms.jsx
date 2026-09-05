@@ -5,11 +5,11 @@ import Footer from '../components/Footer'
 export default function Terms() {
     const [darkMode, toggleTheme] = useDarkMode()
     return (
-        <div className="landing-page" style={{ background: "var(--bg)", minHeight: "100vh", fontFamily: "Inter, sans-serif", color: "var(--text)" }}>
+        <div className="landing-page" style={{ background: "var(--bg)", minHeight: "100vh", fontFamily: 'var(--font-body)', color: "var(--text)" }}>
 
             {/* NAV */}
             <nav style={{ background: "var(--nav-bg)", borderBottom: "1px solid var(--border)", padding: "1rem 3.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, backdropFilter: 'blur(14px)' }}>
-                <Link to="/" style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--dark)", textDecoration: "none", fontFamily: "Inter, sans-serif" }}>
+                <Link to="/" style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--dark)", textDecoration: "none", fontFamily: 'var(--font-body)' }}>
                     Se<span style={{ color: "var(--g)" }}>lo</span>ra
                 </Link>
                 <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
@@ -43,7 +43,7 @@ export default function Terms() {
                 {/* Header */}
                 <div style={{ marginBottom: "3rem", paddingBottom: "2rem", borderBottom: "1px solid var(--border)" }}>
                     <p style={{ fontSize: ".72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".14em", color: "var(--g)", marginBottom: ".6rem" }}>Legal</p>
-                    <h1 style={{ fontFamily: "Fraunces, serif", fontSize: "2.4rem", fontWeight: 500, color: "var(--dark)", letterSpacing: "-.3px", marginBottom: ".8rem" }}>Terms of Service</h1>
+                    <h1 style={{ fontFamily: 'var(--font-display)', fontSize: "2.4rem", fontWeight: 500, color: "var(--dark)", letterSpacing: "-.3px", marginBottom: ".8rem" }}>Terms of Service</h1>
                     <p style={{ fontSize: ".85rem", color: "var(--text-muted)", fontWeight: 300 }}>Last updated: January 1, 2025 &nbsp;·&nbsp; Effective: January 1, 2025</p>
                 </div>
 
@@ -184,13 +184,13 @@ export default function Terms() {
 function Section({ title, children, last }) {
     return (
         <div style={{ marginBottom: last ? 0 : "2.5rem", paddingBottom: last ? 0 : "2.5rem", borderBottom: last ? "none" : "1px solid var(--border)" }}>
-            <h2 style={{ fontFamily: "Fraunces, serif", fontSize: "1.2rem", fontWeight: 500, color: "var(--dark)", marginBottom: "1rem", letterSpacing: "-.2px" }}>{title}</h2>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: "1.2rem", fontWeight: 500, color: "var(--dark)", marginBottom: "1rem", letterSpacing: "-.2px" }}>{title}</h2>
             {children}
         </div>
     );
 }
 function SubTitle({ children }) {
-    return <h3 style={{ fontSize: ".88rem", fontWeight: 600, color: "var(--text)", margin: "1.2rem 0 .5rem", fontFamily: "Inter, sans-serif" }}>{children}</h3>;
+    return <h3 style={{ fontSize: ".88rem", fontWeight: 600, color: "var(--text)", margin: "1.2rem 0 .5rem", fontFamily: 'var(--font-body)' }}>{children}</h3>;
 }
 function P({ children }) {
     return <p style={{ fontSize: ".86rem", color: "var(--text-secondary)", lineHeight: 1.85, fontWeight: 300, marginBottom: ".8rem" }}>{children}</p>;

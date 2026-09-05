@@ -13,18 +13,18 @@ const c = {
 const s = {
   body:    { maxWidth: 1200, margin: '0 auto' },
   header:  { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' },
-  h1:      { fontFamily: 'Fraunces, serif', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px' },
+  h1:      { fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px' },
   card:    { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' },
   th:      { padding: '.85rem 1.2rem', fontSize: '.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: c.muted, background: c.bg2, borderBottom: `1px solid ${c.border}`, textAlign: 'left', whiteSpace: 'nowrap' },
   td:      { padding: '.95rem 1.2rem', fontSize: '.84rem', color: c.dark, borderBottom: `1px solid ${c.border}`, verticalAlign: 'middle' },
   badge:   (color) => ({ fontSize: '.62rem', fontWeight: 700, padding: '.2rem .6rem', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '.06em', ...color }),
   pill:    { display: 'inline-block', padding: '.18rem .6rem', borderRadius: 6, fontSize: '.72rem', fontWeight: 600 },
-  btnP:    { background: c.green, color: '#fff', border: 'none', padding: '.6rem 1.2rem', borderRadius: 8, fontSize: '.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', textDecoration: 'none', display: 'inline-block' },
-  search:  { padding: '.65rem 1rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.88rem', fontFamily: 'Inter, sans-serif', outline: 'none', background: c.bg, width: 240, color: c.dark },
-  select:  { padding: '.65rem 1rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.85rem', fontFamily: 'Inter, sans-serif', outline: 'none', background: c.bg, color: c.dark, cursor: 'pointer' },
+  btnP:    { background: c.green, color: '#fff', border: 'none', padding: '.6rem 1.2rem', borderRadius: 8, fontSize: '.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', textDecoration: 'none', display: 'inline-block' },
+  search:  { padding: '.65rem 1rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.88rem', fontFamily: 'var(--font-body)', outline: 'none', background: c.bg, width: 240, color: c.dark },
+  select:  { padding: '.65rem 1rem', border: `1px solid ${c.border}`, borderRadius: 8, fontSize: '.85rem', fontFamily: 'var(--font-body)', outline: 'none', background: c.bg, color: c.dark, cursor: 'pointer' },
   empty:   { textAlign: 'center', padding: '4rem 1rem', color: c.muted, fontSize: '.9rem', fontWeight: 300 },
   stat:    { background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: '1.2rem 1.6rem' },
-  statVal: { fontFamily: 'Fraunces, serif', fontSize: '1.6rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px' },
+  statVal: { fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px' },
   statLbl: { fontSize: '.65rem', color: c.muted, textTransform: 'uppercase', letterSpacing: '.08em', marginTop: '.2rem' },
 }
 
@@ -84,7 +84,7 @@ export default function Products() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: c.bg, fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: c.bg, fontFamily: 'var(--font-body)' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '2.5rem 2rem 5rem' }}>
 
         {/* HEADER */}

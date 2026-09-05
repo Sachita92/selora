@@ -42,7 +42,7 @@ function SyncingSpinner({ label = 'Reconnecting\u2026' }) {
     <div style={{
       position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: '1rem',
-      background: 'var(--bg, #F8FAF8)', fontFamily: 'Inter, sans-serif', zIndex: 9999,
+      background: 'var(--bg, #F8FAF8)', fontFamily: 'var(--font-body)', zIndex: 9999,
     }}>
       <style>{`
         @keyframes _pr-spin { to { transform: rotate(360deg) } }
@@ -99,7 +99,7 @@ function ProtectedRoute({ children }) {
       <div style={{
         position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: '1rem',
-        background: 'var(--bg, #F8FAF8)', fontFamily: 'Inter, sans-serif', padding: '2rem', textAlign: 'center'
+        background: 'var(--bg, #F8FAF8)', fontFamily: 'var(--font-body)', padding: '2rem', textAlign: 'center'
       }}>
         <p style={{ margin: 0, fontSize: '1rem', color: '#DC2626', fontWeight: 600 }}>
           Wallet service took too long to load.

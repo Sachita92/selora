@@ -172,7 +172,7 @@ export default function PricingPage() {
   }, [user, navigate, checkoutPlan])
 
   return (
-    <div className="landing-page" style={{fontFamily:'Inter, sans-serif', background:c.bg, minHeight:'100vh', color:c.text}}>
+    <div className="landing-page" style={{fontFamily:'var(--font-body)', background:c.bg, minHeight:'100vh', color:c.text}}>
       <style>{`
         @keyframes pricingSlideUp {
           from { opacity: 0; transform: translateY(15px); }
@@ -193,7 +193,7 @@ export default function PricingPage() {
           color: var(--text-primary);
           transition: all 0.2s ease;
           outline: none;
-          font-family: 'Inter', sans-serif;
+          font-family: var(--font-body);
         }
         .checkout-input:focus {
           border-color: var(--g);
@@ -209,7 +209,7 @@ export default function PricingPage() {
           color: var(--text-primary);
           transition: all 0.2s ease;
           outline: none;
-          font-family: 'Inter', sans-serif;
+          font-family: var(--font-body);
           appearance: none;
           background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237B907D' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
           background-repeat: no-repeat;
@@ -231,7 +231,7 @@ export default function PricingPage() {
             {/* HERO TEXT */}
             <div style={{textAlign:'center', marginBottom:'1.8rem'}}>
               <div style={{maxWidth: '640px', width: '100%', margin: '0 auto'}}>
-                <h1 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.5rem,3.2vw,2.5rem)',fontWeight:500,lineHeight:1.15,letterSpacing:'-.3px',color:c.dark,margin:'0 0 .8rem'}}>
+                <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.5rem,3.2vw,2.5rem)',fontWeight:500,lineHeight:1.15,letterSpacing:'-.3px',color:c.dark,margin:'0 0 .8rem'}}>
                   Grow your collection, <em style={{fontStyle:'italic',color:c.g}}>pay as you scale</em>
                 </h1>
                 <p style={{fontSize:'.88rem',color:c.muted,lineHeight:1.8,fontWeight:300,margin:0}}>
@@ -249,7 +249,7 @@ export default function PricingPage() {
                   background: billingPeriod === 'monthly' ? 'var(--bg2)' : 'transparent',
                   color: billingPeriod === 'monthly' ? c.dark : c.muted,
                   border: 'none', borderRadius: 16, padding: '.4rem 1.2rem', fontSize: '.78rem',
-                  fontWeight: 600, cursor: 'pointer', transition: 'all .25s', fontFamily: 'Inter,sans-serif'
+                  fontWeight: 600, cursor: 'pointer', transition: 'all .25s', fontFamily: 'var(--font-body)'
                 }}
               >
                 Monthly
@@ -260,7 +260,7 @@ export default function PricingPage() {
                   background: billingPeriod === 'annual' ? 'var(--bg2)' : 'transparent',
                   color: billingPeriod === 'annual' ? c.dark : c.muted,
                   border: 'none', borderRadius: 16, padding: '.4rem 1.2rem', fontSize: '.78rem',
-                  fontWeight: 600, cursor: 'pointer', transition: 'all .25s', fontFamily: 'Inter,sans-serif',
+                  fontWeight: 600, cursor: 'pointer', transition: 'all .25s', fontFamily: 'var(--font-body)',
                   display: 'flex', alignItems: 'center', gap: '.4rem'
                 }}
               >
@@ -297,7 +297,7 @@ export default function PricingPage() {
                       position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
                       background: c.g, color: '#fff', fontSize: '.68rem', fontWeight: 700,
                       textTransform: 'uppercase', letterSpacing: '.08em', padding: '.3rem .9rem',
-                      borderRadius: 999, fontFamily: 'Inter,sans-serif'
+                      borderRadius: 999, fontFamily: 'var(--font-body)'
                     }}>
                       Most Popular
                     </div>
@@ -306,7 +306,7 @@ export default function PricingPage() {
                   <div style={{fontSize:'.82rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'.1em',color:plan.feat ? c.g : c.muted,marginBottom:'.6rem'}}>{plan.name}</div>
                   
                   <div style={{display:'flex',alignItems:'baseline',marginBottom:'.8rem'}}>
-                    <span style={{fontFamily:'Fraunces,serif',fontSize:'2.8rem',fontWeight:500,color:c.dark,letterSpacing:'-1px'}}>
+                    <span style={{fontFamily:'var(--font-display)',fontSize:'2.8rem',fontWeight:500,color:c.dark,letterSpacing:'-1px'}}>
                       {displayedPrice === 'Free' ? 'Free' : `$${displayedPrice}`}
                     </span>
                     {displayedPrice !== 'Free' && (
@@ -334,7 +334,7 @@ export default function PricingPage() {
                       display: 'block', width: '100%', padding: '.8rem', borderRadius: 8,
                       fontWeight: 600, fontSize: '.85rem', 
                       cursor: (isCurrentPlan || checkoutLoading !== null) ? 'not-allowed' : 'pointer', 
-                      fontFamily: 'Inter,sans-serif', textAlign: 'center', transition: 'all .25s',
+                      fontFamily: 'var(--font-body)', textAlign: 'center', transition: 'all .25s',
                       background: isCurrentPlan ? 'var(--bg-2)' : (plan.feat ? c.g : 'transparent'),
                       color: isCurrentPlan ? 'var(--text-muted)' : (plan.feat ? '#fff' : c.dark),
                       border: isCurrentPlan ? '1px solid var(--border)' : (plan.feat ? `1px solid ${c.g}` : `1px solid ${c.border}`),
@@ -363,7 +363,7 @@ export default function PricingPage() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-                fontFamily: 'Inter,sans-serif',
+                fontFamily: 'var(--font-body)',
                 outline: 'none',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -436,7 +436,7 @@ export default function PricingPage() {
           <div className="site-page-container">
             <div style={{textAlign: 'center', marginBottom: '3rem'}}>
               <p style={{fontSize:'.68rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'.14em',color:c.g,marginBottom:'.7rem'}}>Questions</p>
-              <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.35rem,3vw,2.2rem)',fontWeight:500,color:c.dark,letterSpacing:'-.3px'}}>Pricing FAQ</h2>
+              <h2 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.35rem,3vw,2.2rem)',fontWeight:500,color:c.dark,letterSpacing:'-.3px'}}>Pricing FAQ</h2>
             </div>
             <div className="site-faq-grid">
               {FAQS.map((faq, i) => {
@@ -466,7 +466,7 @@ export default function PricingPage() {
                         justifyContent: 'space-between',
                         cursor: 'pointer',
                         color: c.dark,
-                        fontFamily: 'Inter,sans-serif',
+                        fontFamily: 'var(--font-body)',
                         outline: 'none'
                       }}
                     >
@@ -513,7 +513,7 @@ export default function PricingPage() {
           <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 70% 60% at 50% 50%,rgba(90,138,103,.12),transparent)',pointerEvents:'none'}} />
           <div style={{position:'relative'}}>
             <p style={{fontSize:'.68rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'.14em',color:'#86EFAC',marginBottom:'.7rem'}}>Ready to start?</p>
-            <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.5rem,3.5vw,2.8rem)',fontWeight:500,color:'#fff',marginBottom:'1rem',lineHeight:1.15,letterSpacing:'-.3px'}}>
+            <h2 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.5rem,3.5vw,2.8rem)',fontWeight:500,color:'#fff',marginBottom:'1rem',lineHeight:1.15,letterSpacing:'-.3px'}}>
               Set up Selora and watch your <em style={{color:'#86EFAC',fontStyle:'italic'}}>collection grow</em>
             </h2>
             <p style={{color:'rgba(255,255,255,.4)',fontSize:'.9rem',marginBottom:'2.2rem',fontWeight:300,lineHeight:1.7}}>
@@ -521,10 +521,10 @@ export default function PricingPage() {
             </p>
             <div style={{display:'flex',gap:'1rem',justifyContent:'center',flexWrap:'wrap'}}>
               {user
-                ? <Link to="/dashboard" style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif',boxShadow:'0 4px 20px rgba(134,239,172,.2)'}}>Go to Dashboard →</Link>
-                : <button onClick={() => openAuthModal('signup')} style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,border:'none',cursor:'pointer',fontFamily:'Inter,sans-serif',boxShadow:'0 4px 20px rgba(134,239,172,.2)'}}>Get Started Free →</button>
+                ? <Link to="/dashboard" style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,textDecoration:'none',fontFamily:'var(--font-body)',boxShadow:'0 4px 20px rgba(134,239,172,.2)'}}>Go to Dashboard →</Link>
+                : <button onClick={() => openAuthModal('signup')} style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,border:'none',cursor:'pointer',fontFamily:'var(--font-body)',boxShadow:'0 4px 20px rgba(134,239,172,.2)'}}>Get Started Free →</button>
               }
-              <Link to="/demo" style={{background:'transparent',color:'rgba(255,255,255,.6)',border:'1px solid rgba(255,255,255,.18)',padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:500,textDecoration:'none',fontFamily:'Inter,sans-serif'}}>
+              <Link to="/demo" style={{background:'transparent',color:'rgba(255,255,255,.6)',border:'1px solid rgba(255,255,255,.18)',padding:'.8rem 2rem',borderRadius:8,fontSize:'.92rem',fontWeight:500,textDecoration:'none',fontFamily:'var(--font-body)'}}>
                 Book a Demo
               </Link>
             </div>
@@ -886,7 +886,7 @@ function CheckoutForm({ onClose, priceAmount, billingPeriod, planName, clientSec
     style: {
       base: {
         color: textColor,
-        fontFamily: 'Inter, sans-serif',
+        fontFamily: 'var(--font-body)',
         fontSize: '15px',
         '::placeholder': {
           color: mutedColor,
@@ -919,7 +919,7 @@ function CheckoutForm({ onClose, priceAmount, billingPeriod, planName, clientSec
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.8rem', justifyContent: 'center' }}>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', borderBottom: '1px solid var(--border)', paddingBottom: '.8rem' }}>
-          <h3 style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.15rem', fontWeight: 500, color: 'var(--dark)' }}>Secure Card Payment</h3>
+          <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 500, color: 'var(--dark)' }}>Secure Card Payment</h3>
           <span style={{ fontSize: '.7rem', background: 'var(--gpale)', color: 'var(--g)', fontWeight: 700, padding: '.25rem .6rem', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.05em' }}>
             Stripe Secured
           </span>
@@ -1029,7 +1029,7 @@ function CheckoutForm({ onClose, priceAmount, billingPeriod, planName, clientSec
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            fontFamily: 'Inter,sans-serif',
+            fontFamily: 'var(--font-body)',
             width: '100%',
             boxShadow: '0 4px 18px rgba(90, 138, 103, 0.2)'
           }}
@@ -1123,12 +1123,12 @@ function CheckoutModal({ planSlug, billingPeriod, onClose, user }) {
           <div style={{ padding: '2.5rem', background: 'var(--bg-0)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div>
               <span style={{ fontSize: '.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.12em', color: 'var(--g)', display: 'block', marginBottom: '.4rem' }}>Your Plan</span>
-              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.9rem', fontWeight: 500, color: 'var(--dark)', letterSpacing: '-.5px' }}>{planInfo.name}</h2>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.9rem', fontWeight: 500, color: 'var(--dark)', letterSpacing: '-.5px' }}>{planInfo.name}</h2>
               <p style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginTop: '.3rem', fontWeight: 300, lineHeight: 1.5 }}>Native checkouts are fully secured and encrypted by Stripe.</p>
             </div>
 
             <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.4rem' }}>
-              <div style={{ fontSize: '2.1rem', fontWeight: 600, color: 'var(--dark)', fontFamily: 'Fraunces, serif', display: 'flex', alignItems: 'baseline', gap: '.1rem' }}>
+              <div style={{ fontSize: '2.1rem', fontWeight: 500, color: 'var(--dark)', fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'baseline', gap: '.1rem' }}>
                 ${priceAmount.toFixed(2)}<span style={{ fontSize: '.88rem', fontWeight: 400, color: 'var(--text-muted)' }}>/mo</span>
               </div>
               <div style={{ fontSize: '.76rem', color: 'var(--text-muted)', marginTop: '.3rem', fontWeight: 500 }}>{periodLabel}</div>
@@ -1189,7 +1189,7 @@ function CheckoutModal({ planSlug, billingPeriod, onClose, user }) {
             ) : error ? (
               <div style={{ textAlign: 'center', padding: '1.5rem', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12 }}>
                 <span style={{ fontSize: '2.2rem' }}>⚠️</span>
-                <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', margin: '.5rem 0 .2rem 0', color: 'var(--dark)' }}>Failed to load checkout</h3>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', margin: '.5rem 0 .2rem 0', color: 'var(--dark)' }}>Failed to load checkout</h3>
                 <p style={{ fontSize: '.84rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: 1.5 }}>{error}</p>
                 <button onClick={onClose} style={{ background: 'var(--g)', color: '#fff', border: 'none', padding: '.6rem 1.4rem', borderRadius: 6, fontSize: '.85rem', fontWeight: 600, cursor: 'pointer' }}>Close Modal</button>
               </div>

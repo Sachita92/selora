@@ -356,7 +356,7 @@ function ShopifyConnectDemo({ c }) {
             fontWeight: 600,
             cursor: 'pointer',
             borderRadius: 6,
-            fontFamily: 'Inter,sans-serif',
+            fontFamily: 'var(--font-body)',
             transition: 'all 0.2s'
           }}
         >
@@ -375,7 +375,7 @@ function ShopifyConnectDemo({ c }) {
             fontWeight: 600,
             cursor: 'pointer',
             borderRadius: 6,
-            fontFamily: 'Inter,sans-serif',
+            fontFamily: 'var(--font-body)',
             transition: 'all 0.2s'
           }}
         >
@@ -395,7 +395,7 @@ function ShopifyConnectDemo({ c }) {
                   value={url}
                   style={{
                     width: '100%', padding: '.7rem .9rem', borderRadius: 8, border: `1px solid ${status === 'connecting' ? c.g : c.border}`,
-                    fontSize: '.82rem', fontFamily: 'Inter,sans-serif', outline: 'none', background: 'var(--input-bg)',
+                    fontSize: '.82rem', fontFamily: 'var(--font-body)', outline: 'none', background: 'var(--input-bg)',
                     color: c.dark, boxSizing: 'border-box'
                   }}
                 />
@@ -412,7 +412,7 @@ function ShopifyConnectDemo({ c }) {
                   background: status === 'connecting' ? c.gpale : c.g, 
                   color: status === 'connecting' ? c.g : '#fff', 
                   border: 'none', borderRadius: 8, padding: '.7rem',
-                  fontSize: '.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif',
+                  fontSize: '.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)',
                   transition: 'all .2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.5rem'
                 }}
               >
@@ -472,7 +472,7 @@ function ShopifyConnectDemo({ c }) {
                   value={nativeName}
                   style={{
                     width: '100%', padding: '.55rem .7rem', borderRadius: 8, border: `1px solid ${c.border}`,
-                    fontSize: '.78rem', fontFamily: 'Inter,sans-serif', outline: 'none', background: 'var(--input-bg)',
+                    fontSize: '.78rem', fontFamily: 'var(--font-body)', outline: 'none', background: 'var(--input-bg)',
                     color: c.dark, boxSizing: 'border-box'
                   }}
                 />
@@ -487,7 +487,7 @@ function ShopifyConnectDemo({ c }) {
                     value={nativeHandle}
                     style={{
                       flex: 1, padding: '.55rem .7rem', borderRadius: '8px 0 0 8px', border: `1px solid ${c.border}`,
-                      borderRight: 'none', fontSize: '.78rem', fontFamily: 'Inter,sans-serif', outline: 'none',
+                      borderRight: 'none', fontSize: '.78rem', fontFamily: 'var(--font-body)', outline: 'none',
                       background: 'var(--input-bg)', color: c.dark, boxSizing: 'border-box', minWidth: 0
                     }}
                   />
@@ -517,7 +517,7 @@ function ShopifyConnectDemo({ c }) {
                         style={{
                           flex: 1, padding: '.4rem', borderRadius: 6, border: `1px solid ${isSelected ? c.g : c.border}`,
                           background: isSelected ? c.gpale : c.card, color: c.dark, fontSize: '.68rem',
-                          cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'all 0.2s',
+                          cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all 0.2s',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.3rem'
                         }}
                       >
@@ -535,7 +535,7 @@ function ShopifyConnectDemo({ c }) {
                   background: nativeStatus === 'creating' ? c.gpale : c.g, 
                   color: nativeStatus === 'creating' ? c.g : '#fff', 
                   border: 'none', borderRadius: 8, padding: '.65rem',
-                  fontSize: '.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif',
+                  fontSize: '.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)',
                   transition: 'all .2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.5rem',
                   marginTop: '.4rem'
                 }}
@@ -902,7 +902,7 @@ function Day1Preview({ c }) {
       padding: '0.8rem 1rem',
       boxShadow: '0 2px 8px rgba(0,0,0,0.015)',
       fontSize: '.75rem',
-      fontFamily: 'Inter,sans-serif',
+      fontFamily: 'var(--font-body)',
       color: c.dark,
       width: '300px',
       minWidth: '300px',
@@ -945,7 +945,7 @@ function Day2Preview({ c }) {
       padding: '0.8rem 1rem',
       boxShadow: '0 2px 8px rgba(0,0,0,0.015)',
       fontSize: '.75rem',
-      fontFamily: 'Inter,sans-serif',
+      fontFamily: 'var(--font-body)',
       color: c.dark,
       width: '300px',
       minWidth: '300px',
@@ -988,7 +988,7 @@ function Day3Preview({ c }) {
       padding: '0.8rem 1rem',
       boxShadow: '0 2px 8px rgba(0,0,0,0.015)',
       fontSize: '.75rem',
-      fontFamily: 'Inter,sans-serif',
+      fontFamily: 'var(--font-body)',
       color: c.dark,
       width: '300px',
       minWidth: '300px',
@@ -1035,7 +1035,7 @@ function Day4Preview({ c }) {
       padding: '0.8rem 1rem',
       boxShadow: '0 2px 8px rgba(0,0,0,0.015)',
       fontSize: '.75rem',
-      fontFamily: 'Inter,sans-serif',
+      fontFamily: 'var(--font-body)',
       color: c.dark,
       width: '300px',
       minWidth: '300px',
@@ -1118,7 +1118,7 @@ function FirstWeekTimeline({ c }) {
                     <span style={{ 
                       background: c.gpale, color: c.g, padding: '.25rem .7rem', 
                       borderRadius: 4, fontSize: '.72rem', fontWeight: 700, 
-                      fontFamily: 'Inter,sans-serif' 
+                      fontFamily: 'var(--font-body)' 
                     }}>
                       {item.day}
                     </span>
@@ -1199,7 +1199,7 @@ function BeforeAfterToggle({ c }) {
             fontWeight: 600,
             cursor: 'pointer',
             borderRadius: '6px',
-            fontFamily: 'Inter,sans-serif',
+            fontFamily: 'var(--font-body)',
             transition: 'all 0.2s'
           }}
         >
@@ -1217,7 +1217,7 @@ function BeforeAfterToggle({ c }) {
             fontWeight: 600,
             cursor: 'pointer',
             borderRadius: '6px',
-            fontFamily: 'Inter,sans-serif',
+            fontFamily: 'var(--font-body)',
             transition: 'all 0.2s',
             display: 'flex',
             alignItems: 'center',
@@ -1237,7 +1237,7 @@ function BeforeAfterToggle({ c }) {
             fontSize: '.78rem', 
             color: c.muted, 
             lineHeight: 1.6, 
-            fontFamily: 'Inter,sans-serif',
+            fontFamily: 'var(--font-body)',
             animation: 'fadeUp 0.3s ease both'
           }}>
             <span style={{ fontWeight: 600, color: c.dark }}>Product Details:</span> {rawDesc}
@@ -1247,7 +1247,7 @@ function BeforeAfterToggle({ c }) {
             fontSize: '.78rem', 
             color: c.dark, 
             lineHeight: 1.6, 
-            fontFamily: 'Inter,sans-serif',
+            fontFamily: 'var(--font-body)',
             animation: 'fadeUp 0.3s ease both'
           }}>
             <span style={{ fontWeight: 600, color: c.g }}>AI Optimized Copy:</span> <span style={{ fontStyle: 'italic' }}>{aiDesc}</span>
@@ -1351,7 +1351,7 @@ export default function HowItWorksPage() {
   const [openFaq, setOpenFaq] = useState(null)
 
   return (
-    <div className="landing-page" style={{fontFamily:'Inter, sans-serif', background:c.bg, minHeight:'100vh'}}>
+    <div className="landing-page" style={{fontFamily:'var(--font-body)', background:c.bg, minHeight:'100vh'}}>
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
@@ -1441,7 +1441,7 @@ export default function HowItWorksPage() {
             <p style={{ fontSize: '.78rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', color: c.g, marginBottom: '.5rem' }}>
               Collection
             </p>
-            <h1 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.5rem,3.5vw,2.8rem)',fontWeight:500,lineHeight:1.15,letterSpacing:'-.3px',color:c.dark,margin:'0 0 .8rem'}}>
+            <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.5rem,3.5vw,2.8rem)',fontWeight:500,lineHeight:1.15,letterSpacing:'-.3px',color:c.dark,margin:'0 0 .8rem'}}>
               Three steps to a <em style={{fontStyle:'italic',color:c.g}}>self-growing</em>
             </h1>
             <p style={{fontSize:'.88rem',color:c.muted,lineHeight:1.8,fontWeight:300,margin:0}}>
@@ -1476,7 +1476,7 @@ export default function HowItWorksPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem' }}>
                         <span style={{ fontSize: '.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.1em', color: c.g }}>Step {step.num}</span>
                       </div>
-                      <h3 style={{ fontFamily: 'Fraunces,serif', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px', marginBottom: '1.2rem' }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px', marginBottom: '1.2rem' }}>
                         {step.title}
                       </h3>
                       <p style={{ fontSize: '.88rem', color: c.muted, lineHeight: 1.8, fontWeight: 300, marginBottom: '2rem' }}>
@@ -1497,7 +1497,7 @@ export default function HowItWorksPage() {
                       )}
 
                       <div style={{ marginTop: '2rem' }}>
-                        <Link to={stepLink} style={{ background: c.g, color: '#fff', padding: '.7rem 1.6rem', borderRadius: 8, fontSize: '.82rem', fontWeight: 600, textDecoration: 'none', fontFamily: 'Inter,sans-serif', boxShadow: '0 4px 18px rgba(90,138,103,.2)' }}>
+                        <Link to={stepLink} style={{ background: c.g, color: '#fff', padding: '.7rem 1.6rem', borderRadius: 8, fontSize: '.82rem', fontWeight: 600, textDecoration: 'none', fontFamily: 'var(--font-body)', boxShadow: '0 4px 18px rgba(90,138,103,.2)' }}>
                           {i === 0 ? 'Set Up Your Store' : i === 1 ? 'Configure Goals' : 'Start Growing'} →
                         </Link>
                       </div>
@@ -1523,7 +1523,7 @@ export default function HowItWorksPage() {
       <div style={{background:c.card,borderTop:`1px solid ${c.border}`,padding:'4rem 0'}}>
         <div className="site-page-container" style={{textAlign:'center'}}>
           <p style={{fontSize:'.68rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'.14em',color:c.g,marginBottom:'.7rem'}}>What Happens Next</p>
-          <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.35rem,3vw,2.2rem)',fontWeight:500,color:c.dark,marginBottom:'1rem',letterSpacing:'-.3px'}}>
+          <h2 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.35rem,3vw,2.2rem)',fontWeight:500,color:c.dark,marginBottom:'1rem',letterSpacing:'-.3px'}}>
             Your first week with Selora
           </h2>
           <p style={{fontSize:'.88rem',color:c.muted,fontWeight:300,lineHeight:1.7,maxWidth:480,margin:'0 auto 2.5rem'}}>
@@ -1543,7 +1543,7 @@ export default function HowItWorksPage() {
         <div className="site-page-container">
           <div style={{textAlign:'center',marginBottom:'3rem'}}>
             <p style={{fontSize:'.68rem',fontWeight:600,textTransform:'uppercase',letterSpacing:'.14em',color:c.g,marginBottom:'.7rem'}}>FAQ</p>
-            <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.35rem,3vw,2.2rem)',fontWeight:500,color:c.dark,letterSpacing:'-.3px'}}>Common questions</h2>
+            <h2 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.35rem,3vw,2.2rem)',fontWeight:500,color:c.dark,letterSpacing:'-.3px'}}>Common questions</h2>
           </div>
           <div className="site-faq-grid">
             {FAQ.map((item, i) => (
@@ -1563,13 +1563,13 @@ export default function HowItWorksPage() {
       <div style={{padding:'3rem 0',background:'linear-gradient(140deg,#1A271C 0%,#233329 100%)',position:'relative',overflow:'hidden',textAlign:'center'}}>
         <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 70% 60% at 50% 50%,rgba(90,138,103,.12),transparent)',pointerEvents:'none'}} />
         <div className="site-page-container" style={{position:'relative'}}>
-          <h2 style={{fontFamily:'Fraunces,serif',fontSize:'clamp(1.5rem,3.5vw,2.8rem)',fontWeight:500,color:'#fff',marginBottom:'1rem',lineHeight:1.15,letterSpacing:'-.3px'}}>
+          <h2 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.5rem,3.5vw,2.8rem)',fontWeight:500,color:'#fff',marginBottom:'1rem',lineHeight:1.15,letterSpacing:'-.3px'}}>
             Ready to start? It takes <em style={{color:'#86EFAC',fontStyle:'italic'}}>5 minutes</em>
           </h2>
           <p style={{color:'rgba(255,255,255,.4)',fontSize:'.9rem',marginBottom:'2.2rem',fontWeight:300,lineHeight:1.7,maxWidth:480,margin:'0 auto 2.2rem'}}>
             Free trial — no credit card required.
           </p>
-          <Link to={user ? '/dashboard' : '/signup'} style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2.2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,textDecoration:'none',fontFamily:'Inter,sans-serif',boxShadow:'0 4px 20px rgba(134,239,172,.25)'}}>
+          <Link to={user ? '/dashboard' : '/signup'} style={{background:'#86EFAC',color:c.dark,padding:'.8rem 2.2rem',borderRadius:8,fontSize:'.92rem',fontWeight:600,textDecoration:'none',fontFamily:'var(--font-body)',boxShadow:'0 4px 20px rgba(134,239,172,.25)'}}>
             {user ? 'Go to Dashboard' : 'Get Started Free'} →
           </Link>
         </div>

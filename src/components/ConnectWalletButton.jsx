@@ -32,7 +32,7 @@ export default function ConnectWalletButton() {
           fontSize: '.82rem',
           color: 'var(--text-muted)',
           cursor: 'not-allowed',
-          fontFamily: 'Inter, sans-serif'
+          fontFamily: 'var(--font-body)'
         }}
       >
         Initializing...
@@ -55,7 +55,7 @@ export default function ConnectWalletButton() {
           fontSize: '.82rem',
           color: 'var(--text-muted)',
           cursor: 'not-allowed',
-          fontFamily: 'Inter, sans-serif'
+          fontFamily: 'var(--font-body)'
         }}
       >
         Syncing Auth...
@@ -80,7 +80,7 @@ export default function ConnectWalletButton() {
             fontSize: '.82rem',
             fontWeight: 600,
             cursor: 'pointer',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-body)',
             transition: 'all 0.2s',
             boxShadow: '0 2px 8px rgba(95, 141, 118, 0.2)'
           }}
@@ -95,7 +95,7 @@ export default function ConnectWalletButton() {
         >
           Connect Wallet
         </button>
-        <span style={{ fontSize: '0.7rem', color: 'var(--muted)', marginTop: '0.1rem', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
+        <span style={{ fontSize: '0.7rem', color: 'var(--muted)', marginTop: '0.1rem', fontFamily: 'var(--font-body)', lineHeight: 1.4 }}>
           Don't have a Solana wallet ready? Get <a href="https://phantom.app" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--g)', textDecoration: 'underline' }}>Phantom</a> or <a href="https://solflare.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--g)', textDecoration: 'underline' }}>Solflare</a> and create a Solana account.
         </span>
       </div>
@@ -126,7 +126,7 @@ export default function ConnectWalletButton() {
           fontWeight: 500,
           color: 'var(--text-primary)',
           cursor: 'pointer',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-body)',
           transition: 'all 0.2s'
         }}
         onMouseEnter={(e) => {
@@ -187,7 +187,7 @@ export default function ConnectWalletButton() {
               display: 'flex',
               alignItems: 'center',
               gap: '.5rem',
-              fontFamily: 'Inter, sans-serif'
+              fontFamily: 'var(--font-body)'
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-2)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
@@ -215,7 +215,7 @@ export default function ConnectWalletButton() {
               display: 'flex',
               alignItems: 'center',
               gap: '.5rem',
-              fontFamily: 'Inter, sans-serif'
+              fontFamily: 'var(--font-body)'
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-2)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}

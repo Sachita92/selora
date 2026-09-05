@@ -47,10 +47,10 @@ function deepMerge(target, source) {
 }
 
 const S = {
-  page:      { minHeight: '100vh', background: '#F6F1E8', fontFamily: 'Inter, sans-serif', color: '#3D362B' },
+  page:      { minHeight: '100vh', background: '#F6F1E8', fontFamily: 'var(--font-body)', color: '#3D362B' },
   nav:       { position: 'sticky', top: 0, zIndex: 100, background: 'rgba(246,241,232,.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #E4DCD0', padding: '0 2rem' },
   navInner:  { maxWidth: 1200, margin: '0 auto', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  brand:     { fontFamily: 'Fraunces, serif', fontSize: '1.15rem', fontWeight: 600, color: '#3D362B', textDecoration: 'none', letterSpacing: '-0.02em' },
+  brand:     { fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 500, color: '#3D362B', textDecoration: 'none', letterSpacing: '-0.02em' },
   navRight:  { display: 'flex', alignItems: 'center', gap: '1rem' },
   badge:     { fontSize: '.72rem', fontWeight: 700, background: '#EFE6D6', color: '#B08968', padding: '.25rem .6rem', borderRadius: 20, letterSpacing: '.04em', textTransform: 'uppercase' },
 
@@ -58,13 +58,13 @@ const S = {
   heroBg:    { position: 'absolute', inset: 0, objectFit: 'cover', width: '100%', height: '100%' },
   heroOverlay:{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(61,54,43,.75) 30%, transparent)' },
   heroContent:{ position: 'relative', zIndex: 1, padding: '3rem 2rem', maxWidth: 1200, margin: '0 auto', width: '100%' },
-  heroTitle: { fontFamily: 'Fraunces, serif', fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 600, color: '#3D362B', margin: 0, letterSpacing: '-0.04em', lineHeight: 1.1 },
+  heroTitle: { fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 500, color: '#3D362B', margin: 0, letterSpacing: '-0.04em', lineHeight: 1.1 },
   heroSub:   { fontSize: '1rem', color: '#8A8072', marginTop: '.75rem', fontWeight: 300 },
   heroPlaceholder:{ minHeight: 340, background: 'linear-gradient(135deg, #EFE6D6 0%, #B08968 100%)', display: 'flex', alignItems: 'flex-end', padding: '3rem 2rem' },
-  heroTitleDark:{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 600, color: '#3D362B', margin: 0, letterSpacing: '-0.04em' },
+  heroTitleDark:{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 500, color: '#3D362B', margin: 0, letterSpacing: '-0.04em' },
 
   main:      { maxWidth: 1200, margin: '0 auto', padding: '3rem 1.5rem' },
-  sectionTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.6rem', fontWeight: 500, color: '#3D362B', marginBottom: '1.75rem', letterSpacing: '-0.03em' },
+  sectionTitle:{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 500, color: '#3D362B', marginBottom: '1.75rem', letterSpacing: '-0.03em' },
 
   grid:      { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.5rem' },
   prodCard:  { background: '#fff', borderRadius: 16, overflow: 'hidden', border: '1px solid #E4DCD0', cursor: 'pointer', transition: 'all .25s' },
@@ -86,10 +86,10 @@ const S = {
   modal:     { background: '#fff', borderRadius: 20, width: '100%', maxWidth: 800, maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' },
   modalImg:  { width: '100%', maxHeight: '60vh', objectFit: 'contain', display: 'block' },
   modalBody: { padding: '2rem' },
-  modalTitle:{ fontFamily: 'Fraunces, serif', fontSize: '1.75rem', fontWeight: 500, color: '#3D362B', marginTop: 0, marginBottom: '.5rem', letterSpacing: '-0.03em' },
+  modalTitle:{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 500, color: '#3D362B', marginTop: 0, marginBottom: '.5rem', letterSpacing: '-0.03em' },
   modalDesc: { fontSize: '.9rem', color: '#8A8072', lineHeight: 1.7, marginBottom: '1.25rem' },
   modalPrice:{ fontSize: '1.4rem', fontWeight: 700, color: '#B08968', marginBottom: '1.25rem' },
-  cartBtn:   { width: '100%', padding: '1rem', background: '#B08968', color: '#fff', border: 'none', borderRadius: 10, fontSize: '1rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', transition: 'background .2s', letterSpacing: '.01em' },
+  cartBtn:   { width: '100%', padding: '1rem', background: '#B08968', color: '#fff', border: 'none', borderRadius: 10, fontSize: '1rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'background .2s', letterSpacing: '.01em' },
   closeBtn:  { position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(255,255,255,.85)', border: 'none', borderRadius: '50%', width: 36, height: 36, fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', zIndex: 10 },
   closeWrapper:{ position: 'relative' },
 
@@ -98,7 +98,7 @@ const S = {
 
   spinner:   { display: 'inline-block', width: 28, height: 28, border: '2px solid #E4DCD0', borderTop: '2px solid #B08968', borderRadius: '50%', animation: 'spin .7s linear infinite' },
   errPage:   { minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '2rem', textAlign: 'center' },
-  errTitle:  { fontFamily: 'Fraunces, serif', fontSize: '2rem', color: '#3D362B', margin: 0 },
+  errTitle:  { fontFamily: 'var(--font-display)', fontSize: '2rem', color: '#3D362B', margin: 0 },
 }
 
 // --- SVG Icons for Template ---
@@ -312,7 +312,7 @@ function ProductCard({ product, isSample = false, isAdded = false, onProductClic
           <span style={{ fontSize: '0.7rem', fontWeight: 700, color: p.accent, letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {resolvedCategoryName}
           </span>
-          <h4 style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.05rem', fontWeight: 500, color: p.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <h4 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.05rem', fontWeight: 500, color: p.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {product.title}
           </h4>
           <span style={{ fontSize: '0.95rem', fontWeight: 700, color: p.text }}>
@@ -358,7 +358,7 @@ function ProductCard({ product, isSample = false, isAdded = false, onProductClic
               padding: isAdded ? '0 0.75rem' : 0,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-body)',
               fontSize: '0.75rem',
               fontWeight: 600,
               flexShrink: 0
@@ -998,7 +998,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
   const stopInEditMode = editMode ? (e) => e.stopPropagation() : undefined
 
   return (
-    <div style={{ minHeight: '100vh', background: palette.background, fontFamily: 'Inter, sans-serif', color: palette.text }}>
+    <div style={{ minHeight: '100vh', background: palette.background, fontFamily: 'var(--font-body)', color: palette.text }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
         .sf-prod-card {
@@ -1184,7 +1184,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
           padding: 0.7rem 1rem;
           font-size: 0.82rem;
           font-weight: 600;
-          font-family: Inter, sans-serif;
+          font-family: var(--font-body);
           line-height: 1.4;
         }
         .sf-unknown-value-banner strong {
@@ -1555,7 +1555,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
         <div style={{ maxWidth: 1200, margin: '0 auto', height: 70, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Left: logo/name */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <Link to={`/store/${handle}`} style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(1.1rem, 3vw, 1.4rem)', fontWeight: 700, color: palette.text, textDecoration: 'none', letterSpacing: '-0.02em', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block' }} title={store.name || "Selora"}>
+            <Link to={`/store/${handle}`} style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.1rem, 3vw, 1.4rem)', fontWeight: 500, color: palette.text, textDecoration: 'none', letterSpacing: '-0.02em', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block' }} title={store.name || "Selora"}>
               {store.name || "Selora"}
             </Link>
           </div>
@@ -1569,7 +1569,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                   key={idx}
                   href={isHome ? `/store/${handle}` : link.url}
                   style={{
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     fontSize: '0.9rem',
                     fontWeight: 500,
                     color: palette.secondaryText,
@@ -1585,7 +1585,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
             <Link
               to={`/store/${handle}/orders`}
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-body)',
                 fontSize: '0.9rem',
                 fontWeight: 500,
                 color: palette.secondaryText,
@@ -1610,7 +1610,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-body)',
                 fontSize: '0.9rem',
                 fontWeight: 600,
                 padding: '0.5rem 1rem',
@@ -1627,7 +1627,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
       </nav>
 
       {productId ? (
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '3rem 1.5rem', fontFamily: 'Inter, sans-serif', minHeight: '60vh' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '3rem 1.5rem', fontFamily: 'var(--font-body)', minHeight: '60vh' }}>
           {/* Breadcrumb / Back link */}
           <div style={{ marginBottom: '2.5rem' }}>
             <Link
@@ -1646,7 +1646,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
             if (!product) {
               return (
                 <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-                  <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', color: palette.text, margin: '0 0 1rem' }}>Product Not Found</h2>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: palette.text, margin: '0 0 1rem' }}>Product Not Found</h2>
                   <p style={{ color: palette.secondaryText, marginBottom: '2rem' }}>The product you are looking for does not exist or has been removed.</p>
                   <Link to={`/store/${handle}`} style={{ display: 'inline-block', background: palette.accent, color: '#fff', padding: '0.85rem 2rem', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}>
                     Return to Store
@@ -1700,7 +1700,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
                         {resolvedCategoryName}
                       </span>
-                      <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: palette.text, margin: '0 0 0.75rem', lineHeight: 1.15 }}>
+                      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 500, color: palette.text, margin: '0 0 0.75rem', lineHeight: 1.15 }}>
                         {product.title}
                       </h1>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.5rem' }}>
@@ -1738,7 +1738,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                     {/* Description */}
                     {product.description && (
                       <div style={{ borderTop: `1px solid ${palette.border}`, paddingTop: '1.5rem', borderBottom: `1px solid ${palette.border}`, paddingBottom: '1.5rem', marginTop: '0.5rem' }}>
-                        <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 600, color: palette.text, margin: '0 0 0.5rem' }}>Description</h3>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 500, color: palette.text, margin: '0 0 0.5rem' }}>Description</h3>
                         <p style={{ fontSize: '0.95rem', color: palette.secondaryText, lineHeight: 1.7, margin: 0 }}>
                           {product.description}
                         </p>
@@ -1790,7 +1790,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                   if (sameCatProducts.length === 0) return null
                   return (
                     <div style={{ marginTop: '4rem', borderTop: `1px solid ${palette.border}`, paddingTop: '3rem' }}>
-                      <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 500, color: palette.text, marginBottom: '2rem' }}>
+                      <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 500, color: palette.text, marginBottom: '2rem' }}>
                         You might also like
                       </h3>
                       <ProductGrid
@@ -1859,7 +1859,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                   <span className="sf-anim-eyebrow" style={{ fontSize: '0.8rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                     {template.hero.eyebrow}
                   </span>
-                  <h1 className="sf-anim-title" style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2.75rem, 5.5vw, 4rem)', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.1, maxWidth: 860, whiteSpace: 'pre-line' }}>
+                  <h1 className="sf-anim-title" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2.75rem, 5.5vw, 4rem)', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.1, maxWidth: 860, whiteSpace: 'pre-line' }}>
                     {template.hero.title}
                   </h1>
                   <p className="sf-anim-sub" style={{ fontSize: '1.15rem', color: palette.secondaryText, lineHeight: 1.55, margin: 0, maxWidth: 640 }}>
@@ -1899,7 +1899,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                     <span className="sf-anim-eyebrow" style={{ fontSize: '0.78rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                       {template.hero.eyebrow}
                     </span>
-                    <h1 className="sf-anim-title" style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2.2rem, 4vw, 3.25rem)', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.15, whiteSpace: 'pre-line' }}>
+                    <h1 className="sf-anim-title" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2.2rem, 4vw, 3.25rem)', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.15, whiteSpace: 'pre-line' }}>
                       {template.hero.title}
                     </h1>
                     <p className="sf-anim-sub" style={{ fontSize: '1.05rem', color: palette.secondaryText, lineHeight: 1.6, margin: 0, maxWidth: 520 }}>
@@ -1949,7 +1949,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                   <span className="sf-anim-eyebrow" style={{ fontSize: '0.78rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                     {template.hero.eyebrow}
                   </span>
-                  <h1 className="sf-anim-title" style={{ fontFamily: 'Fraunces, serif', fontSize: 'clamp(2.2rem, 4vw, 3.25rem)', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.15, whiteSpace: 'pre-line' }}>
+                  <h1 className="sf-anim-title" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2.2rem, 4vw, 3.25rem)', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.15, whiteSpace: 'pre-line' }}>
                     {template.hero.title}
                   </h1>
                   <p className="sf-anim-sub" style={{ fontSize: '1.05rem', color: palette.secondaryText, lineHeight: 1.6, margin: 0, maxWidth: 520 }}>
@@ -2003,8 +2003,8 @@ export default function Storefront({ previewData = null, editMode = false, selec
                   ) : (
                     <div className="sf-hero-placeholder">
                       <div className="sf-hero-placeholder-icon">✦</div>
-                      <p style={{ margin: 0, fontFamily: 'Fraunces, serif', fontSize: '1.1rem', fontWeight: 500, color: palette.text }}>Add your hero images</p>
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: palette.secondaryText, fontFamily: 'Inter, sans-serif' }}>
+                      <p style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 500, color: palette.text }}>Add your hero images</p>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: palette.secondaryText, fontFamily: 'var(--font-body)' }}>
                         Upload 3 images in Store Builder settings to complete the stack
                       </p>
                     </div>
@@ -2044,7 +2044,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                     >
                       {renderIcon(item.icon, 20, palette.accent, editMode)}
                     </div>
-                    <span className="sf-trust-item-label" style={{ fontSize: '0.95rem', fontWeight: 600, color: palette.text, fontFamily: 'Inter, sans-serif' }}>
+                    <span className="sf-trust-item-label" style={{ fontSize: '0.95rem', fontWeight: 600, color: palette.text, fontFamily: 'var(--font-body)' }}>
                       {trustLabel}
                     </span>
                   </div>
@@ -2066,7 +2066,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
                 {template.categories.eyebrow}
               </span>
-              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 500, color: palette.text, margin: '0 0 2rem' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 500, color: palette.text, margin: '0 0 2rem' }}>
                 {template.categories.title}
               </h2>
 
@@ -2114,7 +2114,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)', borderRadius: 16, zIndex: 1 }} />
                         )}
                         <div style={{ position: 'relative', zIndex: 2 }}>
-                          <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.6rem', color: catTextColor, margin: '0 0 0.5rem', fontWeight: 400 }}>
+                          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: catTextColor, margin: '0 0 0.5rem', fontWeight: 400 }}>
                             {item.name}
                           </h3>
                           <span style={{ color: catTextColor, opacity: 0.85, fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -2135,11 +2135,11 @@ export default function Storefront({ previewData = null, editMode = false, selec
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
                     {template.newArrivals.eyebrow}
                   </span>
-                  <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 500, color: palette.text, margin: 0 }}>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 500, color: palette.text, margin: 0 }}>
                     {template.newArrivals.title}
                   </h2>
                 </div>
-                <a href={template.newArrivals.viewAllUrl} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', fontWeight: 600, color: palette.accent, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <a href={template.newArrivals.viewAllUrl} style={{ fontFamily: 'var(--font-body)', fontSize: '0.875rem', fontWeight: 600, color: palette.accent, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                   {template.newArrivals.viewAllText} &rarr;
                 </a>
               </div>
@@ -2196,13 +2196,13 @@ export default function Storefront({ previewData = null, editMode = false, selec
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                   {template.brandStory.eyebrow}
                 </span>
-                <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.5rem', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.15 }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 500, color: palette.text, margin: 0, lineHeight: 1.15 }}>
                   {template.brandStory.title}
                 </h2>
                 <p style={{ fontSize: '0.95rem', color: palette.secondaryText, lineHeight: 1.7, margin: '0.5rem 0' }}>
                   {template.brandStory.subtitle}
                 </p>
-                <a href={template.brandStory.ctaUrl} onClick={stopInEditMode} style={{ fontFamily: 'Inter, sans-serif', fontSize: '0.9rem', fontWeight: 600, color: palette.accent, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <a href={template.brandStory.ctaUrl} onClick={stopInEditMode} style={{ fontFamily: 'var(--font-body)', fontSize: '0.9rem', fontWeight: 600, color: palette.accent, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                   {template.brandStory.ctaText} &rarr;
                 </a>
               </div>
@@ -2221,7 +2221,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: palette.accent, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 {template.newsletter.eyebrow}
               </span>
-              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2.2rem', fontWeight: 500, color: '#ffffff', margin: 0 }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2.2rem', fontWeight: 500, color: '#ffffff', margin: 0 }}>
                 {template.newsletter.title}
               </h2>
               <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, margin: '0 0 1rem' }}>
@@ -2239,7 +2239,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                     border: '1px solid rgba(255,255,255,0.15)',
                     background: 'rgba(255,255,255,0.06)',
                     color: '#ffffff',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     fontSize: '0.9rem',
                     outline: 'none',
                   }}
@@ -2256,7 +2256,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                     border: 'none',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-body)',
                     fontSize: '0.9rem',
                     transition: 'background-color 0.2s',
                   }}
@@ -2298,7 +2298,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
           <div className="sf-drawer">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: `1px solid ${palette.border}`, paddingBottom: '1rem', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '.65rem' }}>
-                <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', margin: 0, color: palette.text }}>Your Bag</h2>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', margin: 0, color: palette.text }}>Your Bag</h2>
                 <span style={{
                   fontSize: '.65rem',
                   fontWeight: 700,
@@ -2330,7 +2330,7 @@ export default function Storefront({ previewData = null, editMode = false, selec
                 <div style={{ color: palette.accent, marginBottom: '1.25rem', display: 'flex', justifyContent: 'center' }}>
                   <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 </div>
-                <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.4rem', color: palette.text, margin: '0 0 .5rem' }}>Payment Successful!</h3>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: palette.text, margin: '0 0 .5rem' }}>Payment Successful!</h3>
                 <p style={{ fontSize: '.85rem', color: palette.secondaryText, margin: '0 0 1.5rem', lineHeight: 1.4 }}>
                   Your order is being processed. You'll receive updates on your order status.
                 </p>
