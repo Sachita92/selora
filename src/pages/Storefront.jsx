@@ -1,3 +1,4 @@
+import { Mark } from '../components/Logo'
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
@@ -2279,7 +2280,10 @@ export default function Storefront({ previewData = null, editMode = false, selec
           </Link>
         </p>
         <p style={{ fontSize: '0.72rem', color: palette.secondaryText, opacity: 0.8, margin: 0 }}>
-          Powered by <a href="/" style={{ color: palette.secondaryText, textDecoration: 'none', fontWeight: 600 }}>Selora AI</a>
+          <a href="/" style={{ color: palette.secondaryText, textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '.35em' }}>
+            <Mark size={12} />
+            Powered by Selora
+          </a>
         </p>
       </footer>
 

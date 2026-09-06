@@ -1,3 +1,4 @@
+import { Mark } from './Logo'
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
@@ -16,14 +17,6 @@ const SUGGESTIONS = [
   "Optimize my weakest listing",
   "Give me a quick store health check",
 ]
-
-// The one chat glyph the widget shows — a plain speech bubble, stroke-styled
-// like the rest of the site's icons.
-const ChatGlyph = ({ size = 22, stroke = 'currentColor' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-  </svg>
-)
 
 // Under 600px the FAB shrinks and tucks into the corner so it sits below the
 // compact hero card's hit area instead of on top of it.
@@ -206,7 +199,7 @@ export default function ChatWidget({ storeId, isGuest = false }) {
             <span>Selora Agent</span>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#86EFAC', display: 'inline-block' }} />
           </div>
-          Welcome! Ask me anything about Selora or explore demo store insights. 🌸
+          Welcome! Ask me anything about Selora or explore demo store insights.
           <button 
             onClick={(e) => { e.stopPropagation(); setShowWelcomeBubble(false); }}
             style={{
@@ -245,7 +238,8 @@ export default function ChatWidget({ storeId, isGuest = false }) {
           onMouseLeave={e => { e.currentTarget.style.background = '#1A271C'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.09)'; e.currentTarget.style.boxShadow = '0 6px 22px rgba(0,0,0,.22)' }}
           id="chat-fab"
         >
-          <ChatGlyph size={isNarrow ? 19 : 22} />
+          {/* Brand mark in the launcher; currentColor picks up the sage above */}
+          <Mark size={isNarrow ? 19 : 22} />
           {hasNewMessage && (
             <span style={{
               position: 'absolute', top: -2, right: -2,
@@ -282,7 +276,9 @@ export default function ChatWidget({ storeId, isGuest = false }) {
                 background: 'rgba(255,255,255,.2)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <ChatGlyph size={17} stroke="#fff" />
+                {/* Mark, not <Logo variant="mark">: the header is a green
+                    gradient, so the avatar reads white rather than var(--g) */}
+                <Mark size={20} style={{ color: '#fff' }} />
               </div>
               <div>
                 <div style={{ fontSize: '.9rem', fontWeight: 600, color: '#fff' }}>Selora Agent</div>
