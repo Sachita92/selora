@@ -1,3 +1,4 @@
+import Logo from './Logo'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -76,11 +77,9 @@ export default function Footer() {
         <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr 1.8fr", gap: "2.5rem", marginBottom: "2.5rem" }}>
           {/* Brand */}
           <div>
-            <Link to="/" style={{ textDecoration: "none" }}>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: "1.1rem", fontWeight: 700, letterSpacing: "-.3px", color: "var(--dark)", marginBottom: ".7rem" }}>
-                Se<span style={{ color: "var(--g)" }}>lo</span>ra
-              </div>
-            </Link>
+            <div style={{ marginBottom: ".7rem" }}>
+              <Logo size={18} />
+            </div>
             <p style={{ fontSize: ".78rem", color: "var(--muted)", lineHeight: 1.7, fontWeight: 300, maxWidth: 200 }}>
               AI-powered growth for fashion sellers. Works while you sleep.
             </p>

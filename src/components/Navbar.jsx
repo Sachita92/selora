@@ -1,3 +1,4 @@
+import Logo from './Logo'
 import { Link, useLocation } from 'react-router-dom'
 import { useState, useEffect, useLayoutEffect } from 'react'
 import { useAppContext } from '../lib/AppContext'
@@ -207,11 +208,7 @@ export default function Navbar() {
 
       <div className="site-nav-container">
         {/* Logo */}
-        <Link to="/" style={{ textDecoration: 'none' }}>
-          <div style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-.3px', color: 'var(--dark)', fontFamily: 'var(--font-body)' }}>
-            Se<span style={{ color: 'var(--g)' }}>lo</span>ra
-          </div>
-        </Link>
+        <Logo size={22} />
 
         {/* Desktop links */}
         <div className="site-nav-links-desktop">

@@ -1,3 +1,4 @@
+import { Mark } from '../components/Logo'
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
@@ -50,7 +51,6 @@ const S = {
   page:      { minHeight: '100vh', background: '#F6F1E8', fontFamily: 'var(--font-body)', color: '#3D362B' },
   nav:       { position: 'sticky', top: 0, zIndex: 100, background: 'rgba(246,241,232,.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #E4DCD0', padding: '0 2rem' },
   navInner:  { maxWidth: 1200, margin: '0 auto', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  brand:     { fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 500, color: '#3D362B', textDecoration: 'none', letterSpacing: '-0.02em' },
   navRight:  { display: 'flex', alignItems: 'center', gap: '1rem' },
   badge:     { fontSize: '.72rem', fontWeight: 700, background: '#EFE6D6', color: '#B08968', padding: '.25rem .6rem', borderRadius: 20, letterSpacing: '.04em', textTransform: 'uppercase' },
 
@@ -2280,7 +2280,10 @@ export default function Storefront({ previewData = null, editMode = false, selec
           </Link>
         </p>
         <p style={{ fontSize: '0.72rem', color: palette.secondaryText, opacity: 0.8, margin: 0 }}>
-          Powered by <a href="/" style={{ color: palette.secondaryText, textDecoration: 'none', fontWeight: 600 }}>Selora AI</a>
+          <a href="/" style={{ color: palette.secondaryText, textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '.35em' }}>
+            <Mark size={12} />
+            Powered by Selora
+          </a>
         </p>
       </footer>
 

@@ -13,7 +13,6 @@ const c = {
 const s = {
   page:    { minHeight: '100vh', background: c.bg, fontFamily: 'var(--font-body)' },
   nav:     { background: c.card, borderBottom: `1px solid ${c.border}`, padding: '.9rem 2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  logo:    { fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 500, color: c.dark, textDecoration: 'none' },
   body:    { maxWidth: 860, margin: '0 auto', padding: '2.5rem 2rem 5rem' },
   h1:      { fontFamily: 'var(--font-display)', fontSize: '1.8rem', fontWeight: 500, color: c.dark, letterSpacing: '-.3px' },
   section: { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, padding: '2rem', marginBottom: '1.5rem' },

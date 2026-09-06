@@ -35,7 +35,8 @@ export default function PrivyProviderWrapper({ children }) {
         appearance: {
           walletChainType: 'solana-only',
           theme: 'dark',
-          accentColor: '#5F8D76', // Selora brand green
+          accentColor: '#6FBF8B', // --g in dark theme (src/index.css) — the modal is themed dark
+          logo: 'https://selora.fashion/brand/selora-mark-green-on-dark.png',
           walletList: ['phantom', 'solflare'],
         },
         ...(connectors ? {

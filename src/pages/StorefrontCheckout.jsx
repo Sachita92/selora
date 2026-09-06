@@ -1,3 +1,4 @@
+import { Mark } from '../components/Logo'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 
@@ -805,7 +806,10 @@ export default function StorefrontCheckout() {
 
       <footer style={{ borderTop: `1px solid ${palette.border}`, padding: '2rem 1.5rem', textAlign: 'center', marginTop: 'auto' }}>
         <p style={{ fontSize: '.8rem', color: palette.secondaryText, margin: 0 }}>
-          Powered by <a href="/" style={{ color: palette.secondaryText, textDecoration: 'none', fontWeight: 600 }}>Selora AI</a>
+          <a href="/" style={{ color: palette.secondaryText, textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '.35em' }}>
+            <Mark size={12} />
+            Powered by Selora
+          </a>
         </p>
       </footer>
     </div>

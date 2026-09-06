@@ -1,3 +1,4 @@
+import Logo from './Logo'
 import { useState, useEffect, useRef } from 'react'
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
@@ -442,13 +443,9 @@ export default function SidebarLayout() {
           boxSizing: 'border-box'
         }}>
           {isCollapsed && !isMobile ? (
-            <Link to="/" style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 500, color: c.green, textDecoration: 'none' }}>
-              Se
-            </Link>
+            <Logo variant="mark" size={24} />
           ) : (
-            <Link to="/" style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', fontWeight: 500, color: c.dark, textDecoration: 'none' }}>
-              Se<span style={{ color: c.green }}>lo</span>ra
-            </Link>
+            <Logo size={20} />
           )}
           
           <button 

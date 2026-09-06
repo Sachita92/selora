@@ -1,3 +1,4 @@
+import { Mark } from '../components/Logo'
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 
@@ -655,7 +656,10 @@ export default function StorefrontOrders() {
           &copy; {new Date().getFullYear()} {store.name}. All rights reserved.
         </p>
         <p style={{ fontSize: '0.72rem', color: 'var(--sf-text-muted)', opacity: 0.8, margin: 0 }}>
-          Powered by <a href="/" style={{ color: 'var(--sf-text-muted)', textDecoration: 'none', fontWeight: 600 }}>Selora AI</a>
+          <a href="/" style={{ color: 'var(--sf-text-muted)', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '.35em' }}>
+            <Mark size={12} />
+            Powered by Selora
+          </a>
         </p>
       </footer>
 

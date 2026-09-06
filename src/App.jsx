@@ -1,3 +1,4 @@
+import Logo          from './components/Logo'
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
@@ -53,7 +54,10 @@ function SyncingSpinner({ label = 'Reconnecting\u2026' }) {
           animation: _pr-spin .75s linear infinite;
         }
       `}</style>
-      <div className="_pr-ring" />
+      <div style={{ position: 'relative', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="_pr-ring" style={{ position: 'absolute', inset: 0 }} />
+        <Logo variant="mark" size={28} link={false} />
+      </div>
       <p style={{ margin: 0, fontSize: '.85rem', color: 'var(--muted, #6B7280)', fontWeight: 500 }}>
         {label}
       </p>

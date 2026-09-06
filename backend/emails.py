@@ -24,6 +24,8 @@ RESEND_API_URL = "https://api.resend.com/emails"
 DEFAULT_EMAIL_FROM = "Selora <onboarding@resend.dev>"
 DEFAULT_EMAIL_FROM_WELCOME = "Selora <hello@selora.fashion>"
 SEND_TIMEOUT_SECONDS = 10.0
+# Email clients need an absolute image URL. 360px source shown at 120px (3x).
+EMAIL_LOGO_URL = "https://selora.fashion/brand/email-logo.png"
 
 _missing_key_logged = False
 
@@ -193,6 +195,7 @@ def render_welcome(user_name=None) -> tuple[str, str]:
     html = f"""\
 <div style="margin:0;padding:24px 12px;background:{_SURFACE};">
   <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid {_BORDER};border-radius:12px;padding:28px 24px;font-family:Helvetica,Arial,sans-serif;">
+    <img src="{EMAIL_LOGO_URL}" width="120" alt="Selora" style="display:block;width:120px;height:auto;margin:0 0 20px;border:0;" />
     <h1 style="margin:0 0 16px;font-size:22px;font-weight:normal;color:{_TEXT};">{greeting}</h1>
 
     <p style="margin:0 0 20px;font-size:14px;color:{_TEXT};line-height:1.6;">
@@ -257,6 +260,7 @@ def render_order_receipt(store_name: str, order_id: str, items: list,
     html = f"""\
 <div style="margin:0;padding:24px 12px;background:{_SURFACE};">
   <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid {_BORDER};border-radius:12px;padding:28px 24px;font-family:Helvetica,Arial,sans-serif;">
+    <img src="{EMAIL_LOGO_URL}" width="120" alt="Selora" style="display:block;width:120px;height:auto;margin:0 0 20px;border:0;" />
     <h1 style="margin:0 0 6px;font-size:22px;font-weight:normal;color:{_TEXT};">Payment received</h1>
     <p style="margin:0 0 20px;font-size:14px;color:{_MUTED};">Thanks for your order at {store}.</p>
 
