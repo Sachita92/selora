@@ -1,3 +1,4 @@
+import Logo from '../components/Logo'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useDarkMode } from '../hooks/useDarkMode'
@@ -12,7 +13,6 @@ const c = {
 const s = {
   page:    { minHeight: '100vh', background: c.bg, fontFamily: 'var(--font-body)', color: 'var(--text)' },
   nav:     { background: 'var(--nav-bg)', borderBottom: `1px solid var(--border)`, padding: '1rem 3.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(14px)' },
-  logo:    { fontSize: '1.2rem', fontWeight: 700, color: 'var(--dark)', textDecoration: 'none', fontFamily: 'var(--font-body)' },
   container: { width: '100%', maxWidth: 1280, margin: '0 auto', padding: '4rem 1.5rem 6rem', boxSizing: 'border-box' },
   header:  { textAlign: 'center', marginBottom: '4rem' },
   tag:     { fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', color: c.green, marginBottom: '.6rem' },
@@ -101,9 +101,7 @@ export default function Support() {
       
       {/* NAV */}
       <nav style={s.nav}>
-        <Link to="/" style={s.logo}>
-          Se<span style={{ color: 'var(--g)' }}>lo</span>ra
-        </Link>
+        <Logo size={22} />
         <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
           {/* Dark-mode toggle */}
           <button

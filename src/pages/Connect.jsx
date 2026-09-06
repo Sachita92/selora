@@ -1,3 +1,4 @@
+import Logo from '../components/Logo'
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -122,9 +123,7 @@ export default function Connect() {
         transition:"background .3s, border-color .3s",
         ...anim('fadeIn', 0, 300)
       }}>
-        <Link to="/" style={{ fontFamily:'var(--font-body)', fontSize:"1.2rem", fontWeight:700, letterSpacing:"-.3px", color:'var(--logo-text)', textDecoration:"none", transition:'color 0.3s' }}>
-          Se<span style={{ color:"#5A8A67" }}>lo</span>ra
-        </Link>
+        <Logo size={22} />
         <div className="nav-links" style={{ display:"flex", alignItems:"center" }}>
           {[
             { label: "Features", path: "/features" },
@@ -499,11 +498,7 @@ export default function Connect() {
         transition:'background-color 0.35s, border-color 0.35s',
         ...anim('fadeIn', 400, 350)
       }}>
-        <Link to="/" style={{ textDecoration: 'none' }}>
-          <div style={{ fontFamily:'var(--font-body)', fontSize:".95rem", fontWeight:700, color:'var(--logo-text)', transition:'color 0.3s' }}>
-            Se<span style={{ color:"#5A8A67" }}>lo</span>ra
-          </div>
-        </Link>
+        <Logo size={16} />
         <div>
           {[{l:"Privacy Policy",h:"/privacy"},{l:"Terms of Service",h:"/terms"},{l:"Support",h:"/support"},{l:"Docs",h:"#"},{l:"Contact",h:"/support"}].map(item=>(
             <Link key={item.l} to={item.h} className="cn-footer-link" style={{ fontSize:".74rem", textDecoration:"none", marginLeft:"1.8rem", transition:'color 0.3s' }}>{item.l}</Link>

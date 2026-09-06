@@ -1,3 +1,4 @@
+import Logo from './Logo'
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -57,8 +58,6 @@ function t(dark) {
     closeBgHover:dark ? '#243024'  : '#F0F0EE',
     closeColor:  dark ? '#7FA189'  : '#7B907D',
     closeColorHover: dark ? '#F4F9F5' : '#1A271C',
-    // logo
-    logoBrand:   dark ? '#F4F9F5'  : '#1A271C',
     // error/link
     errBg:       dark ? 'rgba(220,38,38,.12)'   : '#FEF2F2',
     errBorder:   dark ? 'rgba(220,38,38,.3)'    : '#FECACA',
@@ -638,10 +637,8 @@ export default function AuthModal() {
           </button>
 
           {/* Logo */}
-          <div style={{ textAlign: 'center', marginBottom: '1.4rem' }}>
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-.3px', color: T.logoBrand }}>
-              Se<span style={{ color: T.green }}>lo</span>ra
-            </span>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.4rem' }}>
+            <Logo size={20} link={false} />
           </div>
 
           {authMessage && (

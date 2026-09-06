@@ -1,3 +1,4 @@
+import Logo from '../components/Logo'
 import { Link } from 'react-router-dom'
 import { useDarkMode } from '../hooks/useDarkMode'
 import Footer from '../components/Footer'
@@ -9,9 +10,7 @@ export default function PrivacyPolicy() {
 
             {/* NAV */}
             <nav style={{ background: "var(--nav-bg)", borderBottom: "1px solid var(--border)", padding: "1rem 3.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, backdropFilter: 'blur(14px)' }}>
-                <Link to="/" style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--dark)", textDecoration: "none", fontFamily: 'var(--font-body)' }}>
-                    Se<span style={{ color: "var(--g)" }}>lo</span>ra
-                </Link>
+                <Logo size={22} />
                 <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
                   {/* Dark-mode toggle */}
                   <button
