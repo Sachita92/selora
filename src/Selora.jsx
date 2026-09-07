@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAppContext } from "./lib/AppContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-import HeroBackground from "./components/HeroBackground";
+import HeroVideo from "./components/HeroVideo";
 
 // ─── SVG Icons ───────────────────────────────────────────────────────────────
 function TagIcon({ size = 20, color = 'currentColor' }) {
@@ -82,7 +82,7 @@ const GlobalStyles = () => (
 
     @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
     @keyframes float  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
-    @keyframes heroDrift { from { transform: scale(1); } to { transform: scale(1.05); } }
+    @keyframes chipFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 
     .au  { animation: fadeUp .65s cubic-bezier(0.16, 1, 0.3, 1) both; }
     .au1 { animation: fadeUp .65s .08s cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -90,6 +90,7 @@ const GlobalStyles = () => (
     .au3 { animation: fadeUp .65s .28s cubic-bezier(0.16, 1, 0.3, 1) both; }
     .au4 { animation: fadeUp .65s .42s cubic-bezier(0.16, 1, 0.3, 1) both; }
     .float { animation: float 4.5s ease-in-out infinite; }
+    .chip-float { animation: chipFloat 5.5s ease-in-out infinite; }
 
     .hero-viewport {
       position: relative; z-index: 2;
@@ -184,7 +185,7 @@ const GlobalStyles = () => (
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .au, .au1, .au2, .au3, .au4, .hero-stage, .float, .marquee-track, .scroll-cue-line::after { animation: none; }
+      .au, .au1, .au2, .au3, .au4, .hero-stage, .float, .chip-float, .marquee-track, .scroll-cue-line::after { animation: none; }
     }
   `}</style>
 );
@@ -212,10 +213,8 @@ const SHOWCASE_EXAMPLES = [
 ];
 
 // The one product compact layouts show. Nothing drives the master clock there
-// (the compact card is static), so the background is deliberately a single
-// still — and the compact card shows the same listing, keeping the
-// card↔background pairing. The dress: subject centred where the light pools,
-// so it survives both the portrait crop and the scrim.
+// (the compact card is static), so the compact card holds this single
+// listing. The dress: the thumbnail that reads best at 56px.
 const MOBILE_PRODUCT_INDEX = 0;
 
 const PLANS = [
@@ -318,7 +317,66 @@ const CARD_TIMING = {
                       // land and still get a beat of rest before advancing)
   stampDelay: 350,    // beat after the stream before the first footer stamp
   stampStep: 260,     // spacing between successive footer stamps
+  chipIn: 520,        // beat into the analyzing stage before the first chip lands
+  chipStagger: 170,   // the second chip follows the first by this much
+  chipOut: 520,       // chips leave this long before the advance
 };
+
+// Floating chips beside the card — two more things Selora does to the same
+// listing while the copy is being rewritten: a price move on demand, and a
+// low-stock flag. They ride the master clock (in a beat into the analyzing
+// stage, out just ahead of the advance) so they never outlive their
+// product. Desktop only by construction: the compact card never mounts the
+// cycle that renders them. Placement is relative to the card box: they flank
+// it — price on the right edge in the stage-label band, stock hanging off the
+// bottom-left corner — so neither meets the chat bubble at bottom-right.
+const HERO_CHIPS = [
+  {
+    key: "price",
+    label: "Price $29 → $34",
+    detail: "demand up",
+    icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+    place: { top: 58, right: -30 },
+    delay: 0,
+    floatDelay: "0s",
+  },
+  {
+    key: "stock",
+    label: "Low stock · 4 left",
+    detail: "flagged",
+    icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+    place: { bottom: -18, left: -26 },
+    delay: CARD_TIMING.chipStagger,
+    floatDelay: "-2.6s",
+  },
+];
+
+function FloatingChip({ chip, visible, reducedMotion }) {
+  return (
+    <div data-hero-chip={chip.key} aria-hidden="true" style={{
+      position: "absolute", ...chip.place, zIndex: 2, pointerEvents: "none",
+      opacity: visible ? 1 : 0,
+      transform: visible ? "translateY(0) scale(1)" : "translateY(10px) scale(.96)",
+      transition: reducedMotion ? "none" : "opacity .4s ease, transform .6s cubic-bezier(0.16, 1, 0.3, 1)",
+      transitionDelay: visible && !reducedMotion ? `${chip.delay}ms` : "0ms",
+    }}>
+      <div className="chip-float" style={{
+        animationDelay: chip.floatDelay,
+        display: "inline-flex", alignItems: "center", gap: ".5rem",
+        background: "var(--chip-bg)", color: "var(--chip-text)",
+        border: "1px solid var(--chip-border)",
+        padding: ".45rem .8rem .45rem .5rem", borderRadius: 12,
+        boxShadow: "0 12px 32px rgba(26,39,28,.22), 0 2px 6px rgba(26,39,28,.12)",
+        fontSize: ".7rem", fontWeight: 500, lineHeight: 1, whiteSpace: "nowrap",
+      }}>
+        <span style={{width:24,height:24,borderRadius:8,background:"color-mix(in srgb, var(--g) 24%, transparent)",color:"var(--g)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{chip.icon}</span>
+        <span style={{fontWeight:600}}>{chip.label}</span>
+        <span aria-hidden="true" style={{opacity:.4}}>·</span>
+        <span style={{color:"var(--g)",fontWeight:500}}>{chip.detail}</span>
+      </div>
+    </div>
+  );
+}
 
 // Remounts the cycle per product (and per motion preference) via key, so every
 // cycle starts from clean initial state — no setState-in-effect resets. The
@@ -344,6 +402,7 @@ function AIRewriteCardCycle({ productIdx, onAdvance, onReplay, reducedMotion }) 
   const [progress, setProgress] = useState(reducedMotion ? 100 : 0);
   const [streamed, setStreamed] = useState(reducedMotion ? example.after.length : 0);
   const [stampCount, setStampCount] = useState(reducedMotion ? FOOTER_STAMPS.length : 0);
+  const [chipsIn, setChipsIn] = useState(reducedMotion); // rest state shows them
 
   // Checklist state derives from progress — one clock, no parallel thresholds.
   const checkedCount = Math.floor((progress / 100) * CHECKLIST.length);
@@ -381,6 +440,10 @@ function AIRewriteCardCycle({ productIdx, onAdvance, onReplay, reducedMotion }) 
       }, T.streamChar));
     });
     at(streamStart + streamMs + 400, clearAllIntervals);
+    // Chips ride the same timeline: in a beat into the analyzing stage, out
+    // just ahead of the advance so their exit lands before the remount.
+    at(T.beforeHold + T.chipIn, () => setChipsIn(true));
+    at(streamStart + streamMs + T.resultHold - T.chipOut, () => setChipsIn(false));
     // Footer stamps in after streaming — same clock, no derived state.
     FOOTER_STAMPS.forEach((_, i) => {
       at(streamStart + streamMs + T.stampDelay + i * T.stampStep, () => setStampCount(i + 1));
@@ -394,6 +457,7 @@ function AIRewriteCardCycle({ productIdx, onAdvance, onReplay, reducedMotion }) 
   }, [productIdx, reducedMotion]);
 
   return (
+    <div style={{position:"relative"}}>
     <div style={{background:"var(--bg-1,#fff)",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 18px 55px rgba(90,138,103,.11)",fontFamily:'var(--font-body)'}}>
       {/* Header bar — no fake window chrome; the pill is a real replay control */}
       <div style={{background:"var(--bg2,#F1F5F1)",borderBottom:"1px solid var(--border)",padding:".8rem 1.6rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -486,6 +550,10 @@ function AIRewriteCardCycle({ productIdx, onAdvance, onReplay, reducedMotion }) 
         </div>
       </div>
     </div>
+      {HERO_CHIPS.map(chip => (
+        <FloatingChip key={chip.key} chip={chip} visible={chipsIn} reducedMotion={reducedMotion} />
+      ))}
+    </div>
   );
 }
 
@@ -529,28 +597,22 @@ const TRUST_ITEMS = [
   { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>, text: "Cancel anytime" },
 ];
 
-// Hero background registry. Photos won the bake-off and the other variants
-// (shader, macro, none) are gone. `scrim` gates the photographic scrim and
-// `cardMax` sizes the demo card. Unknown or absent ?bg= falls back to photos.
-const BG_VARIANTS = {
-  photos: { Layer: HeroBackground, scrim: true, cardMax: 500 },
-};
+// Demo card width on desktop. The looping video won the background bake-off;
+// the query-string variant registry and the cross-faded photo layer went with
+// the losers.
+const HERO_CARD_MAX = 500;
 
 function Hero() {
   const { user, openAuthModal } = useAppContext();
-  // Master-clock state: AIRewriteCard advances it; the background layer and
-  // the card both read it. Nothing else on the hero owns a timer.
+  // Master-clock state: AIRewriteCard advances it and is its only reader —
+  // the video background runs free of the clock. Nothing else on the hero
+  // owns a timer.
   const [productIdx, setProductIdx] = useState(0);
   const isCompact = useMediaQuery("(max-width: 900px)");
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
-  // Compact: frozen on one product — a single <img>, so the other two never
-  // download. Desktop: the full set, cross-faded by the clock.
-  const bgProducts = isCompact ? [SHOWCASE_EXAMPLES[MOBILE_PRODUCT_INDEX]] : SHOWCASE_EXAMPLES;
-  const bgIndex = isCompact ? 0 : productIdx;
-  // Bake-off knob: ?bg= picks the background variant per page load. Read
-  // straight off the URL — dev-time comparison state, not routed state.
-  const variant = BG_VARIANTS[new URLSearchParams(window.location.search).get("bg")] || BG_VARIANTS.photos;
-  const BgLayer = variant.Layer;
+  // Touch devices get the poster still, not the clip: autoplay is unreliable
+  // there and the clip is the heaviest asset on the page.
+  const isTouch = useMediaQuery("(hover: none) and (pointer: coarse)");
   // Scroll affordance — gone once the visitor starts scrolling, back at top.
   const [cueGone, setCueGone] = useState(window.scrollY > 24);
   useEffect(() => {
@@ -562,21 +624,21 @@ function Hero() {
   return (
     <section style={{position:"relative",overflow:"hidden",paddingTop:"var(--nav-h, 68px)"}}>
 
-      {/* Background layer, resolved from BG_VARIANTS. Drift is disabled on
-          compact layouts, which hold a single still frame. */}
-      <BgLayer products={bgProducts} activeIndex={bgIndex} reducedMotion={reducedMotion} drift={!isCompact} />
+      {/* Background: one looping clip under the scrim, unsynced from the
+          card. `still` swaps it for the poster frame. */}
+      <HeroVideo still={reducedMotion || isTouch} />
 
-      {/* Scrim — owned by the hero, not the background variant. Two moves:
+      {/* Scrim — owned by the hero, between the clip and the content. Two moves:
           the 97deg gradient keeps the text column dense and runs ~10% lighter
           across the card half; the radial mask holds full density over the
           text block, then opens the bottom third (and the far corners) so the
           photograph owns the lower field as mood rather than empty ground. */}
-      {variant.scrim && <div style={{
+      <div style={{
         position:"absolute", inset:0, zIndex:1, pointerEvents:"none",
         background:"linear-gradient(97deg, color-mix(in srgb, var(--bg2,#EEF4EF) 84%, transparent) 0%, color-mix(in srgb, var(--bg,#F8FAF8) 68%, transparent) 48%, color-mix(in srgb, var(--bg,#F8FAF8) 54%, transparent) 100%)",
         WebkitMaskImage:"radial-gradient(90% 85% at 22% 30%, #000 0%, #000 40%, rgba(0,0,0,.5) 70%, rgba(0,0,0,.22) 100%)",
         maskImage:"radial-gradient(90% 85% at 22% 30%, #000 0%, #000 40%, rgba(0,0,0,.5) 70%, rgba(0,0,0,.22) 100%)",
-      }}/>}
+      }}/>
 
       {/* Exit — fade the hero into ConnectSection's background, no hard band */}
       <div style={{
@@ -602,16 +664,18 @@ function Hero() {
             </div>
             {/* Headline */}
             {/* Cormorant 400 by design — the display face stays light and
-                gets its presence from size, not weight. The clamp's slope is
-                steep on purpose: "Your Fashion Store Grows" must hold one
-                line at every two-column width (>=901px), and the copy column
-                narrows faster than the viewport does. Cap 68px. */}
+                gets its presence from size, not weight. Three fixed lines:
+                the breaks keep the italic whole and leave no orphan. Type
+                (5vw-based) and the copy column both scale with the viewport,
+                so the lines hold at every two-column width (>=901px). The
+                clamp's slope is steep on purpose — the column narrows faster
+                than the viewport does. Cap 68px. */}
             <h1 className="au1" style={{fontFamily:'var(--font-display)',fontSize:"clamp(1.8rem,5vw - .25rem,4.25rem)",fontWeight:400,lineHeight:1.06,letterSpacing:"-1px",maxWidth:760,marginBottom:"1.1rem",color:"var(--dark)"}}>
-              Your Fashion Store Grows<br/><em style={{fontStyle:"italic",fontWeight:400,color:"var(--g)"}}>While You Sleep</em>
+              Listings that sell<br/>the way a <em style={{fontStyle:"italic",fontWeight:400,color:"var(--g)"}}>merchandiser</em><br/>would write them
             </h1>
             {/* Sub */}
             <p className="au2" style={{fontSize:"1rem",color:"var(--muted)",maxWidth:440,lineHeight:1.8,marginBottom:"1.8rem",fontWeight:300}}>
-              Selora is built only for fashion — it understands seasonality, size grids, and drop timing, not generic retail. Pricing, listings, ads, and inventory, handled the way a merchandiser would.
+              Selora is built only for fashion — it understands seasonality, size grids, and drop timing, not generic retail. It rewrites your listings, moves prices with demand, and flags stock before it runs out, while you sleep.
             </p>
             {/* CTAs */}
             <div className="au3" style={{display:"flex",gap:".9rem",flexWrap:"wrap",marginBottom:"1.5rem"}}>
@@ -636,7 +700,7 @@ function Hero() {
               component keeps timers alive. */}
           {isCompact
             ? <div className="au4"><CompactRewriteCard /></div>
-            : <div className="hero-visual" style={{width:"100%",maxWidth:variant.cardMax,margin:"0 auto"}}>
+            : <div className="hero-visual" style={{width:"100%",maxWidth:HERO_CARD_MAX,margin:"0 auto"}}>
                 <AIRewriteCard productIdx={productIdx} onAdvance={setProductIdx} reducedMotion={reducedMotion} />
               </div>
           }

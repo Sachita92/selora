@@ -35,21 +35,48 @@ export default function Navbar() {
   // useLayoutEffect: the observer's first callback lands after the first
   // paint, so the initial state is measured synchronously to get that paint
   // right.
+  //
+  // The hero owns the sentinel node and can remount underneath a live nav —
+  // Fast Refresh does it whenever a hook is added to Hero, and any keyed
+  // remount would in production. A detached node never intersects again, so
+  // an observer bound once would report "solid" forever. `watch` binds to
+  // whatever node is current, and a body-level mutation observer re-binds
+  // the moment the held node leaves the document.
   useLayoutEffect(() => {
-    const sentinel = document.querySelector('[data-nav-sentinel]')
-    // Measure-then-set is the documented useLayoutEffect pattern; it is the
-    // one thing that makes the first paint correct, so the compiler-era lint
-    // heuristic is waived for this single line.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOverHero(!!sentinel && sentinel.getBoundingClientRect().bottom > 0)
-    if (!sentinel) return
-    const observer = new IntersectionObserver((entries) => {
-      // Entries from several frames can arrive batched; the last one is current.
-      setOverHero(entries[entries.length - 1].isIntersecting)
-      setSettled(true)
-    }, { threshold: 0 })
-    observer.observe(sentinel)
-    return () => observer.disconnect()
+    let observer = null
+    let watched = null
+    const watch = () => {
+      const sentinel = document.querySelector('[data-nav-sentinel]')
+      if (sentinel === watched) return
+      if (observer) observer.disconnect()
+      observer = null
+      watched = sentinel
+      setOverHero(!!sentinel && sentinel.getBoundingClientRect().bottom > 0)
+      if (!sentinel) return
+      observer = new IntersectionObserver((entries) => {
+        // Entries from several frames can arrive batched; the last one is current.
+        const last = entries[entries.length - 1]
+        // A node the hero has just replaced reports "not intersecting" on its
+        // way out of the document. That is not a scroll signal — skip it and
+        // let the re-bind measure the new node instead.
+        if (!last.target.isConnected) return
+        setOverHero(last.isIntersecting)
+        setSettled(true)
+      }, { threshold: 0 })
+      observer.observe(sentinel)
+    }
+    watch()
+    // Routes without a hero have nothing to re-bind to; skip the mutation
+    // observer there so their DOM churn costs nothing here.
+    if (!watched) return
+    const rebinder = new MutationObserver(() => {
+      if (!watched.isConnected) watch()
+    })
+    rebinder.observe(document.body, { childList: true, subtree: true })
+    return () => {
+      rebinder.disconnect()
+      if (observer) observer.disconnect()
+    }
   }, [location.pathname])
 
   // Auto-close menu on route changes

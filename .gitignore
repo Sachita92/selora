@@ -41,3 +41,7 @@ test_payer_wallet.json
 *payer_wallet.json
 
 docs/ 
+# raw video sources — never commit
+SOURCE.mp4
+*.mp4
+!public/hero-loop.mp4

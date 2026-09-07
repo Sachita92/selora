@@ -112,6 +112,10 @@
 
   /* Component specific light mode variables */
   --hero-img-opacity: 0.38;
+  /* Hero floating chips (HERO_CHIPS): charcoal card, sage accent */
+  --chip-bg: #1F2A22;
+  --chip-text: #F2F3F1;
+  --chip-border: rgba(255, 255, 255, 0.06);
   --testimonial-bg: #ffffff;
   --testimonial-stars: var(--g);
   --testimonial-overlay: rgba(255, 255, 255, 0.6);
@@ -150,6 +154,9 @@ html.dark, :root.dark, .dark {
 
   /* Component specific dark mode variables */
   --hero-img-opacity: 0.28;
+  --chip-bg: #2A2D2E;
+  --chip-text: #F2F3F1;
+  --chip-border: #3D4041;
   --testimonial-bg: #1B1D1E;
   --testimonial-stars: var(--g);
   --testimonial-overlay: rgba(18, 19, 20, 0.6);
