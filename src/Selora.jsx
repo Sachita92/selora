@@ -207,14 +207,16 @@ const STEPS = [
 ];
 
 const SHOWCASE_EXAMPLES = [
-  { before: "Dark floral wrap dress. 100% rayon. S, M, L. Machine washable.", after: "Moody floral wrap dress — fluid drape, effortless from dusk to dinner.",     bgImage: "/hero-dress-dark.webp", bgPos: "center 30%" },
-  { before: "Cable knit sweater. Grey. Oversized fit. Hand wash.",              after: "Cloud-grey cable knit — heavyweight wool, made for slow mornings.",         bgImage: "/hero-knit-dark.webp",  bgPos: "center 40%" },
+  { before: "Trucker jacket. Dark grey. Snap front. 2 chest pockets. S-XL.",   after: "Charcoal corduroy trucker jacket — brushed-soft, boxy cut, built to layer all winter.", bgImage: "/hero-jacket.jpg",  bgPos: "center 40%" },
+  { before: "Chunky knit sweater. Mustard yellow. Mock neck. Cropped. Hand wash.", after: "Mustard chunky knit — cropped mock neck, plush rib, made for golden autumn afternoons.", bgImage: "/hero-sweater.jpg", bgPos: "center 30%" },
   { before: "Leather boots. Black. Size 6-10. rubber sole. round toe.",     after: "Handcrafted black leather boots — weather-resistant, all-day cushioned walk.", bgImage: "/hero-boots.webp",  bgPos: "center 45%" },
 ];
 
 // The one product compact layouts show. Nothing drives the master clock there
 // (the compact card is static), so the compact card holds this single
-// listing. The dress: the thumbnail that reads best at 56px.
+// listing. The jacket: the thumbnail that reads best at 56px — a dark,
+// unmistakable silhouette on a neutral ground, and the quietest of the three
+// against the card (the sweater's white studio backdrop glows on dark).
 const MOBILE_PRODUCT_INDEX = 0;
 
 const PLANS = [
