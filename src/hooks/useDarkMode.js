@@ -2,8 +2,13 @@ import { useState, useLayoutEffect } from 'react';
 
 export function useDarkMode() {
   const [darkMode, setDarkMode] = useState(() => {
+    // A stored choice wins; with nothing stored the app is dark. The boot
+    // script in index.html applies the same rule before React loads, so the
+    // two must agree or the first paint flickers.
     const theme = localStorage.getItem('selora-theme');
-    return theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (theme === 'dark') return true;
+    if (theme === 'light') return false;
+    return true;
   });
 
   const toggleTheme = () => {

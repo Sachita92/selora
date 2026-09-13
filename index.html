@@ -29,11 +29,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Geist:wght@300..700&display=swap" rel="stylesheet"/>
     <script>
       (function() {
+        // A stored choice wins; with nothing stored the app is dark. Mirrors
+        // useDarkMode (src/hooks/useDarkMode.js) so the first paint matches React.
         const theme = localStorage.getItem('selora-theme');
-        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark');
-        } else {
+        if (theme === 'light') {
           document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
         }
       })();
     </script>

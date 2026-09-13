@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import { useAppContext } from '../lib/AppContext'
-import { useDarkMode } from '../hooks/useDarkMode'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import DarkLock from '../components/DarkLock'
 
 // ─── Constants & Styles ──────────────────────────────────────────────────────
 const c = {
@@ -1351,6 +1351,7 @@ export default function HowItWorksPage() {
   const [openFaq, setOpenFaq] = useState(null)
 
   return (
+    <DarkLock>
     <div className="landing-page" style={{fontFamily:'var(--font-body)', background:c.bg, minHeight:'100vh'}}>
       <style>{`
         @keyframes spin {
@@ -1432,7 +1433,7 @@ export default function HowItWorksPage() {
           }
         }
       `}</style>
-      <Navbar />
+      <Navbar hideThemeToggle />
 
       {/* HERO */}
       <div style={{paddingTop:'6.3rem',paddingBottom:'1.5rem',background:'var(--bg2)'}}>
@@ -1577,5 +1578,6 @@ export default function HowItWorksPage() {
 
       <Footer />
     </div>
+    </DarkLock>
   )
 }

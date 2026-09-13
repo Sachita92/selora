@@ -4,6 +4,7 @@ import { useAppContext } from "./lib/AppContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HeroVideo from "./components/HeroVideo";
+import DarkLock from "./components/DarkLock";
 
 // ─── SVG Icons ───────────────────────────────────────────────────────────────
 function TagIcon({ size = 20, color = 'currentColor' }) {
@@ -78,10 +79,6 @@ const GlobalStyles = () => (
   <style>{`
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: var(--text); font-family: var(--font-body); overflow-x: hidden; font-size: 15px; }
-    /* body sits outside the .landing-dark scope, so var(--bg) resolves to the
-       global theme there. Paint the canvas (overscroll) dark while the landing
-       is mounted; mirrors .dark --bg-0 in index.css. */
-    body:has(.landing-dark) { background: #121314; }
     h1, h2, h3 { font-family: var(--font-display); }
 
     @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
@@ -1446,17 +1443,14 @@ function CTA() {
 
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
-// The landing is always dark, independent of the global theme. The wrapper
-// carries the same `.dark` class the design tokens key off (src/index.css:139)
-// and the Tailwind dark variant matches, so every descendant — nav, hero,
-// sections, footer — resolves dark tokens purely through the CSS cascade.
-// Nothing here reads or writes html.dark, localStorage, or useDarkMode, and the
-// Navbar renders without its theme toggle; the dashboard's theme is untouched.
-// `.landing-page` stays a child so the existing `.dark .landing-page …` rules
-// in index.css keep matching.
+// The landing is always dark, independent of the global theme: <DarkLock>
+// scopes the dark tokens to this tree purely through the CSS cascade (see
+// src/components/DarkLock.jsx). Nothing here reads or writes html.dark,
+// localStorage, or useDarkMode, and the Navbar renders without its theme
+// toggle; the dashboard's theme is untouched.
 export default function Selora() {
   return (
-    <div className="dark landing-dark" style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", colorScheme: "dark" }}>
+    <DarkLock>
       <div className="landing-page">
         <GlobalStyles/>
         <Navbar hideThemeToggle />
@@ -1469,6 +1463,6 @@ export default function Selora() {
         <CTA/>
         <Footer/>
       </div>
-    </div>
+    </DarkLock>
   );
 }

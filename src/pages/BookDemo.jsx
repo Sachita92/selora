@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { useDarkMode } from '../hooks/useDarkMode'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import DarkLock from '../components/DarkLock'
 
 // ─── Shared Styles & Constants ───────────────────────────────────────────────
 const c = {
@@ -103,7 +103,6 @@ const iconMap = {
 }
 
 export default function BookDemo() {
-  const [darkMode, toggleTheme] = useDarkMode()
   const [step, setStep] = useState(1) // 1 = form, 2 = time slot, 3 = confirmed
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', storeUrl: '',
@@ -206,6 +205,7 @@ export default function BookDemo() {
   }
 
   return (
+    <DarkLock>
     <div className="landing-page" style={{ minHeight: '100vh', background: c.bg, fontFamily: 'var(--font-body)', color: c.text }}>
       <style>{`
         @keyframes fadeUp {
@@ -266,7 +266,7 @@ export default function BookDemo() {
         }
       `}</style>
 
-      <Navbar />
+      <Navbar hideThemeToggle />
 
       {step === 3 ? (
         /* ── CONFIRMED ────────────────────────────────────────────────────── */
@@ -755,6 +755,7 @@ export default function BookDemo() {
       <Footer />
 
     </div>
+    </DarkLock>
   )
 }
 

@@ -136,7 +136,12 @@ body {
 }
 
 
-html.dark, :root.dark, .dark {
+/* Global chrome that mounts outside a dark-locked page's wrapper (the guest
+   chat widget, see App.jsx) takes this palette too whenever such a page is on
+   screen, so it never renders light over the dark landing / marketing pages.
+   Dashboard routes have no .dark-locked, so nothing changes there. */
+html.dark, :root.dark, .dark,
+body:has(.dark-locked) .cn-chat-widget {
   /* New neutral dark palette */
   --bg-0: #121314;
   --bg-1: #1B1D1E;
@@ -259,6 +264,11 @@ html.dark, :root.dark, .dark {
   background: var(--bg);
   min-height: 100vh;
 }
+
+/* Routes wrapped in <DarkLock> (src/components/DarkLock.jsx) sit under a
+   scoped .dark. body is outside that scope, so paint the canvas behind them
+   (overscroll) dark while one is mounted. Mirrors .dark --bg-0 above. */
+body:has(.dark-locked) { background: #121314; }
 
 /* ── Landing Page Scoped Dark Mode ──────────────────────────────── */
 /* These values only apply when .dark is active inside .landing-page. */

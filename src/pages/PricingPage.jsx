@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
 import { supabase } from '../lib/supabase'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import { useDarkMode } from '../hooks/useDarkMode'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import DarkLock from '../components/DarkLock'
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
 
@@ -172,6 +172,7 @@ export default function PricingPage() {
   }, [user, navigate, checkoutPlan])
 
   return (
+    <DarkLock>
     <div className="landing-page" style={{fontFamily:'var(--font-body)', background:c.bg, minHeight:'100vh', color:c.text}}>
       <style>{`
         @keyframes pricingSlideUp {
@@ -222,7 +223,7 @@ export default function PricingPage() {
           box-shadow: 0 0 0 3px rgba(90, 138, 103, 0.15);
         }
       `}</style>
-      <Navbar />
+      <Navbar hideThemeToggle />
 
 
         {/* HERO & PRICING CARDS SECTION */}
@@ -541,6 +542,7 @@ export default function PricingPage() {
           />
         )}
       </div>
+    </DarkLock>
   )
 }
 
@@ -551,6 +553,7 @@ function CheckoutForm({ onClose, priceAmount, billingPeriod, planName, clientSec
   const [errorMessage, setErrorMessage] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [focusedField, setFocusedField] = useState(null)
+  const formRef = useRef(null)
   const [textColor, setTextColor] = useState('#1A271C')
   const [mutedColor, setMutedColor] = useState('#7B907D')
   
@@ -812,7 +815,10 @@ function CheckoutForm({ onClose, priceAmount, billingPeriod, planName, clientSec
   ]
 
   useEffect(() => {
-    const bodyStyle = window.getComputedStyle(document.documentElement)
+    // Stripe Elements render in an iframe and cannot inherit CSS variables, so
+    // resolve the tokens to literal colours — from the form, which sits inside
+    // the page's dark scope (<html> would give the global theme).
+    const bodyStyle = window.getComputedStyle(formRef.current)
     const textVal = bodyStyle.getPropertyValue('--text-primary').trim()
     const mutedVal = bodyStyle.getPropertyValue('--text-muted').trim()
     if (textVal) setTextColor(textVal)
@@ -916,7 +922,7 @@ function CheckoutForm({ onClose, priceAmount, billingPeriod, planName, clientSec
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.8rem', justifyContent: 'center' }}>
+    <form ref={formRef} onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.8rem', justifyContent: 'center' }}>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', borderBottom: '1px solid var(--border)', paddingBottom: '.8rem' }}>
           <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 500, color: 'var(--dark)' }}>Secure Card Payment</h3>

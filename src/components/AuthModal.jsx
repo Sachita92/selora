@@ -5,17 +5,24 @@ import { supabase } from '../lib/supabase'
 import { useAppContext } from '../lib/AppContext'
 import { setJustLoggedIn } from '../lib/useAuth'
 
-// ── Detect current dark mode from the html element class ─────────────────────
-function useIsDark() {
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
+// ── Detect current dark mode ─────────────────────────────────────────────────
+// The global theme is the `dark` class on <html>. Dark-locked pages (the
+// landing and the marketing pages) instead scope dark to a `.dark-locked`
+// wrapper (src/components/DarkLock.jsx); this modal mounts outside that
+// wrapper, so it also looks for one. Nothing here touches global theme state.
+function useIsDark(open) {
+  const [htmlDark, setHtmlDark] = useState(() => document.documentElement.classList.contains('dark'))
   useEffect(() => {
     const observer = new MutationObserver(() => {
-      setDark(document.documentElement.classList.contains('dark'))
+      setHtmlDark(document.documentElement.classList.contains('dark'))
     })
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
     return () => observer.disconnect()
   }, [])
-  return dark
+  // The wrapper is fixed for the life of a route and the modal re-renders on
+  // every open, so reading it here is always current.
+  const overDarkLockedPage = open && !!document.querySelector('.dark-locked')
+  return htmlDark || overDarkLockedPage
 }
 
 // ── Theme token helper ────────────────────────────────────────────────────────
@@ -460,7 +467,7 @@ export default function AuthModal() {
   const { open, mode, plan } = authModal
   const [currentMode, setCurrentMode] = useState(mode)
   const navigate = useNavigate()
-  const dark = useIsDark()
+  const dark = useIsDark(open)
 
   const T = t(dark)
 

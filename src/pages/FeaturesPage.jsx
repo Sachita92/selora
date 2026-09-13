@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useAppContext } from '../lib/AppContext'
-import { useDarkMode } from '../hooks/useDarkMode'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import DarkLock from '../components/DarkLock'
 
 // ─── SVG Icons ───────────────────────────────────────────────────────────────
 function TagIcon({ size = 20, color = 'currentColor' }) {
@@ -148,6 +148,7 @@ export default function FeaturesPage() {
   }
 
   return (
+    <DarkLock>
     <div className="landing-page" style={{fontFamily:'var(--font-body)', background:c.bg, minHeight:'100vh'}}>
       <style>{`
         .interactive-feat-card {
@@ -202,7 +203,7 @@ export default function FeaturesPage() {
           .feat-page-nav-links { display:none !important; }
         }
       `}</style>
-      <Navbar />
+      <Navbar hideThemeToggle />
 
 
         {/* HERO & OVERVIEW CARDS SECTION */}
@@ -316,5 +317,6 @@ export default function FeaturesPage() {
 
         <Footer />
       </div>
+    </DarkLock>
   )
 }
