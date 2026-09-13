@@ -1,14 +1,11 @@
 import Logo from '../components/Logo'
 import { Link } from 'react-router-dom'
-import { useDefaultDark } from '../hooks/useDefaultDark'
+import { useDarkMode } from '../hooks/useDarkMode'
 import Footer from '../components/Footer'
-import DarkLock from '../components/DarkLock'
 
 export default function PrivacyPolicy() {
-    // Dark unless the visitor has chosen a theme; the toggle keeps working.
-    const [darkMode, toggleTheme, forceDark] = useDefaultDark()
+    const [darkMode, toggleTheme] = useDarkMode()
     return (
-        <DarkLock active={forceDark}>
         <div className="landing-page" style={{ background: "var(--bg)", minHeight: "100vh", fontFamily: 'var(--font-body)', color: "var(--text)" }}>
 
             {/* NAV */}
@@ -175,7 +172,6 @@ export default function PrivacyPolicy() {
             <Footer />
 
         </div>
-        </DarkLock>
     );
 }
 
