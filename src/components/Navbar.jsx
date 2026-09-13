@@ -5,7 +5,46 @@ import { useAppContext } from '../lib/AppContext'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useAuth } from '../lib/useAuth'
 
-export default function Navbar() {
+// The theme toggle owns its useDarkMode() call. A Navbar rendered with
+// hideThemeToggle (the landing, which is forced dark by CSS scope in
+// Selora.jsx) therefore never touches the global theme: no localStorage read,
+// no html.dark write. Every other page keeps the toggle and the hook as before.
+function ThemeToggle() {
+  const [darkMode, toggleTheme] = useDarkMode()
+  return (
+    <button
+      className="cn-theme-toggle"
+      onClick={toggleTheme}
+      title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+      style={{
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '.35rem',
+        borderRadius: 6,
+        color: 'var(--dark)'
+      }}
+    >
+      {darkMode ? (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </svg>
+      ) : (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
+export default function Navbar({ hideThemeToggle = false }) {
   const { user, openAuthModal, loading } = useAppContext()
   const { login, logout, authenticated, ready, triggerSync } = useAuth()
   // Signed-in truth is the Supabase session `user` from AppContext — the same
@@ -13,7 +52,6 @@ export default function Navbar() {
   // wallet bridge is still resolving into a Supabase session (privy-sync), so
   // until either restore path settles, show neither button set.
   const isCheckingSession = !user && (!ready || loading || authenticated)
-  const [darkMode, toggleTheme] = useDarkMode()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   // Transparent while the landing hero is under the nav, solid once it isn't.
   // Optimistic default — the landing loads at the top of the hero.
@@ -252,36 +290,8 @@ export default function Navbar() {
 
         {/* Desktop actions & Hamburger */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          {/* Dark Mode toggle */}
-          <button
-            className="cn-theme-toggle"
-            onClick={toggleTheme}
-            title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '.35rem',
-              borderRadius: 6,
-              color: 'var(--dark)'
-            }}
-          >
-            {darkMode ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            )}
-          </button>
+          {/* Dark Mode toggle — omitted on the landing, whose theme is fixed */}
+          {!hideThemeToggle && <ThemeToggle />}
 
           {/* Desktop Auth Actions */}
           <div className="site-nav-actions-desktop" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
