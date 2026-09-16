@@ -674,17 +674,17 @@ function Hero() {
                 clamp's slope is steep on purpose — the column narrows faster
                 than the viewport does. Cap 68px. */}
             <h1 className="au1" style={{fontFamily:'var(--font-display)',fontSize:"clamp(1.8rem,5vw - .25rem,4.25rem)",fontWeight:400,lineHeight:1.06,letterSpacing:"-1px",maxWidth:760,marginBottom:"1.1rem",color:"var(--dark)"}}>
-              Listings that sell<br/>the way a <em style={{fontStyle:"italic",fontWeight:400,color:"var(--g)"}}>merchandiser</em><br/>would write them
+              Your fashion store,<br/>run like you hired<br/>a <em style={{fontStyle:"italic",fontWeight:400,color:"var(--g)"}}>merchandiser</em>.
             </h1>
             {/* Sub */}
             <p className="au2" style={{fontSize:"1rem",color:"var(--muted)",maxWidth:440,lineHeight:1.8,marginBottom:"1.8rem",fontWeight:300}}>
-              Selora is built only for fashion — it understands seasonality, size grids, and drop timing, not generic retail. It rewrites your listings, moves prices with demand, and flags stock before it runs out, while you sleep.
+              Selora reprices with the season, rewrites weak listings, shifts ad spend to what’s selling, and flags a size before it sells out.
             </p>
             {/* CTAs */}
             <div className="au3" style={{display:"flex",gap:".9rem",flexWrap:"wrap",marginBottom:"1.5rem"}}>
               {user
                 ? <Link to="/dashboard" style={{textDecoration:"none"}}><BtnP>Go to Dashboard →</BtnP></Link>
-                : <BtnP onClick={() => openAuthModal('signup')}>Start Growing for Free →</BtnP>
+                : <BtnP onClick={() => openAuthModal('signup')}>Get Started Free →</BtnP>
               }
               <Link to="/how-it-works" style={{textDecoration:"none"}}><BtnS>See How It Works</BtnS></Link>
             </div>
@@ -1429,7 +1429,7 @@ function CTA() {
                 Go to Dashboard →
               </Link>
             : <button onClick={() => openAuthModal('signup')} style={{background:"#86EFAC",color:"#1A271C",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:600,border:"none",cursor:"pointer",fontFamily:'var(--font-body)',boxShadow:"0 4px 20px rgba(134,239,172,.25)"}}>
-                Start Growing for Free →
+                Get Started Free →
               </button>
           }
           <Link to="/demo" style={{background:"transparent",color:"rgba(255,255,255,.6)",border:"1px solid rgba(255,255,255,.18)",padding:".8rem 2rem",borderRadius:8,fontSize:".92rem",fontWeight:500,textDecoration:"none",fontFamily:'var(--font-body)'}}>
@@ -1441,13 +1441,6 @@ function CTA() {
   );
 }
 
-
-// ─── Root ─────────────────────────────────────────────────────────────────────
-// The landing is always dark, independent of the global theme: <DarkLock>
-// scopes the dark tokens to this tree purely through the CSS cascade (see
-// src/components/DarkLock.jsx). Nothing here reads or writes html.dark,
-// localStorage, or useDarkMode, and the Navbar renders without its theme
-// toggle; the dashboard's theme is untouched.
 export default function Selora() {
   return (
     <DarkLock>
