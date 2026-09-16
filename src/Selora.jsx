@@ -674,7 +674,7 @@ function Hero() {
                 clamp's slope is steep on purpose — the column narrows faster
                 than the viewport does. Cap 68px. */}
             <h1 className="au1" style={{fontFamily:'var(--font-display)',fontSize:"clamp(1.8rem,5vw - .25rem,4.25rem)",fontWeight:400,lineHeight:1.06,letterSpacing:"-1px",maxWidth:760,marginBottom:"1.1rem",color:"var(--dark)"}}>
-              Your fashion store,<br/>run like you hired<br/>a <em style={{fontStyle:"italic",fontWeight:400,color:"var(--g)"}}>merchandiser</em>.
+              Listings that sell<br/>the way a <em style={{fontStyle:"italic",fontWeight:400,color:"var(--g)"}}>merchandiser</em><br/>would write them
             </h1>
             {/* Sub */}
             <p className="au2" style={{fontSize:"1rem",color:"var(--muted)",maxWidth:440,lineHeight:1.8,marginBottom:"1.8rem",fontWeight:300}}>
