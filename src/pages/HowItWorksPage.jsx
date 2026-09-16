@@ -1260,11 +1260,11 @@ function BeforeAfterToggle({ c }) {
 
 // ─── FAQ Constants ──────────────────────────────────────────────────────────
 const FAQ = [
-  { q: 'How long does setup take?', a: 'Under 5 minutes. Just connect your Shopify store or launch a brand-new native storefront on Selora, set your goals, and Selora handles the rest.' },
+  { q: 'How long does setup take?', a: 'Under five minutes. Just connect your Shopify store or launch a brand-new native storefront on Selora, set your goals, and Selora handles the rest.' },
   { q: 'Do I need technical skills?', a: 'Not at all. Selora is built for fashion sellers, not developers. Everything is plain English, no code required.' },
   { q: 'Will Selora change things without my approval?', a: 'You\'re always in control. You can set Selora to auto-apply changes, or require approval before any action is taken.' },
   { q: 'What if I want to pause Selora?', a: 'One click. You can pause or resume the agent at any time from your dashboard.' },
-  { q: 'How quickly will I see results?', a: 'Most sellers see their first improvements within 48 hours. Significant growth typically happens within the first 2 weeks.' },
+  { q: 'How quickly will I see results?', a: 'Results vary by store. Selora starts working on your listings as soon as your store is connected.' },
   { q: 'Can I connect my own custom domain?', a: 'Yes, you can easily link your custom domain (e.g., yourbrand.com) in your storefront settings at any time.' },
 ]
 
@@ -1274,7 +1274,7 @@ const STEPS = [
     num: '01',
     title: 'Set Up Your Store',
     desc: 'Connect your existing Shopify store in one click, or launch a new storefront on Selora — either way, it starts working immediately.',
-    detail: 'Simply enter your Shopify store URL to connect, or create a brand-new native storefront directly on Selora. We sync your existing product catalog, orders, and ads, or host your brand-new collection instantly. Setup takes under 5 minutes.',
+    detail: 'Simply enter your Shopify store URL to connect, or create a brand-new native storefront directly on Selora. We sync your existing product catalog, orders, and ads, or host your brand-new collection instantly. Setup takes under five minutes.',
     checklist: [
       "Product catalog — titles, photos, pricing, variants",
       "Order history — so Selora knows what's already selling",
@@ -1446,7 +1446,7 @@ export default function HowItWorksPage() {
               Three steps to a <em style={{fontStyle:'italic',color:c.g}}>self-growing</em>
             </h1>
             <p style={{fontSize:'.88rem',color:c.muted,lineHeight:1.8,fontWeight:300,margin:0}}>
-              No technical setup. Built for fashion sellers, not developers. Start growing in under 5 minutes.
+              No technical setup. Built for fashion sellers, not developers. Start growing in under five minutes.
             </p>
           </div>
         </div>
@@ -1565,7 +1565,7 @@ export default function HowItWorksPage() {
         <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 70% 60% at 50% 50%,rgba(90,138,103,.12),transparent)',pointerEvents:'none'}} />
         <div className="site-page-container" style={{position:'relative'}}>
           <h2 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.5rem,3.5vw,2.8rem)',fontWeight:500,color:'#fff',marginBottom:'1rem',lineHeight:1.15,letterSpacing:'-.3px'}}>
-            Ready to start? It takes <em style={{color:'#86EFAC',fontStyle:'italic'}}>5 minutes</em>
+            Ready to start? It takes <em style={{color:'#86EFAC',fontStyle:'italic'}}>under five minutes</em>
           </h2>
           <p style={{color:'rgba(255,255,255,.4)',fontSize:'.9rem',marginBottom:'2.2rem',fontWeight:300,lineHeight:1.7,maxWidth:480,margin:'0 auto 2.2rem'}}>
             Free trial — no credit card required.

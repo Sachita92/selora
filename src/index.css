@@ -116,9 +116,6 @@
   --chip-bg: #1F2A22;
   --chip-text: #F2F3F1;
   --chip-border: rgba(255, 255, 255, 0.06);
-  --testimonial-bg: #ffffff;
-  --testimonial-stars: var(--g);
-  --testimonial-overlay: rgba(255, 255, 255, 0.6);
 
   /* Badge and status variables */
   --badge-success-bg: #DCFCE7;
@@ -162,9 +159,6 @@ body:has(.dark-locked) .cn-chat-widget {
   --chip-bg: #2A2D2E;
   --chip-text: #F2F3F1;
   --chip-border: #3D4041;
-  --testimonial-bg: #1B1D1E;
-  --testimonial-stars: var(--g);
-  --testimonial-overlay: rgba(18, 19, 20, 0.6);
 
   /* Badge and status variables */
   --badge-success-bg: rgba(111, 191, 139, 0.15);

@@ -596,7 +596,7 @@ function CompactRewriteCard() {
 // positioning, the FAQ's under-5-minute setup, one-click pause/cancel).
 const TRUST_ITEMS = [
   { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M12 7a2 2 0 1 0-2-2m2 2l8 5c.6.4.7 1.2.3 1.8-.2.3-.5.5-.8.5H4c-.7 0-1.2-.5-1.2-1.2 0-.3.1-.7.4-.9l8.8-5.2z"/></svg>, text: "Built for fashion" },
-  { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 13"/></svg>, text: "Ready in 5 minutes" },
+  { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 13"/></svg>, text: "Ready in under five minutes" },
   { icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>, text: "Cancel anytime" },
 ];
 
@@ -720,55 +720,6 @@ function Hero() {
     </section>
   );
 }
-
-
-// ─── Stats Bar ────────────────────────────────────────────────────────────────
-// ─── Stats Bar ─── Rolling Number digit-by-digit animation ───────────────────
-function RollingNumber({ value }) {
-  const valueStr = String(value);
-  return (
-    <span style={{ display: "inline-flex", overflow: "hidden", lineHeight: 1 }}>
-      {valueStr.split("").map((char, idx) => {
-        if (/[0-9]/.test(char)) {
-          const digit = parseInt(char, 10);
-          return (
-            <span
-              key={idx}
-              style={{
-                display: "inline-block",
-                height: "1.35rem",
-                width: "0.62em",
-                overflow: "hidden",
-                position: "relative",
-              }}
-            >
-              <span
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  transition: "transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)",
-                  transform: `translateY(-${digit * 10}%)`,
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                }}
-              >
-                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                  <span key={n} style={{ height: "1.35rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {n}
-                  </span>
-                ))}
-              </span>
-            </span>
-          );
-        }
-        return <span key={idx} style={{ display: "inline-block" }}>{char}</span>;
-      })}
-    </span>
-  );
-}
-
 
 
 // ─── Features ─────────────────────────────────────────────────────────────────
@@ -1009,114 +960,6 @@ function Pricing() {
   );
 }
 
-// ─── Testimonial — two-column: text left, image right, auto-fade carousel ──────
-const TESTIMONIALS = [
-  {
-    quote:  "Selora found the words I never could for my collection. My listings finally sound like the pieces themselves.",
-    author: "Founder, independent fashion label",
-    image:  "/sweater.png",
-    pos:    "center 30%",
-  },
-  {
-    quote:  "I stopped dreading Monday mornings. Selora's overnight report tells me exactly what happened and what to do next — in plain English.",
-    author: "Owner, womenswear boutique",
-    image:  "/leather-jacket.png",
-    pos:    "center 25%",
-  },
-  {
-    quote:  "My bestseller sold out before I even noticed the trend. Selora caught it first and flagged a restock in time. That alone paid for a year.",
-    author: "Designer, sustainable fashion brand",
-    image:  "/trench-coat.png",
-    pos:    "center 30%",
-  },
-];
-
-function Testimonial() {
-  const [current, setCurrent] = useState(0);
-  const [fading, setFading]   = useState(false);
-  const timerRef = useRef(null);
-
-  useEffect(() => {
-    timerRef.current = setInterval(() => {
-      setFading(true);
-      setTimeout(() => {
-        setCurrent(c => (c + 1) % TESTIMONIALS.length);
-        setFading(false);
-      }, 380);
-    }, 5000);
-    return () => clearInterval(timerRef.current);
-  }, []);
-
-  const t = TESTIMONIALS[current];
-
-  return (
-    <div style={{
-      background: "var(--testimonial-bg)",
-      borderTop: "1px solid var(--border)",
-      borderBottom: "1px solid var(--border)",
-    }}>
-      <div className="two-col" style={{
-        maxWidth: 1400, margin: "0 auto",
-        display: "grid", gridTemplateColumns: "1fr 1fr",
-        minHeight: 230,
-      }}>
-        {/* LEFT — quote panel */}
-        <div
-          style={{
-            padding: "2rem 2rem",
-            display: "flex", flexDirection: "column", justifyContent: "center",
-            opacity: fading ? 0 : 1,
-            transform: fading ? "translateX(-10px)" : "translateX(0)",
-            transition: "opacity 0.38s ease, transform 0.38s ease",
-          }}
-        >
-          <div style={{color: "var(--testimonial-stars)", fontSize: ".85rem", marginBottom: ".9rem", letterSpacing: 3}}>★★★★★</div>
-          <blockquote style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: "clamp(1.15rem,2vw,1.6rem)",
-            fontWeight: 400, fontStyle: "italic",
-            lineHeight: 1.55, letterSpacing: "-.15px",
-            color: "var(--dark)", marginBottom: "1.3rem",
-            borderLeft: "none", padding: 0,
-          }}>
-            "{t.quote}"
-          </blockquote>
-          <div style={{fontSize: ".72rem", color: "var(--muted)", fontFamily: 'var(--font-body)', fontWeight: 300, letterSpacing: ".04em"}}>
-            — {t.author}
-          </div>
-        </div>
-
-        {/* RIGHT — image cross-fades */}
-        <div style={{position: "relative", overflow: "hidden", minHeight: 200}}>
-          {TESTIMONIALS.map((slide, i) => (
-            <img
-              key={slide.image}
-              src={slide.image}
-              alt=""
-              aria-hidden="true"
-              style={{
-                position: "absolute", inset: 0,
-                width: "100%", height: "100%",
-                objectFit: "cover", objectPosition: slide.pos,
-                display: "block",
-                opacity: i === current ? 1 : 0,
-                transition: "opacity 0.65s ease",
-                zIndex: i === current ? 1 : 0,
-              }}
-            />
-          ))}
-          <div style={{
-            position: "absolute", inset: 0,
-            background: "linear-gradient(to right, var(--testimonial-overlay) 0%, transparent 28%)",
-            zIndex: 2, pointerEvents: "none"
-          }}/>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
 // ─── ConnectSection ───────────────────────────────────────────────────────────
 // ─── ConnectSection ───────────────────────────────────────────────────────────
 function ShopifyLogo() {
@@ -1192,45 +1035,6 @@ function EtsyLogo() {
 
 function ConnectSection() {
   const { user, openAuthModal } = useAppContext();
-  const [stores, setStores] = useState(12491);
-  const [revenue, setRevenue] = useState(2148591248);
-  const [growth, setGrowth] = useState(3.8271);
-  const [uptime, setUptime] = useState(99.9994);
-
-  useEffect(() => {
-    // 1. Stores: ticks up by 1 store every 5 seconds
-    const storesInterval = setInterval(() => {
-      setStores(s => s + 1);
-    }, 5000);
-
-    // 2. Revenue: ticks up by a random sale amount ($120 - $340) every 2 seconds
-    const revenueInterval = setInterval(() => {
-      setRevenue(r => r + Math.floor(120 + Math.random() * 220));
-    }, 2000);
-
-    // 3. Growth Rate: fluctuates slightly every 4 seconds
-    const growthInterval = setInterval(() => {
-      setGrowth(g => {
-        const delta = Math.random() > 0.4 ? 0.0001 : -0.0001;
-        return Math.max(3.8000, Math.min(3.9000, g + delta));
-      });
-    }, 4000);
-
-    // 4. Uptime: fluctuates between 99.9990% and 99.9999% every 6 seconds
-    const uptimeInterval = setInterval(() => {
-      setUptime(() => {
-        const target = 99.999 + Math.random() * 0.0009;
-        return Math.round(target * 10000) / 10000;
-      });
-    }, 6000);
-
-    return () => {
-      clearInterval(storesInterval);
-      clearInterval(revenueInterval);
-      clearInterval(growthInterval);
-      clearInterval(uptimeInterval);
-    };
-  }, []);
 
   const INTEGRATIONS = [
     {
@@ -1281,7 +1085,7 @@ function ConnectSection() {
             SETUP & INTEGRATIONS
           </span>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: "clamp(1.6rem, 4vw, 2.4rem)", fontWeight: 400, color: "var(--dark)", lineHeight: 1.2, letterSpacing: "-.3px" }}>
-            Trusted by Fashion Sellers Worldwide
+            Connect your store, or launch one with Selora
           </h2>
         </div>
 
@@ -1357,49 +1161,6 @@ function ConnectSection() {
           </div>
         </div>
 
-        {/* Bottom Metrics Row */}
-        <div style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: "1.5rem",
-          flexWrap: "wrap",
-          fontSize: "0.85rem",
-          color: "var(--muted)",
-          fontFamily: 'var(--font-body)',
-          marginTop: "2.5rem",
-          borderTop: "1px solid var(--border)",
-          paddingTop: "1.5rem"
-        }}>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontWeight: 600, color: "var(--dark)", marginRight: "4px", fontVariantNumeric: "tabular-nums" }}>
-              <RollingNumber value={stores.toLocaleString()} />+
-            </span>
-            <span>Stores</span>
-          </div>
-          <span style={{ color: "var(--border-strong)" }}>•</span>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontWeight: 600, color: "var(--dark)", marginRight: "4px", fontVariantNumeric: "tabular-nums" }}>
-              $<RollingNumber value={revenue.toLocaleString()} />+
-            </span>
-            <span>Revenue</span>
-          </div>
-          <span style={{ color: "var(--border-strong)" }}>•</span>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontWeight: 600, color: "var(--dark)", marginRight: "4px", fontVariantNumeric: "tabular-nums" }}>
-              <RollingNumber value={uptime.toFixed(4)} />%
-            </span>
-            <span>Uptime</span>
-          </div>
-          <span style={{ color: "var(--border-strong)" }}>•</span>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ fontWeight: 600, color: "var(--dark)", marginRight: "4px", fontVariantNumeric: "tabular-nums" }}>
-              <RollingNumber value={growth.toFixed(4)} />x
-            </span>
-            <span>Avg Growth</span>
-          </div>
-        </div>
-
       </div>
     </div>
   );
@@ -1421,7 +1182,7 @@ function CTA() {
           <em style={{color:"#86EFAC",fontStyle:"italic"}}>Every morning, your collection grows.</em>
         </h2>
         <p style={{color:"rgba(255,255,255,.35)",fontSize:".9rem",marginBottom:"2.2rem",fontWeight:300,lineHeight:1.8}}>
-          Join 12,000+ fashion sellers already growing with Selora.<br/>14-day free trial — no credit card needed.
+          14-day free trial — no credit card needed.
         </p>
         <div style={{display:"flex",gap:"1rem",justifyContent:"center",flexWrap:"wrap"}}>
           {user
@@ -1452,7 +1213,6 @@ export default function Selora() {
         <Features/>
         <HowItWorks/>
         <Pricing/>
-        <Testimonial/>
         <CTA/>
         <Footer/>
       </div>

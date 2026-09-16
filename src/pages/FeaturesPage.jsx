@@ -263,29 +263,18 @@ export default function FeaturesPage() {
                     <h2 className="detail-heading" style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.3rem, 4vw, 1.6rem)',fontWeight:500,color:c.dark,letterSpacing:'-.3px'}}>{f.title}</h2>
                   </div>
                   <p style={{fontSize:'.88rem',color:c.muted,lineHeight:1.8,fontWeight:300,marginBottom:'1.5rem'}}>{f.detail}</p>
-                  <ul style={{listStyle:'none',display:'flex',flexDirection:'column',gap:'.6rem'}}>
-                    {f.bullets.map(b => (
-                      <li key={b} style={{fontSize:'.82rem',color:c.text,display:'flex',alignItems:'center',gap:'.5rem',fontWeight:400}}>
-                        <span style={{color:c.g,fontWeight:700,fontSize:'.9rem'}}>✓</span>{b}
-                      </li>
-                    ))}
-                  </ul>
                 </div>
 
                 {/* Visual side */}
                 <div style={{direction:'ltr',background:c.card,border:`1px solid ${c.border}`,borderRadius:16,padding:'2rem',boxShadow:'0 8px 30px rgba(90,138,103,.06)'}}>
-                  <div style={{background:c.bg2,borderRadius:10,padding:'1.5rem',border:`1px solid ${c.border}`}}>
-                    <div style={{display:'flex',alignItems:'center',gap:'.5rem',marginBottom:'1rem'}}>
-                      <div style={{width:8,height:8,borderRadius:'50%',background:c.g}} />
-                      <span style={{fontSize:'.72rem',fontWeight:600,color:c.muted,textTransform:'uppercase',letterSpacing:'.08em'}}>{f.title} · Live</span>
-                    </div>
-                    <div style={{fontSize:'2rem',fontWeight:500,fontFamily:'var(--font-display)',color:c.dark,marginBottom:'.3rem',letterSpacing:'-.3px'}}>
-                      {i === 0 ? '+18%' : i === 1 ? '2.4x' : i === 2 ? '-34%' : i === 3 ? '12' : i === 4 ? '0' : '47'}
-                    </div>
-                    <div style={{fontSize:'.7rem',color:c.muted,textTransform:'uppercase',letterSpacing:'.06em'}}>
-                      {i === 0 ? 'Revenue increase this month' : i === 1 ? 'Conversion rate improvement' : i === 2 ? 'Wasted ad spend reduced' : i === 3 ? 'Insights generated today' : i === 4 ? 'Stockouts this quarter' : 'Actions logged this week'}
-                    </div>
-                  </div>
+                  <p style={{fontSize:'.72rem',fontWeight:600,color:c.muted,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:'1rem'}}>What it does</p>
+                  <ul style={{listStyle:'none',display:'flex',flexDirection:'column',gap:'.9rem'}}>
+                    {f.bullets.map(b => (
+                      <li key={b} style={{fontSize:'.92rem',color:c.text,display:'flex',alignItems:'center',gap:'.5rem',fontWeight:400}}>
+                        <span style={{width:22,height:22,borderRadius:'50%',background:c.gpale,color:c.g,display:'inline-flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontWeight:700,fontSize:'.75rem',lineHeight:1}}>✓</span>{b}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             </div>

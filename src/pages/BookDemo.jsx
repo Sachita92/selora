@@ -26,7 +26,7 @@ const WHAT_YOU_GET = [
   { iconType: 'target', title: 'Personalized walkthrough', desc: 'We tailor the demo around your store, products, and growth goals — not a generic slideshow.' },
   { iconType: 'monitor', title: 'Live agent demonstration', desc: 'Watch Selora analyze a real fashion store in real time and show you exactly what it would do.' },
   { iconType: 'chat', title: 'Your questions answered', desc: 'Get direct answers from the team on pricing, integrations, limitations, and timelines.' },
-  { iconType: 'map', title: 'Onboarding roadmap', desc: 'Walk away with a clear plan for getting your store set up and growing within 48 hours.' },
+  { iconType: 'map', title: 'Onboarding roadmap', desc: 'Walk away with a clear plan for getting your store set up and growing with Selora.' },
 ]
 
 // ─── SVG Icons (No Emojis, Premium Line Art) ──────────────────────────────────
