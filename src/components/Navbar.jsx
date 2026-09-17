@@ -61,17 +61,11 @@ export default function Navbar({ hideThemeToggle = false }) {
   // isn't: on the landing "the top" is the hero, elsewhere the first
   // TOP_THRESHOLD_PX pixels. Optimistic default — pages load at the top.
   const [overHero, setOverHero] = useState(true)
-  // Whether this route renders a [data-nav-sentinel] (the landing hero). Only
-  // such a route lets the nav ride with the hero; every other route pins it.
-  const [hasSentinel, setHasSentinel] = useState(false)
   // The 300ms transition switches on only after the initial state has been
   // painted, so a mid-page reload snaps to the right look instead of fading
   // into it. Sentinel routes settle on the observer's first callback, scroll
   // routes on their first scroll event — both land after the first paint.
   const [settled, setSettled] = useState(false)
-  // Slide-down entrance for the landing's pin; derived below `solid`.
-  const [entering, setEntering] = useState(false)
-  const [prevPastHero, setPrevPastHero] = useState(false)
   const location = useLocation()
 
   // Two ways to learn whether the top of the page is under the nav.
@@ -114,7 +108,6 @@ export default function Navbar({ hideThemeToggle = false }) {
       if (sentinel && sentinel === watched) return
       unbind()
       watched = sentinel
-      setHasSentinel(!!sentinel)
       if (!sentinel) {
         // Scroll path. `settled` waits for the first real scroll event so the
         // transition never runs against the initial paint.
@@ -172,29 +165,12 @@ export default function Navbar({ hideThemeToggle = false }) {
   // Solid whenever the top of the page isn't under the nav. The open mobile
   // drawer forces solid so it never hangs off a glass bar.
   const solid = !overHero || isMenuOpen
-  // A sentinel route's nav rides with the hero (absolute, at the top of the
-  // page) while over it and pins to the viewport once past it. Scroll routes
-  // are pinned throughout, and the open drawer pins too so it never scrolls
-  // out from under a finger. The hero reserves --nav-h of top padding, so
-  // neither position shifts layout.
-  const pastHero = hasSentinel && !overHero
-  const fixed = !hasSentinel || pastHero || isMenuOpen
-
-  // The pin gets a short slide-down, but only when it happens after the
-  // initial state has settled: a mid-page reload paints pinned with no
-  // entrance. Derived during render from the previous render's value, so
-  // the committed frame already carries the animation's start transform
-  // instead of flashing the bar at rest for a frame.
-  if (pastHero !== prevPastHero) {
-    setPrevPastHero(pastHero)
-    setEntering(pastHero && settled)
-  }
 
   return (
     <nav
-      className={`site-nav${solid ? ' is-solid' : ''}${settled ? ' is-settled' : ''}${entering ? ' is-entering' : ''}`}
+      className={`site-nav${solid ? ' is-solid' : ''}${settled ? ' is-settled' : ''}`}
       style={{
-        position: fixed ? 'fixed' : 'absolute',
+        position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
@@ -221,19 +197,8 @@ export default function Navbar({ hideThemeToggle = false }) {
           backdrop-filter: blur(14px);
           -webkit-backdrop-filter: blur(14px);
         }
-        /* The landing's pin: the bar drops in from above the viewport already
-           solid — the colour transition is off so it doesn't fade as it slides. */
-        .site-nav.is-entering {
-          transition: none;
-          animation: navPinIn .2s cubic-bezier(0.16, 1, 0.3, 1) both;
-        }
-        @keyframes navPinIn {
-          from { transform: translateY(-100%); }
-          to   { transform: translateY(0); }
-        }
         @media (prefers-reduced-motion: reduce) {
           .site-nav.is-settled { transition: none; }
-          .site-nav.is-entering { animation: none; }
         }
         .skeleton-shimmer {
           background: linear-gradient(90deg, var(--bg-2, #f3f4f6) 25%, var(--border, #e5e7eb) 50%, var(--bg-2, #f3f4f6) 75%);
